@@ -1,0 +1,52 @@
+/* GRID SYSTEM */
+.grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* SPACING */
+.main-content {
+  padding-top: 4rem;
+  min-height: 80vh;
+}
+
+.hero-section {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.heading-xl {
+  font-size: 3.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.subheading {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .grid-3,
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .heading-xl {
+    font-size: 2.5rem;
+  }
+  .nav-links {
+    display: none;
+  } /* Handled in Phase 3 */
+}
