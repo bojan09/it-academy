@@ -4,7 +4,9 @@
 
 /* ─── Base resets ─── */
 @layer base {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
   }
 
@@ -15,21 +17,29 @@
   }
 
   body {
-    font-family: 'Sora', sans-serif;
+    font-family: "Sora", sans-serif;
     background-color: #070b14;
     color: #f1f5f9;
     line-height: 1.65;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Sora', sans-serif;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Sora", sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
   }
 
-  code, pre, kbd, .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+  code,
+  pre,
+  kbd,
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
   }
 
   ::selection {
@@ -56,7 +66,6 @@
 
 /* ─── Component utilities ─── */
 @layer components {
-
   /* Cards */
   .card {
     @apply bg-surface-800 border border-surface-600 rounded-2xl shadow-card transition-all duration-300;
@@ -138,44 +147,209 @@
 
 /* ─── Utility animations ─── */
 @layer utilities {
-  .animate-delay-100 { animation-delay: 100ms; }
-  .animate-delay-200 { animation-delay: 200ms; }
-  .animate-delay-300 { animation-delay: 300ms; }
-  .animate-delay-400 { animation-delay: 400ms; }
-  .animate-delay-500 { animation-delay: 500ms; }
-  .animate-delay-600 { animation-delay: 600ms; }
+  .animate-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animate-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animate-delay-400 {
+    animation-delay: 400ms;
+  }
+  .animate-delay-500 {
+    animation-delay: 500ms;
+  }
+  .animate-delay-600 {
+    animation-delay: 600ms;
+  }
 
-  .opacity-0-start { opacity: 0; }
+  .opacity-0-start {
+    opacity: 0;
+  }
+}
+
+/* ─── Lesson content prose styles ─── */
+.lesson-content h2 {
+  @apply text-2xl font-bold text-white tracking-tight mt-12 mb-4 pb-3 border-b border-surface-700;
+}
+.lesson-content h3 {
+  @apply text-lg font-semibold text-white mt-8 mb-3;
+}
+.lesson-content p {
+  @apply text-slate-300 leading-relaxed text-[15px];
+}
+.lesson-content ul {
+  @apply space-y-2 my-4;
+}
+.lesson-content ul li {
+  @apply flex items-start gap-2.5 text-slate-300 text-[15px] leading-relaxed;
+}
+.lesson-content ul li::before {
+  content: "▸";
+  @apply text-brand-400 flex-shrink-0 mt-0.5 text-xs;
+}
+.lesson-content ol {
+  @apply space-y-2 my-4 list-none;
+  counter-reset: lesson-counter;
+}
+.lesson-content ol li {
+  @apply flex items-start gap-3 text-slate-300 text-[15px] leading-relaxed;
+  counter-increment: lesson-counter;
+}
+.lesson-content ol li::before {
+  content: counter(lesson-counter);
+  @apply flex-shrink-0 w-5 h-5 rounded-full bg-brand-500/20 text-brand-300 text-[11px]
+         font-bold font-mono flex items-center justify-center mt-0.5;
+}
+.lesson-content strong {
+  @apply text-white font-semibold;
+}
+.lesson-content a {
+  @apply text-brand-300 hover:text-brand-200 underline underline-offset-2 transition-colors;
+}
+.lesson-content blockquote {
+  @apply border-l-4 border-brand-500 pl-4 py-1 my-4 bg-brand-500/5 rounded-r-xl;
+}
+.lesson-content blockquote p {
+  @apply text-slate-300 italic;
+}
+
+/* ─── Info/warning/tip callout boxes ─── */
+.callout {
+  @apply flex gap-3 p-4 rounded-xl border my-6;
+}
+.callout-info {
+  @apply bg-brand-500/5  border-brand-500/20;
+}
+.callout-warning {
+  @apply bg-accent-amber/5 border-accent-amber/20;
+}
+.callout-danger {
+  @apply bg-accent-red/5   border-accent-red/20;
+}
+.callout-success {
+  @apply bg-accent-green/5 border-accent-green/20;
+}
+.callout-icon {
+  @apply text-xl flex-shrink-0 mt-0.5;
+}
+.callout-body {
+  @apply flex-1 text-sm leading-relaxed;
+}
+.callout-body strong {
+  @apply block text-white font-semibold mb-0.5;
+}
+
+/* ─── Infographic section card ─── */
+.info-card {
+  @apply bg-surface-800 border border-surface-600 rounded-2xl p-6 my-6;
+}
+.info-card-header {
+  @apply flex items-center gap-3 mb-4 pb-3 border-b border-surface-700;
+}
+.info-card-icon {
+  @apply w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/20
+         flex items-center justify-center text-xl flex-shrink-0;
+}
+.info-card-title {
+  @apply text-base font-bold text-white;
+}
+.info-card-subtitle {
+  @apply text-xs text-slate-500 mt-0.5;
+}
+
+/* ─── Lab exercise block ─── */
+.lab-block {
+  @apply bg-surface-900 border border-surface-600 rounded-2xl overflow-hidden my-8;
+}
+.lab-header {
+  @apply flex items-center gap-3 px-5 py-3.5 bg-surface-800 border-b border-surface-700;
+}
+.lab-badge {
+  @apply px-2 py-0.5 rounded-md text-[10px] font-semibold font-mono
+         bg-accent-amber/10 text-accent-amber border border-accent-amber/20;
+}
+.lab-body {
+  @apply p-5 space-y-4;
 }
 
 /* ─── Syntax highlighting tokens ─── */
-.t-fn       { color: #60a5fa; }   /* blue    — commands / functions  */
-.t-param    { color: #f59e0b; }   /* amber   — flags / parameters    */
-.t-string   { color: #4ade80; }   /* green   — strings               */
-.t-comment  { color: #475569; font-style: italic; }  /* slate — comments */
-.t-number   { color: #a78bfa; }   /* purple  — numbers               */
-.t-op       { color: #94a3b8; }   /* slate   — operators             */
-.t-success  { color: #4ade80; }   /* green   — success output        */
-.t-error    { color: #f87171; }   /* red     — error output          */
+.t-fn {
+  color: #60a5fa;
+} /* blue    — commands / functions  */
+.t-param {
+  color: #f59e0b;
+} /* amber   — flags / parameters    */
+.t-string {
+  color: #4ade80;
+} /* green   — strings               */
+.t-comment {
+  color: #475569;
+  font-style: italic;
+} /* slate — comments */
+.t-number {
+  color: #a78bfa;
+} /* purple  — numbers               */
+.t-op {
+  color: #94a3b8;
+} /* slate   — operators             */
+.t-success {
+  color: #4ade80;
+} /* green   — success output        */
+.t-error {
+  color: #f87171;
+} /* red     — error output          */
 
 /* ─── Print styles (cheat sheets) ─── */
 @media print {
-  body { background: #fff !important; color: #111 !important; }
-  .no-print { display: none !important; }
-  .card { border: 1px solid #ddd !important; box-shadow: none !important; background: #fff !important; }
-  pre, code { background: #f5f5f5 !important; color: #111 !important; border: 1px solid #ddd !important; }
-  a { color: #000 !important; text-decoration: none !important; }
-  .gradient-text { -webkit-text-fill-color: #1e2d8a !important; background: none !important; }
-  header, footer { display: none !important; }
-  .print-break { page-break-before: always; }
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+  pre,
+  code {
+    background: #f5f5f5 !important;
+    color: #111 !important;
+    border: 1px solid #ddd !important;
+  }
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+  .gradient-text {
+    -webkit-text-fill-color: #1e2d8a !important;
+    background: none !important;
+  }
+  header,
+  footer {
+    display: none !important;
+  }
+  .print-break {
+    page-break-before: always;
+  }
 }
 
 /* ─── Hero grain overlay ─── */
 .noise-bg::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
+}
+
+.footer_link:hover {
+  background-color: rgba(59, 98, 246, 0.4);
 }
