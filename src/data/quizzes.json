@@ -1,0 +1,65 @@
+{
+  "quizzes": {
+    "ws2025-01": {
+      "lessonId": "ws2025-01",
+      "title": "Introduction to Windows Server 2025",
+      "passingScore": 70,
+      "xpReward": 25,
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What is the minimum RAM requirement for Windows Server 2025?",
+          "options": ["256 MB", "512 MB", "1 GB", "4 GB"],
+          "correct": 1,
+          "explanation": "Windows Server 2025 requires a minimum of 512 MB RAM, though 2 GB is recommended for a GUI installation."
+        },
+        {
+          "id": "q2",
+          "question": "Which role must be installed before promoting a server to a Domain Controller?",
+          "options": ["DNS Server", "AD DS (Active Directory Domain Services)", "DHCP Server", "File Services"],
+          "correct": 1,
+          "explanation": "AD DS must be installed first. You then run the AD DS Configuration Wizard to promote the server."
+        },
+        {
+          "id": "q3",
+          "question": "What PowerShell command installs the Active Directory Domain Services role?",
+          "options": [
+            "Add-ADDSFeature",
+            "Install-WindowsFeature -Name AD-Domain-Services",
+            "Enable-ADDomainController",
+            "Set-ADDSRole -Install"
+          ],
+          "correct": 1,
+          "explanation": "Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools is the correct command."
+        }
+      ]
+    },
+    "ws2025-02": {
+      "lessonId": "ws2025-02",
+      "title": "Active Directory & Domain Services",
+      "passingScore": 70,
+      "xpReward": 50,
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What does LDAP stand for?",
+          "options": [
+            "Local Directory Access Protocol",
+            "Lightweight Directory Access Protocol",
+            "Linked Domain Authentication Protocol",
+            "Logical Data Access Point"
+          ],
+          "correct": 1,
+          "explanation": "LDAP stands for Lightweight Directory Access Protocol. It is the protocol used to query and modify directory services like Active Directory."
+        },
+        {
+          "id": "q2",
+          "question": "Which port does LDAP use by default?",
+          "options": ["389", "636", "445", "88"],
+          "correct": 0,
+          "explanation": "LDAP uses port 389 by default. LDAPS (secure LDAP over SSL) uses port 636."
+        }
+      ]
+    }
+  }
+}

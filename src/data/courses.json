@@ -1,0 +1,140 @@
+{
+  "courses": [
+    {
+      "id": "windows-server-2025",
+      "title": "Windows Server 2025",
+      "slug": "windows-server-2025",
+      "icon": "🖥️",
+      "difficulty": "Intermediate",
+      "totalXP": 500,
+      "description": "Enterprise-grade Windows Server 2025 administration from installation to Active Directory, Group Policy, DHCP, DNS, and Hyper-V.",
+      "lessons": [
+        {
+          "id": "ws2025-01",
+          "title": "Introduction to Windows Server 2025",
+          "slug": "intro",
+          "xp": 50,
+          "locked": false,
+          "completed": false
+        },
+        {
+          "id": "ws2025-02",
+          "title": "Active Directory & Domain Services",
+          "slug": "active-directory",
+          "xp": 100,
+          "locked": true,
+          "completed": false
+        },
+        {
+          "id": "ws2025-03",
+          "title": "DHCP Server Configuration",
+          "slug": "dhcp",
+          "xp": 80,
+          "locked": true,
+          "completed": false
+        },
+        {
+          "id": "ws2025-04",
+          "title": "DNS Server Configuration",
+          "slug": "dns",
+          "xp": 80,
+          "locked": true,
+          "completed": false
+        },
+        {
+          "id": "ws2025-05",
+          "title": "Group Policy Management",
+          "slug": "group-policy",
+          "xp": 120,
+          "locked": true,
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "linux",
+      "title": "Linux Fundamentals",
+      "slug": "linux",
+      "icon": "🐧",
+      "difficulty": "Beginner",
+      "totalXP": 350,
+      "description": "Master the Linux command line, file system hierarchy, permissions, user management, networking, and server hardening.",
+      "lessons": [
+        {
+          "id": "linux-01",
+          "title": "Linux File System Hierarchy",
+          "slug": "filesystem",
+          "xp": 50,
+          "locked": false,
+          "completed": false
+        },
+        {
+          "id": "linux-02",
+          "title": "Users, Groups & Permissions",
+          "slug": "permissions",
+          "xp": 70,
+          "locked": true,
+          "completed": false
+        },
+        {
+          "id": "linux-03",
+          "title": "Networking in Linux",
+          "slug": "networking",
+          "xp": 80,
+          "locked": true,
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "networking",
+      "title": "Network Fundamentals",
+      "slug": "networking",
+      "icon": "🌐",
+      "difficulty": "Beginner",
+      "totalXP": 400,
+      "description": "TCP/IP stack, subnetting, VLANs, routing protocols, switching, and network troubleshooting for enterprise environments.",
+      "lessons": []
+    },
+    {
+      "id": "cybersecurity",
+      "title": "Cybersecurity",
+      "slug": "cybersecurity",
+      "icon": "🛡️",
+      "difficulty": "Advanced",
+      "totalXP": 600,
+      "description": "Threat modeling, system hardening, firewall configuration, intrusion detection, and incident response procedures.",
+      "lessons": []
+    },
+    {
+      "id": "python",
+      "title": "Python for SysAdmins",
+      "slug": "python",
+      "icon": "🐍",
+      "difficulty": "Intermediate",
+      "totalXP": 450,
+      "description": "Write automation scripts, interact with APIs, monitor infrastructure, and build sysadmin tools with Python.",
+      "lessons": []
+    },
+    {
+      "id": "powershell",
+      "title": "PowerShell",
+      "slug": "powershell",
+      "icon": "⚡",
+      "difficulty": "Intermediate",
+      "totalXP": 380,
+      "description": "Scripting, automation, Active Directory management, remote administration, and DSC with PowerShell.",
+      "lessons": []
+    },
+    {
+      "id": "devops",
+      "title": "DevOps",
+      "slug": "devops",
+      "icon": "🔧",
+      "difficulty": "Advanced",
+      "totalXP": 700,
+      "description": "CI/CD pipelines, Docker containers, Kubernetes orchestration, Terraform IaC, and infrastructure automation.",
+      "lessons": []
+    }
+  ]
+}
