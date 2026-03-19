@@ -78,10 +78,12 @@ export default function CommandPalette({ open, onClose }) {
     if (e.key === 'ArrowDown')  { e.preventDefault(); setCursor(c => Math.min(c + 1, results.length - 1)) }
     if (e.key === 'ArrowUp')    { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)) }
     if (e.key === 'Enter') {
+      // If item has href, navigate to it; otherwise go to search results
       const item = results[cursor]
       if (item?.href) { navigate(item.href); onClose() }
+      else if (query.trim()) { navigate(`/search?q=${encodeURIComponent(query)}`); onClose() }
     }
-  }, [open, results, cursor, navigate, onClose])
+  }, [open, results, cursor, navigate, onClose, query])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)

@@ -19,6 +19,7 @@ import VmwareSetup from './pages/VmwareSetup.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Glossary from './pages/Glossary.jsx'
 import Certificate from './pages/Certificate.jsx'
+import SearchResults from './pages/SearchResults.jsx'
 
 // ── Lessons ───────────────────────────────────────────────────────────────────
 import ActiveDirectory        from './pages/lessons/ActiveDirectory.jsx'
@@ -26,14 +27,19 @@ import DHCP                   from './pages/lessons/DHCP.jsx'
 import DNS                    from './pages/lessons/DNS.jsx'
 import GroupPolicy            from './pages/lessons/GroupPolicy.jsx'
 import HyperV                 from './pages/lessons/HyperV.jsx'
+import WindowsFirewall        from './pages/lessons/WindowsFirewall.jsx'
 import LinuxFilesystem        from './pages/lessons/LinuxFilesystem.jsx'
 import LinuxNetworking        from './pages/lessons/LinuxNetworking.jsx'
 import LinuxSSH               from './pages/lessons/LinuxSSH.jsx'
+import LinuxFirewall          from './pages/lessons/LinuxFirewall.jsx'
 import OSIModel               from './pages/lessons/OSIModel.jsx'
+import TCPIP                  from './pages/lessons/TCPIP.jsx'
 import PowerShellFundamentals from './pages/lessons/PowerShellFundamentals.jsx'
 import CIATriad               from './pages/lessons/CIATriad.jsx'
 import PythonAutomation       from './pages/lessons/PythonAutomation.jsx'
-import DockerContainers       from './pages/lessons/DockerContainers.jsx'
+import PowerShellPipeline      from './pages/lessons/PowerShellPipeline.jsx'
+import ThreatModelling         from './pages/lessons/ThreatModelling.jsx'
+import LinuxDisk               from './pages/lessons/LinuxDisk.jsx'
 
 const Placeholder = ({ title }) => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
@@ -52,6 +58,7 @@ export default function App() {
         <Route path="dashboard"           element={<Dashboard />} />
         <Route path="glossary"            element={<Glossary />} />
         <Route path="certificate"         element={<Certificate />} />
+        <Route path="search"              element={<SearchResults />} />
         <Route path="windows"             element={<Windows />} />
         <Route path="windows-server-2025" element={<WindowsServer2025 />} />
         <Route path="linux"               element={<Linux />} />
@@ -73,25 +80,31 @@ export default function App() {
         <Route path="windows-server-2025/dns"              element={<DNS />} />
         <Route path="windows-server-2025/group-policy"     element={<GroupPolicy />} />
         <Route path="windows-server-2025/hyper-v"          element={<HyperV />} />
+        <Route path="windows-server-2025/firewall"         element={<WindowsFirewall />} />
         <Route path="windows-server-2025/:lesson"          element={<Placeholder title="Lesson coming soon" />} />
 
         {/* ── Linux lessons ── */}
         <Route path="linux/filesystem"  element={<LinuxFilesystem />} />
         <Route path="linux/networking"  element={<LinuxNetworking />} />
         <Route path="linux/ssh"         element={<LinuxSSH />} />
+        <Route path="linux/firewall"    element={<LinuxFirewall />} />
+        <Route path="linux/disk"        element={<LinuxDisk />} />
         <Route path="linux/:lesson"     element={<Placeholder title="Lesson — Linux" />} />
 
         {/* ── Networking lessons ── */}
         <Route path="networking/osi-model" element={<OSIModel />} />
+        <Route path="networking/tcp-ip"    element={<TCPIP />} />
         <Route path="networking/:lesson"   element={<Placeholder title="Lesson — Networking" />} />
 
         {/* ── PowerShell lessons ── */}
         <Route path="powershell/fundamentals" element={<PowerShellFundamentals />} />
+        <Route path="powershell/pipeline"     element={<PowerShellPipeline />} />
         <Route path="powershell/:lesson"      element={<Placeholder title="Lesson — PowerShell" />} />
 
         {/* ── Cybersecurity lessons ── */}
-        <Route path="cybersecurity/cia-triad" element={<CIATriad />} />
-        <Route path="cybersecurity/:lesson"   element={<Placeholder title="Lesson — Cybersecurity" />} />
+        <Route path="cybersecurity/cia-triad"        element={<CIATriad />} />
+        <Route path="cybersecurity/threat-modelling" element={<ThreatModelling />} />
+        <Route path="cybersecurity/:lesson"          element={<Placeholder title="Lesson — Cybersecurity" />} />
 
         {/* ── Python lessons ── */}
         <Route path="python/filesystem"  element={<PythonAutomation />} />

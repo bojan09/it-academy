@@ -4,6 +4,7 @@ import { useProgress, getLevelForXP, BADGES, LEVELS } from '../hooks/useProgress
 import ProgressBar from '../components/ProgressBar.jsx'
 import StreakTracker from '../components/StreakTracker.jsx'
 import Breadcrumb from '../components/Breadcrumb.jsx'
+import StudyTimer from '../components/StudyTimer.jsx'
 
 // ─── All courses with their lesson IDs — used to calculate per-course progress ─
 const COURSES = [
@@ -294,48 +295,42 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── STREAK TRACKER ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+      {/* ── STREAK TRACKER + STUDY TIMER ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
         <StreakTracker />
-        {/* Next level card */}
-        <div className="card p-5">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
-            Level Roadmap
-          </p>
-          <div className="space-y-3">
-            {LEVELS.map(lv => {
-              const isCurrentOrPast = totalXP >= lv.minXP
-              const isCurrent       = level.level === lv.level
-              return (
-                <div key={lv.level}
-                     className={`flex items-center gap-3 p-2.5 rounded-xl transition-all duration-200
-                                  ${isCurrent ? 'bg-surface-700 border border-brand-500/20' : ''}`}>
-                  <div className={`w-7 h-7 rounded-lg border flex items-center justify-center
-                                   text-[11px] font-bold font-mono flex-shrink-0
-                                   ${isCurrentOrPast
-                                     ? 'bg-brand-500/20 border-brand-500/30 text-brand-300'
-                                     : 'bg-surface-700 border-surface-600 text-slate-600'}`}>
-                    {lv.level}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-semibold truncate
-                                   ${isCurrent ? lv.color : isCurrentOrPast ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {lv.title}
-                    </p>
-                    <p className="text-[10px] text-slate-600 font-mono">{lv.minXP.toLocaleString()} XP</p>
-                  </div>
-                  {isCurrentOrPast && !isCurrent && (
-                    <span className="text-accent-green text-xs flex-shrink-0">✓</span>
-                  )}
-                  {isCurrent && (
-                    <span className="text-[10px] text-brand-400 font-semibold flex-shrink-0">
-                      Current
-                    </span>
-                  )}
+        <StudyTimer />
+      </div>
+
+      {/* ── LEVEL ROADMAP ── */}
+      <div className="card p-5 mb-10">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
+          Level Roadmap
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {LEVELS.map(lv => {
+            const isCurrentOrPast = totalXP >= lv.minXP
+            const isCurrent       = level.level === lv.level
+            return (
+              <div key={lv.level}
+                   className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200
+                                ${isCurrent ? 'bg-surface-700 border border-brand-500/20' : ''}`}>
+                <div className={`w-8 h-8 rounded-xl border flex items-center justify-center
+                                 text-[12px] font-bold font-mono
+                                 ${isCurrentOrPast
+                                   ? 'bg-brand-500/20 border-brand-500/30 text-brand-300'
+                                   : 'bg-surface-700 border-surface-600 text-slate-600'}`}>
+                  {lv.level}
                 </div>
-              )
-            })}
-          </div>
+                <p className={`text-[10px] font-semibold text-center leading-tight
+                               ${isCurrent ? lv.color : isCurrentOrPast ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {lv.title}
+                </p>
+                <p className="text-[9px] text-slate-600 font-mono">{lv.minXP.toLocaleString()} XP</p>
+                {isCurrent && <span className="text-[9px] text-brand-400 font-semibold">← You</span>}
+                {isCurrentOrPast && !isCurrent && <span className="text-accent-green text-[10px]">✓</span>}
+              </div>
+            )
+          })}
         </div>
       </div>
 

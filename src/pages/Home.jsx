@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import LessonCard from '../components/LessonCard.jsx'
 import ProgressBar from '../components/ProgressBar.jsx'
+import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 // ─── Learning path data ───────────────────────────────────────────────────────
 const LEARNING_PATHS = [
@@ -203,6 +204,128 @@ function Section({ children, className = '' }) {
         {children}
       </div>
     </section>
+  )
+}
+
+// ─── Personalised recommendations ────────────────────────────────────────────
+const RECOMMENDATION_PATHS = [
+  { id: 'windows-server-2025', icon: '🖥️', title: 'Windows Server 2025', tagline: 'Most in-demand enterprise skill', href: '/windows-server-2025', firstLesson: '/windows-server-2025/active-directory', prereqs: [], lessonIds: ['ws2025-01','ws2025-02','ws2025-03','ws2025-04','ws2025-05','ws2025-06','ws2025-07','ws2025-08','ws2025-09','ws2025-10','ws2025-11','ws2025-12'] },
+  { id: 'linux',               icon: '🐧', title: 'Linux Fundamentals',   tagline: 'Essential for every sysadmin',   href: '/linux',               firstLesson: '/linux/filesystem',                        prereqs: [], lessonIds: ['linux-01','linux-02','linux-03','linux-04','linux-05','linux-06','linux-07','linux-08','linux-09','linux-10'] },
+  { id: 'networking',          icon: '🌐', title: 'Network Fundamentals', tagline: 'The non-negotiable foundation',  href: '/networking',          firstLesson: '/networking/osi-model',                    prereqs: [], lessonIds: ['net-01','net-02','net-03','net-04','net-05','net-06','net-07','net-08'] },
+  { id: 'cybersecurity',       icon: '🛡️', title: 'Cybersecurity',        tagline: 'Defend before you attack',       href: '/cybersecurity',       firstLesson: '/cybersecurity/cia-triad',                 prereqs: ['windows-server-2025', 'linux'], lessonIds: ['sec-01','sec-02','sec-03','sec-04','sec-05','sec-06','sec-07','sec-08','sec-09','sec-10'] },
+  { id: 'powershell',          icon: '⚡', title: 'PowerShell',           tagline: 'Automate Windows like a pro',    href: '/powershell',          firstLesson: '/powershell/fundamentals',                 prereqs: ['windows-server-2025'], lessonIds: ['ps-01','ps-02','ps-03','ps-04','ps-05','ps-06','ps-07','ps-08'] },
+  { id: 'python',              icon: '🐍', title: 'Python for SysAdmins', tagline: 'Automate everything else',       href: '/python',              firstLesson: '/python/filesystem',                       prereqs: ['linux'], lessonIds: ['py-01','py-02','py-03','py-04','py-05','py-06','py-07','py-08','py-09'] },
+  { id: 'devops',              icon: '🔧', title: 'DevOps',               tagline: 'The modern infra stack',         href: '/devops',              firstLesson: '/devops/docker',                           prereqs: ['linux', 'python'], lessonIds: ['devops-01','devops-02','devops-03','devops-04','devops-05','devops-06','devops-07','devops-08'] },
+]
+
+function RecommendationsSection() {
+  const [progress] = useLocalStorage('sysadminpro_progress', null)
+  const completedLessons = progress?.completedLessons ?? []
+  const totalXP          = progress?.totalXP ?? 0
+
+  // Score each path: higher = better recommendation
+  const scored = RECOMMENDATION_PATHS.map(path => {
+    const done       = path.lessonIds.filter(id => completedLessons.includes(id)).length
+    const pct        = Math.round(done / path.lessonIds.length * 100)
+    const isComplete = pct === 100
+    const isStarted  = done > 0 && !isComplete
+    const prereqsDone = path.prereqs.every(preId => {
+      const pre = RECOMMENDATION_PATHS.find(p => p.id === preId)
+      return pre && pre.lessonIds.some(id => completedLessons.includes(id))
+    })
+
+    let score = 0
+    if (isStarted)  score = 100  // In-progress → highest priority
+    if (!isStarted && !isComplete && prereqsDone) score = 80  // Ready to start
+    if (!isStarted && !isComplete && !prereqsDone) score = 40  // Not ready yet
+    if (isComplete) score = 0    // Already done
+
+    return { ...path, done, pct, isComplete, isStarted, prereqsDone, score }
+  })
+
+  // Sort by score desc, take top 3
+  const recommended = scored.sort((a, b) => b.score - a.score).slice(0, 3)
+
+  // Don't show if all courses complete or no meaningful progress data
+  if (scored.filter(p => p.isComplete).length === scored.length) return null
+
+  return (
+    <Section className="py-20">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
+        <div>
+          <p className="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-2">
+            {totalXP > 0 ? 'Personalised For You' : 'Recommended Starting Point'}
+          </p>
+          <h2 className="section-title">
+            {totalXP > 0 ? 'Continue Your Learning' : 'Where to Start'}
+          </h2>
+          <p className="text-slate-400 mt-2 text-sm">
+            {totalXP > 0
+              ? `You have ${totalXP.toLocaleString()} XP. Here's what to tackle next.`
+              : 'New to the platform? Start here — these three paths build on each other.'}
+          </p>
+        </div>
+        {totalXP > 0 && (
+          <Link to="/dashboard" className="btn-ghost text-sm flex-shrink-0">
+            View full dashboard →
+          </Link>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {recommended.map((path, idx) => (
+          <Link key={path.id} to={path.isStarted ? path.href : path.firstLesson}
+                className="card p-6 group flex flex-col gap-4 hover:border-brand-500/30">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <span className="text-3xl group-hover:scale-110 transition-transform duration-200">
+                {path.icon}
+              </span>
+              {idx === 0 && !path.isComplete && (
+                <span className="badge bg-brand-500/15 text-brand-300 border border-brand-500/20 text-[10px]">
+                  {path.isStarted ? '⚡ In Progress' : '✨ Recommended'}
+                </span>
+              )}
+              {path.isComplete && (
+                <span className="badge bg-accent-green/15 text-accent-green border border-accent-green/20 text-[10px]">
+                  ✓ Complete
+                </span>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1">
+              <h3 className="font-bold text-white text-[15px] mb-1 group-hover:text-brand-300
+                             transition-colors">
+                {path.title}
+              </h3>
+              <p className="text-xs text-slate-500">{path.tagline}</p>
+            </div>
+
+            {/* Progress */}
+            {path.isStarted && (
+              <div>
+                <div className="flex justify-between text-[11px] mb-1.5">
+                  <span className="text-slate-500 font-mono">{path.done}/{path.lessonIds.length} lessons</span>
+                  <span className="text-brand-300 font-mono">{path.pct}%</span>
+                </div>
+                <ProgressBar value={path.pct} showPercent={false} size="sm" />
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="flex items-center gap-2 text-sm font-semibold text-brand-400
+                             group-hover:text-brand-300 transition-colors">
+              {path.isStarted ? 'Continue' : path.isComplete ? 'Review' : 'Start Now'}
+              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
+                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Section>
   )
 }
 
@@ -416,6 +539,9 @@ export default function Home() {
           ))}
         </div>
       </Section>
+
+      {/* ── PERSONALISED RECOMMENDATIONS ──────────────────────── */}
+      <RecommendationsSection />
 
       {/* ── CTA BANNER ────────────────────────────────────────────── */}
       <Section className="py-20">
