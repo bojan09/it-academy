@@ -4,17 +4,16 @@ import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import CommandPalette from '../components/CommandPalette.jsx'
 import ResumeBanner from '../components/ResumeBanner.jsx'
+import XPToast from '../components/XPToast.jsx'
 
 export default function Layout() {
   const { pathname } = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [pathname])
 
-  // Global Cmd+K / Ctrl+K shortcut
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -35,6 +34,7 @@ export default function Layout() {
       </main>
       <Footer />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <XPToast />
     </div>
   )
 }

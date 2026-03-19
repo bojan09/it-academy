@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import Breadcrumb from './Breadcrumb.jsx'
 import ProgressBar from './ProgressBar.jsx'
 import { useProgress } from '../hooks/useProgress.js'
+import { fireXPToast } from './XPToast.jsx'
 
 /**
  * LessonLayout — the shell every individual lesson page sits inside.
@@ -65,6 +66,7 @@ export default function LessonLayout({
     if (isCompleted) return
     completeLesson(lessonId, xp)
     setJustCompleted(true)
+    fireXPToast(xp, `${title} complete!`)
   }
 
   return (

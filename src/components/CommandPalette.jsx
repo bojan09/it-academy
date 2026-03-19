@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import GLOSSARY from '../data/glossary.js'
+import { GLOSSARY } from '../data/glossary.js'
 
 // ─── Search index ─────────────────────────────────────────────────────────────
 const PAGES = [
   { type: 'page', label: 'Home',                  href: '/',                    icon: '🏠', desc: 'Platform home' },
+  { type: 'page', label: 'My Progress Dashboard', href: '/dashboard',           icon: '📊', desc: 'XP, levels, badges, course progress' },
+  { type: 'page', label: 'Glossary',              href: '/glossary',            icon: '📖', desc: '70+ IT terms defined & searchable' },
   { type: 'page', label: 'Windows Server 2025',   href: '/windows-server-2025', icon: '🖥️', desc: 'AD, DNS, DHCP, Hyper-V' },
   { type: 'page', label: 'Windows Desktop',       href: '/windows',             icon: '💻', desc: 'Windows OS fundamentals' },
   { type: 'page', label: 'PowerShell',            href: '/powershell',          icon: '⚡', desc: 'Scripting & automation' },

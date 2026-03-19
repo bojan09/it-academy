@@ -59,6 +59,7 @@ const NAV_ITEMS = [
     children: [
       { label: 'Cheat Sheets',     href: '/cheatsheets',    desc: 'Linux, PS, Networking' },
       { label: 'Port Lookup',      href: '/port-lookup',    desc: 'Search 35+ ports' },
+      { label: 'Glossary',         href: '/glossary',       desc: '70+ IT terms defined' },
       { label: 'VMware Lab Setup', href: '/vmware-setup',   desc: 'Configure your lab' },
       { label: 'Troubleshooting',  href: '/troubleshooting', desc: 'Diagnostic methodology' },
     ],
@@ -385,6 +386,31 @@ export default function Navbar({ onOpenSearch }) {
   const [scrolled, setScrolled]     = useState(false)
   const { pathname } = useLocation()
 
+  // Live XP from localStorage
+  const [xp, setXP] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('sysadminpro_progress') || '{}')
+      return s.totalXP ?? 0
+    } catch { return 0 }
+  })
+
+  // Re-read XP on storage change (cross-tab) + on route change
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const s = JSON.parse(localStorage.getItem('sysadminpro_progress') || '{}')
+        setXP(s.totalXP ?? 0)
+      } catch {}
+    }
+    window.addEventListener('storage', sync)
+    window.addEventListener('xp-earned', sync)
+    sync()
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('xp-earned', sync)
+    }
+  }, [pathname])
+
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
   useEffect(() => {
@@ -439,17 +465,22 @@ export default function Navbar({ onOpenSearch }) {
                 </kbd>
               </button>
 
-              {/* XP */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-800/80
-                              border border-surface-700 text-[11px] font-mono text-accent-green
-                              whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse-slow" />
-                0 XP
-              </div>
+              {/* Live XP chip — links to dashboard */}
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-800/80
+                           border border-surface-700 text-[11px] font-mono text-accent-green
+                           hover:border-accent-green/40 hover:bg-surface-700 transition-all duration-150
+                           whitespace-nowrap group"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-green
+                                 group-hover:animate-pulse flex-shrink-0" />
+                {xp.toLocaleString()} XP
+              </Link>
 
               {/* CTA */}
-              <Link to="/" className="btn-primary text-[13px] px-4 py-2 whitespace-nowrap">
-                Start Learning
+              <Link to="/dashboard" className="btn-primary text-[13px] px-4 py-2 whitespace-nowrap">
+                My Progress
               </Link>
             </div>
 

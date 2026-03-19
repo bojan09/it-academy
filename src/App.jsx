@@ -16,11 +16,25 @@ import CheatSheets from './pages/CheatSheets.jsx'
 import ITModels from './pages/ITModels.jsx'
 import PortLookup from './pages/PortLookup.jsx'
 import VmwareSetup from './pages/VmwareSetup.jsx'
+import Dashboard from './pages/Dashboard.jsx'
+import Glossary from './pages/Glossary.jsx'
+import Certificate from './pages/Certificate.jsx'
 
-// ── Lessons ──────────────────────────────────────────────────────────────────
-import ActiveDirectory from './pages/lessons/ActiveDirectory.jsx'
+// ── Lessons ───────────────────────────────────────────────────────────────────
+import ActiveDirectory        from './pages/lessons/ActiveDirectory.jsx'
+import DHCP                   from './pages/lessons/DHCP.jsx'
+import DNS                    from './pages/lessons/DNS.jsx'
+import GroupPolicy            from './pages/lessons/GroupPolicy.jsx'
+import HyperV                 from './pages/lessons/HyperV.jsx'
+import LinuxFilesystem        from './pages/lessons/LinuxFilesystem.jsx'
+import LinuxNetworking        from './pages/lessons/LinuxNetworking.jsx'
+import LinuxSSH               from './pages/lessons/LinuxSSH.jsx'
+import OSIModel               from './pages/lessons/OSIModel.jsx'
+import PowerShellFundamentals from './pages/lessons/PowerShellFundamentals.jsx'
+import CIATriad               from './pages/lessons/CIATriad.jsx'
+import PythonAutomation       from './pages/lessons/PythonAutomation.jsx'
+import DockerContainers       from './pages/lessons/DockerContainers.jsx'
 
-// Generic placeholder for routes not yet built
 const Placeholder = ({ title }) => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
     <div className="text-5xl">🚧</div>
@@ -33,8 +47,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        {/* ── Course index pages ── */}
+        {/* ── Main pages ── */}
         <Route index element={<Home />} />
+        <Route path="dashboard"           element={<Dashboard />} />
+        <Route path="glossary"            element={<Glossary />} />
+        <Route path="certificate"         element={<Certificate />} />
         <Route path="windows"             element={<Windows />} />
         <Route path="windows-server-2025" element={<WindowsServer2025 />} />
         <Route path="linux"               element={<Linux />} />
@@ -52,18 +69,42 @@ export default function App() {
 
         {/* ── Windows Server 2025 lessons ── */}
         <Route path="windows-server-2025/active-directory" element={<ActiveDirectory />} />
-        <Route path="windows-server-2025/:lesson" element={<Placeholder title="Lesson coming soon" />} />
+        <Route path="windows-server-2025/dhcp"             element={<DHCP />} />
+        <Route path="windows-server-2025/dns"              element={<DNS />} />
+        <Route path="windows-server-2025/group-policy"     element={<GroupPolicy />} />
+        <Route path="windows-server-2025/hyper-v"          element={<HyperV />} />
+        <Route path="windows-server-2025/:lesson"          element={<Placeholder title="Lesson coming soon" />} />
 
-        {/* ── Other lesson placeholders ── */}
-        <Route path="windows/:lesson"           element={<Placeholder title="Lesson — Windows" />} />
-        <Route path="linux/:lesson"             element={<Placeholder title="Lesson — Linux" />} />
-        <Route path="unix/:lesson"              element={<Placeholder title="Lesson — Unix" />} />
-        <Route path="networking/:lesson"        element={<Placeholder title="Lesson — Networking" />} />
-        <Route path="python/:lesson"            element={<Placeholder title="Lesson — Python" />} />
-        <Route path="cybersecurity/:lesson"     element={<Placeholder title="Lesson — Cybersecurity" />} />
-        <Route path="powershell/:lesson"        element={<Placeholder title="Lesson — PowerShell" />} />
-        <Route path="devops/:lesson"            element={<Placeholder title="Lesson — DevOps" />} />
-        <Route path="troubleshooting/:lesson"   element={<Placeholder title="Lesson — Troubleshooting" />} />
+        {/* ── Linux lessons ── */}
+        <Route path="linux/filesystem"  element={<LinuxFilesystem />} />
+        <Route path="linux/networking"  element={<LinuxNetworking />} />
+        <Route path="linux/ssh"         element={<LinuxSSH />} />
+        <Route path="linux/:lesson"     element={<Placeholder title="Lesson — Linux" />} />
+
+        {/* ── Networking lessons ── */}
+        <Route path="networking/osi-model" element={<OSIModel />} />
+        <Route path="networking/:lesson"   element={<Placeholder title="Lesson — Networking" />} />
+
+        {/* ── PowerShell lessons ── */}
+        <Route path="powershell/fundamentals" element={<PowerShellFundamentals />} />
+        <Route path="powershell/:lesson"      element={<Placeholder title="Lesson — PowerShell" />} />
+
+        {/* ── Cybersecurity lessons ── */}
+        <Route path="cybersecurity/cia-triad" element={<CIATriad />} />
+        <Route path="cybersecurity/:lesson"   element={<Placeholder title="Lesson — Cybersecurity" />} />
+
+        {/* ── Python lessons ── */}
+        <Route path="python/filesystem"  element={<PythonAutomation />} />
+        <Route path="python/:lesson"     element={<Placeholder title="Lesson — Python" />} />
+
+        {/* ── DevOps lessons ── */}
+        <Route path="devops/docker"  element={<DockerContainers />} />
+        <Route path="devops/:lesson" element={<Placeholder title="Lesson — DevOps" />} />
+
+        {/* ── Other placeholders ── */}
+        <Route path="windows/:lesson"         element={<Placeholder title="Lesson — Windows" />} />
+        <Route path="unix/:lesson"            element={<Placeholder title="Lesson — Unix" />} />
+        <Route path="troubleshooting/:lesson" element={<Placeholder title="Lesson — Troubleshooting" />} />
 
         {/* 404 */}
         <Route path="*" element={<Placeholder title="Page not found" />} />
