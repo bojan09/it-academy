@@ -140,20 +140,24 @@ export default function PowerShellFundamentals() {
           <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-surface-700">
             <div className="pb-4 sm:pb-0 sm:pr-5">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Bash / CMD — Text Streams</p>
-              <CodeBlock code={`# To get CPU usage of a process,
-# you must parse text:
-ps aux | grep chrome | awk '{print $3}'
-
-# Fragile, platform-specific,
-# breaks with column changes`} language="bash" showCopy={false} />
+              <CodeBlock code={[
+    "# To get CPU usage of a process,",
+    "# you must parse text:",
+    "ps aux | grep chrome | awk '{print $3}'",
+    "",
+    "# Fragile, platform-specific,",
+    "# breaks with column changes"
+  ].join('\n')} language="bash" showCopy={false} />
             </div>
             <div className="pt-4 sm:pt-0 sm:pl-5">
               <p className="text-xs font-semibold text-accent-cyan uppercase tracking-widest mb-3">PowerShell — Object Streams</p>
-              <CodeBlock code={`# Direct property access on real objects:
-Get-Process chrome | Select-Object CPU, WorkingSet
-
-# Structured, reliable, discoverable
-# Works regardless of display formatting`} language="powershell" showCopy={false} />
+              <CodeBlock code={[
+    "# Direct property access on real objects:",
+    "Get-Process chrome | Select-Object CPU, WorkingSet",
+    "",
+    "# Structured, reliable, discoverable",
+    "# Works regardless of display formatting"
+  ].join('\n')} language="powershell" showCopy={false} />
             </div>
           </div>
         </div>
@@ -167,19 +171,21 @@ Get-Process chrome | Select-Object CPU, WorkingSet
         </p>
 
         <CodeBlock className="mt-4" title="Exploring objects with Get-Member" language="powershell"
-          code={`# See ALL properties and methods of a Process object
-Get-Process | Get-Member
-
-# See just properties
-Get-Process | Get-Member -MemberType Property
-
-# Example output:
-#   Name              MemberType  Definition
-#   ----              ----------  ----------
-#   CPU               Property    System.Nullable[double] CPU
-#   Id                Property    int Id
-#   Name              Property    string Name
-#   WorkingSet        Property    int WorkingSet64 WorkingSet...`} />
+          code={[
+    "# See ALL properties and methods of a Process object",
+    "Get-Process | Get-Member",
+    "",
+    "# See just properties",
+    "Get-Process | Get-Member -MemberType Property",
+    "",
+    "# Example output:",
+    "#   Name              MemberType  Definition",
+    "#   ----              ----------  ----------",
+    "#   CPU               Property    System.Nullable[double] CPU",
+    "#   Id                Property    int Id",
+    "#   Name              Property    string Name",
+    "#   WorkingSet        Property    int WorkingSet64 WorkingSet..."
+  ].join('\n')} />
       </section>
 
       {/* ── THE HELP SYSTEM ── */}
@@ -192,25 +198,27 @@ Get-Process | Get-Member -MemberType Property
         </p>
 
         <CodeBlock className="mt-4" title="Mastering Get-Help" language="powershell"
-          code={`# Update help content first (run as admin, once)
-Update-Help -Force
-
-# Get help for any cmdlet
-Get-Help Get-Process
-Get-Help Get-Process -Full        # Complete docs with all parameters
-Get-Help Get-Process -Examples    # Just the practical examples
-Get-Help Get-Process -Online      # Open browser to online docs
-Get-Help Get-Process -Parameter * # Details on every parameter
-
-# Find cmdlets by topic
-Get-Help *service*                # All cmdlets with "service" in name
-Get-Help about_*                  # Conceptual help articles
-Get-Help about_Pipelines          # How pipelines work
-Get-Help about_Variables          # Variable documentation
-
-# Find ALL cmdlets for a specific noun
-Get-Command -Noun Service         # All *-Service cmdlets
-Get-Command -Verb Get             # All Get-* cmdlets`} />
+          code={[
+    "# Update help content first (run as admin, once)",
+    "Update-Help -Force",
+    "",
+    "# Get help for any cmdlet",
+    "Get-Help Get-Process",
+    "Get-Help Get-Process -Full        # Complete docs with all parameters",
+    "Get-Help Get-Process -Examples    # Just the practical examples",
+    "Get-Help Get-Process -Online      # Open browser to online docs",
+    "Get-Help Get-Process -Parameter * # Details on every parameter",
+    "",
+    "# Find cmdlets by topic",
+    "Get-Help *service*                # All cmdlets with \"service\" in name",
+    "Get-Help about_*                  # Conceptual help articles",
+    "Get-Help about_Pipelines          # How pipelines work",
+    "Get-Help about_Variables          # Variable documentation",
+    "",
+    "# Find ALL cmdlets for a specific noun",
+    "Get-Command -Noun Service         # All *-Service cmdlets",
+    "Get-Command -Verb Get             # All Get-* cmdlets"
+  ].join('\n')} />
 
         <Callout type="info" icon="💡" title="The discovery loop">
           Get-Command → find what cmdlet you need.
@@ -225,24 +233,26 @@ Get-Command -Verb Get             # All Get-* cmdlets`} />
         <h2>Syntax Essentials</h2>
 
         <h3>Variables</h3>
-        <CodeBlock language="powershell" code={`# Variables start with $
-$name    = "DC01"
-$port    = 3389
-$enabled = $true
-$servers = @("DC01", "SRV01", "WEB01")  # Array
-$config  = @{Host = "DC01"; Port = 389}  # Hashtable
-
-# String interpolation (double quotes expand variables)
-Write-Host "Connecting to $name on port $port"
-
-# Type checking
-$name.GetType().Name      # String
-$port.GetType().Name      # Int32
-
-# Casting
-[int]"42"                 # 42
-[string]123               # "123"
-[datetime]"2025-01-15"    # DateTime object`} />
+        <CodeBlock language="powershell" code={[
+    "# Variables start with $",
+    "$name    = \"DC01\"",
+    "$port    = 3389",
+    "$enabled = $true",
+    "$servers = @(\"DC01\", \"SRV01\", \"WEB01\")  # Array",
+    "$config  = @{Host = \"DC01\"; Port = 389}  # Hashtable",
+    "",
+    "# String interpolation (double quotes expand variables)",
+    "Write-Host \"Connecting to $name on port $port\"",
+    "",
+    "# Type checking",
+    "$name.GetType().Name      # String",
+    "$port.GetType().Name      # Int32",
+    "",
+    "# Casting",
+    "[int]\"42\"                 # 42",
+    "[string]123               # \"123\"",
+    "[datetime]\"2025-01-15\"    # DateTime object"
+  ].join('\n')} />
 
         <h3>Comparison & Logical Operators</h3>
         <div className="info-card overflow-hidden mt-3">
@@ -265,31 +275,33 @@ $port.GetType().Name      # Int32
         </div>
 
         <h3>Control Flow</h3>
-        <CodeBlock language="powershell" code={`# If / ElseIf / Else
-if ($service.Status -eq "Running") {
-    Write-Host "Service is up" -ForegroundColor Green
-} elseif ($service.Status -eq "Stopped") {
-    Write-Host "Service is down" -ForegroundColor Red
-} else {
-    Write-Host "Unknown status: $($service.Status)"
-}
-
-# ForEach-Object (pipeline)
-Get-Service | Where-Object { $_.Status -eq "Stopped" } |
-  ForEach-Object { Start-Service $_.Name }
-
-# foreach loop (collection)
-$servers = @("DC01", "SRV01", "WEB01")
-foreach ($server in $servers) {
-    Test-Connection $server -Count 1 -Quiet
-}
-
-# While loop
-$attempts = 0
-while ($attempts -lt 3) {
-    $attempts++
-    # do something
-}`} />
+        <CodeBlock language="powershell" code={[
+    "# If / ElseIf / Else",
+    "if ($service.Status -eq \"Running\") {",
+    "    Write-Host \"Service is up\" -ForegroundColor Green",
+    "} elseif ($service.Status -eq \"Stopped\") {",
+    "    Write-Host \"Service is down\" -ForegroundColor Red",
+    "} else {",
+    "    Write-Host \"Unknown status: $($service.Status)\"",
+    "}",
+    "",
+    "# ForEach-Object (pipeline)",
+    "Get-Service | Where-Object { $_.Status -eq \"Stopped\" } |",
+    "  ForEach-Object { Start-Service $_.Name }",
+    "",
+    "# foreach loop (collection)",
+    "$servers = @(\"DC01\", \"SRV01\", \"WEB01\")",
+    "foreach ($server in $servers) {",
+    "    Test-Connection $server -Count 1 -Quiet",
+    "}",
+    "",
+    "# While loop",
+    "$attempts = 0",
+    "while ($attempts -lt 3) {",
+    "    $attempts++",
+    "    # do something",
+    "}"
+  ].join('\n')} />
       </section>
 
       {/* ── EXECUTION POLICY ── */}
@@ -325,15 +337,17 @@ while ($attempts -lt 3) {
             ))}
           </div>
         </div>
-        <CodeBlock className="mt-4" language="powershell" code={`# Check current policy
-Get-ExecutionPolicy
-Get-ExecutionPolicy -List   # All scopes
-
-# Set for current user (recommended approach — no admin needed)
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-# Set machine-wide (requires admin)
-Set-ExecutionPolicy RemoteSigned -Scope LocalMachine`} />
+        <CodeBlock className="mt-4" language="powershell" code={[
+    "# Check current policy",
+    "Get-ExecutionPolicy",
+    "Get-ExecutionPolicy -List   # All scopes",
+    "",
+    "# Set for current user (recommended approach — no admin needed)",
+    "Set-ExecutionPolicy RemoteSigned -Scope CurrentUser",
+    "",
+    "# Set machine-wide (requires admin)",
+    "Set-ExecutionPolicy RemoteSigned -Scope LocalMachine"
+  ].join('\n')} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -353,108 +367,122 @@ Set-ExecutionPolicy RemoteSigned -Scope LocalMachine`} />
 
             <LabStep number={1}
               description="Check your PowerShell version and explore the environment."
-              command={`$PSVersionTable          # Version info
-Get-ExecutionPolicy      # Current policy
-$env:COMPUTERNAME        # Computer name
-$env:USERNAME            # Current user`}
-              output={`Name                           Value
-----                           -----
-PSVersion                      7.4.1
-PSEdition                      Core
-OS                             Microsoft Windows 10.0.20348
-
-RemoteSigned
-DC01
-Administrator`} />
+              command={[
+    "$PSVersionTable          # Version info",
+    "Get-ExecutionPolicy      # Current policy",
+    "$env:COMPUTERNAME        # Computer name",
+    "$env:USERNAME            # Current user"
+  ].join('\n')}
+              output={[
+    "Name                           Value",
+    "----                           -----",
+    "PSVersion                      7.4.1",
+    "PSEdition                      Core",
+    "OS                             Microsoft Windows 10.0.20348",
+    "",
+    "RemoteSigned",
+    "DC01",
+    "Administrator"
+  ].join('\n')} />
 
             <LabStep number={2}
               description="Practice the discovery loop — find, learn, and use Get-Service."
-              command={`# 1. Find the cmdlet
-Get-Command -Noun Service
-
-# 2. Learn how to use it
-Get-Help Get-Service -Examples
-
-# 3. Use it — get all stopped services
-Get-Service | Where-Object { $_.Status -eq "Stopped" } |
-  Select-Object Name, DisplayName, StartType |
-  Sort-Object DisplayName`}
-              output={`Name     DisplayName                  StartType
-----     -----------                  ---------
-AppIDSvc Application Identity         Manual
-AppMgmt  Application Management       Manual
-...`} />
+              command={[
+    "# 1. Find the cmdlet",
+    "Get-Command -Noun Service",
+    "",
+    "# 2. Learn how to use it",
+    "Get-Help Get-Service -Examples",
+    "",
+    "# 3. Use it — get all stopped services",
+    "Get-Service | Where-Object { $_.Status -eq \"Stopped\" } |",
+    "  Select-Object Name, DisplayName, StartType |",
+    "  Sort-Object DisplayName"
+  ].join('\n')}
+              output={[
+    "Name     DisplayName                  StartType",
+    "----     -----------                  ---------",
+    "AppIDSvc Application Identity         Manual",
+    "AppMgmt  Application Management       Manual",
+    "..."
+  ].join('\n')} />
 
             <LabStep number={3}
               description="Explore object properties with Get-Member, then select specific ones."
-              command={`# Discover all Process object properties
-Get-Process | Get-Member -MemberType Property | Select-Object Name, Definition
-
-# Get top 5 processes by CPU
-Get-Process |
-  Sort-Object CPU -Descending |
-  Select-Object Name, Id, CPU, WorkingSet64 |
-  Select-Object -First 5`}
+              command={[
+    "# Discover all Process object properties",
+    "Get-Process | Get-Member -MemberType Property | Select-Object Name, Definition",
+    "",
+    "# Get top 5 processes by CPU",
+    "Get-Process |",
+    "  Sort-Object CPU -Descending |",
+    "  Select-Object Name, Id, CPU, WorkingSet64 |",
+    "  Select-Object -First 5"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Write and run your first PowerShell script. Create it in C:\\Scripts\\."
-              command={`# Create the Scripts directory
-New-Item -Path "C:\\Scripts" -ItemType Directory -Force
-
-# Create the script file
-$scriptContent = @'
-# server-health.ps1 — Basic server health check
-
-param(
-    [string]$ComputerName = $env:COMPUTERNAME
-)
-
-Write-Host "=== Server Health: $ComputerName ===" -ForegroundColor Cyan
-
-# CPU
-$cpu = Get-WmiObject Win32_Processor | Measure-Object LoadPercentage -Average
-Write-Host "CPU Usage:    $($cpu.Average)%"
-
-# Memory
-$mem = Get-WmiObject Win32_OperatingSystem
-$usedMem = [math]::Round(($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory)/1MB, 2)
-$totalMem = [math]::Round($mem.TotalVisibleMemorySize/1MB, 2)
-Write-Host "Memory:       $usedMem GB / $totalMem GB"
-
-# Disk
-Get-PSDrive C | Select-Object @{N="Drive";E={"C:"}},
-  @{N="Used(GB)";E={[math]::Round($_.Used/1GB,1)}},
-  @{N="Free(GB)";E={[math]::Round($_.Free/1GB,1)}} |
-  Format-Table -AutoSize
-
-# Critical services
-$services = "DNS","NTDS","W32Time","Netlogon" | ForEach-Object {
-    Get-Service $_ -ErrorAction SilentlyContinue
-}
-Write-Host "--- Critical Services ---"
-$services | Select-Object Name, Status | Format-Table
-'@
-
-Set-Content -Path "C:\\Scripts\\server-health.ps1" -Value $scriptContent
-
-# Run the script
-& C:\\Scripts\\server-health.ps1`}
-              output={`=== Server Health: DC01 ===
-CPU Usage:    4%
-Memory:       2.14 GB / 4.00 GB
-
-Drive  Used(GB)  Free(GB)
------  --------  --------
-C:     12.3      47.7
-
---- Critical Services ---
-Name     Status
-----     ------
-DNS      Running
-NTDS     Running
-W32Time  Running
-Netlogon Running`} />
+              command={[
+    "# Create the Scripts directory",
+    "New-Item -Path \"C:\\\\Scripts\" -ItemType Directory -Force",
+    "",
+    "# Create the script file",
+    "$scriptContent = @'",
+    "# server-health.ps1 — Basic server health check",
+    "",
+    "param(",
+    "    [string]$ComputerName = $env:COMPUTERNAME",
+    ")",
+    "",
+    "Write-Host \"=== Server Health: $ComputerName ===\" -ForegroundColor Cyan",
+    "",
+    "# CPU",
+    "$cpu = Get-WmiObject Win32_Processor | Measure-Object LoadPercentage -Average",
+    "Write-Host \"CPU Usage:    $($cpu.Average)%\"",
+    "",
+    "# Memory",
+    "$mem = Get-WmiObject Win32_OperatingSystem",
+    "$usedMem = [math]::Round(($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory)/1MB, 2)",
+    "$totalMem = [math]::Round($mem.TotalVisibleMemorySize/1MB, 2)",
+    "Write-Host \"Memory:       $usedMem GB / $totalMem GB\"",
+    "",
+    "# Disk",
+    "Get-PSDrive C | Select-Object @{N=\"Drive\";E={\"C:\"}},",
+    "  @{N=\"Used(GB)\";E={[math]::Round($_.Used/1GB,1)}},",
+    "  @{N=\"Free(GB)\";E={[math]::Round($_.Free/1GB,1)}} |",
+    "  Format-Table -AutoSize",
+    "",
+    "# Critical services",
+    "$services = \"DNS\",\"NTDS\",\"W32Time\",\"Netlogon\" | ForEach-Object {",
+    "    Get-Service $_ -ErrorAction SilentlyContinue",
+    "}",
+    "Write-Host \"--- Critical Services ---\"",
+    "$services | Select-Object Name, Status | Format-Table",
+    "'@",
+    "",
+    "Set-Content -Path \"C:\\\\Scripts\\\\server-health.ps1\" -Value $scriptContent",
+    "",
+    "# Run the script",
+    "& C:\\\\Scripts\\\\server-health.ps1"
+  ].join('\n')}
+              output={[
+    "=== Server Health: DC01 ===",
+    "CPU Usage:    4%",
+    "Memory:       2.14 GB / 4.00 GB",
+    "",
+    "Drive  Used(GB)  Free(GB)",
+    "-----  --------  --------",
+    "C:     12.3      47.7",
+    "",
+    "--- Critical Services ---",
+    "Name     Status",
+    "----     ------",
+    "DNS      Running",
+    "NTDS     Running",
+    "W32Time  Running",
+    "Netlogon Running"
+  ].join('\n')} />
 
             <Callout type="success" icon="✅" title="Lab Complete">
               You've used the Help system, explored objects with Get-Member,

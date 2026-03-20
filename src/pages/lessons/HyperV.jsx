@@ -254,126 +254,133 @@ export default function HyperV() {
 
             <LabStep number={1}
               description="Install the Hyper-V role and management tools on DC01. A restart is required."
-              command={`# Install Hyper-V role
-Install-WindowsFeature -Name Hyper-V -IncludeManagementTools -Restart
-
-# After restart — verify installation
-Get-WindowsFeature Hyper-V | Select-Object Name, InstallState
-Get-Command -Module Hyper-V | Measure-Object`}
-              output={`Name    InstallState
-----    ------------
-Hyper-V Installed
-
-Count: 241  ← 241 Hyper-V cmdlets available`}
+              command={[
+    "# Install Hyper-V role",
+    "Install-WindowsFeature -Name Hyper-V -IncludeManagementTools -Restart",
+    "",
+    "# After restart — verify installation",
+    "Get-WindowsFeature Hyper-V | Select-Object Name, InstallState",
+    "Get-Command -Module Hyper-V | Measure-Object"
+  ].join('\n')}
+              output={[
+    "Name    InstallState",
+    "----    ------------",
+    "Hyper-V Installed",
+    "",
+    "Count: 241  ← 241 Hyper-V cmdlets available"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Create an Internal virtual switch for isolated lab networking within Hyper-V."
-              command={`# Create an Internal virtual switch
-New-VMSwitch -Name "Lab-Internal" -SwitchType Internal
-
-# Verify
-Get-VMSwitch | Select-Object Name, SwitchType, NetAdapterInterfaceDescription`}
-              output={`Name          SwitchType  NetAdapterInterfaceDescription
-----          ----------  ------------------------------
-Lab-Internal  Internal`}
+              command={[
+    "# Create an Internal virtual switch",
+    "New-VMSwitch -Name \"Lab-Internal\" -SwitchType Internal",
+    "",
+    "# Verify",
+    "Get-VMSwitch | Select-Object Name, SwitchType, NetAdapterInterfaceDescription"
+  ].join('\n')}
+              output={[
+    "Name          SwitchType  NetAdapterInterfaceDescription",
+    "----          ----------  ------------------------------",
+    "Lab-Internal  Internal"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Create a Generation 2 VM with 2GB RAM, 2 vCPUs, and a 20GB dynamic VHDX disk."
-              command={`# Create directory for VM files
-New-Item -Path "C:\\VMs\\WEB01" -ItemType Directory -Force
-
-# Create the VHDX disk
-New-VHD -Path "C:\\VMs\\WEB01\\WEB01-OS.vhdx" \`
-  -SizeBytes 20GB \`
-  -Dynamic
-
-# Create the VM
-New-VM \`
-  -Name "WEB01" \`
-  -Generation 2 \`
-  -MemoryStartupBytes 2GB \`
-  -SwitchName "Lab-Internal" \`
-  -Path "C:\\VMs"
-
-# Attach the VHDX
-Add-VMHardDiskDrive \`
-  -VMName "WEB01" \`
-  -Path "C:\\VMs\\WEB01\\WEB01-OS.vhdx"
-
-# Configure: 2 vCPUs, Dynamic Memory (512MB–4GB)
-Set-VM -Name "WEB01" -ProcessorCount 2
-Set-VMMemory -VMName "WEB01" \`
-  -DynamicMemoryEnabled $true \`
-  -MinimumBytes 512MB \`
-  -StartupBytes 2GB \`
-  -MaximumBytes 4GB`}
-              output={`✔ VM 'WEB01' created successfully
-✔ VHDX attached
-✔ Dynamic Memory configured`}
+              command={[
+    "# Create directory for VM files",
+    "New-Item -Path \"C:\\\\VMs\\\\WEB01\" -ItemType Directory -Force",
+    "",
+    "# Create the VHDX disk",
+    "New-VHD -Path \"C:\\\\VMs\\\\WEB01\\\\WEB01-OS.vhdx\" -SizeBytes 20GB -Dynamic",
+    "",
+    "# Create the VM",
+    "New-VM -Name \"WEB01\" -Generation 2 -MemoryStartupBytes 2GB -SwitchName \"Lab-Internal\" -Path \"C:\\\\VMs\"",
+    "",
+    "# Attach the VHDX",
+    "Add-VMHardDiskDrive -VMName \"WEB01\" -Path \"C:\\\\VMs\\\\WEB01\\\\WEB01-OS.vhdx\"",
+    "",
+    "# Configure: 2 vCPUs, Dynamic Memory (512MB–4GB)",
+    "Set-VM -Name \"WEB01\" -ProcessorCount 2",
+    "Set-VMMemory -VMName \"WEB01\" -DynamicMemoryEnabled $true -MinimumBytes 512MB -StartupBytes 2GB -MaximumBytes 4GB"
+  ].join('\n')}
+              output={[
+    "✔ VM 'WEB01' created successfully",
+    "✔ VHDX attached",
+    "✔ Dynamic Memory configured"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Verify VM configuration and review all settings before starting."
-              command={`# Full VM summary
-Get-VM -Name "WEB01" | Format-List
-
-# Check memory config
-Get-VMMemory -VMName "WEB01"
-
-# Check disks
-Get-VMHardDiskDrive -VMName "WEB01"
-
-# Check network adapters
-Get-VMNetworkAdapter -VMName "WEB01"`}
-              output={`Name               : WEB01
-State              : Off
-CPUUsage           : 0
-MemoryAssigned     : 2048 MB
-Generation         : 2
-Version            : 11.0
-Path               : C:\VMs\WEB01
-
-DynamicMemoryEnabled : True
-Minimum              : 512 MB
-Startup              : 2048 MB
-Maximum              : 4096 MB`}
+              command={[
+    "# Full VM summary",
+    "Get-VM -Name \"WEB01\" | Format-List",
+    "",
+    "# Check memory config",
+    "Get-VMMemory -VMName \"WEB01\"",
+    "",
+    "# Check disks",
+    "Get-VMHardDiskDrive -VMName \"WEB01\"",
+    "",
+    "# Check network adapters",
+    "Get-VMNetworkAdapter -VMName \"WEB01\""
+  ].join('\n')}
+              output={[
+    "Name               : WEB01",
+    "State              : Off",
+    "CPUUsage           : 0",
+    "MemoryAssigned     : 2048 MB",
+    "Generation         : 2",
+    "Version            : 11.0",
+    "Path               : C:\\VMs\\WEB01",
+    "",
+    "DynamicMemoryEnabled : True",
+    "Minimum              : 512 MB",
+    "Startup              : 2048 MB",
+    "Maximum              : 4096 MB"
+  ].join('\n')}
             />
 
             <LabStep number={5}
               description="Take a checkpoint of the clean VM before installing an OS, then view the checkpoint tree."
-              command={`# Take a production checkpoint (app-consistent)
-Checkpoint-VM -Name "WEB01" \`
-  -SnapshotName "Clean-Gen2-No-OS" \`
-  -CheckpointType Production
-
-# List all checkpoints
-Get-VMCheckpoint -VMName "WEB01" | Select-Object Name, CreationTime, CheckpointType
-
-# To revert to a checkpoint:
-# Restore-VMCheckpoint -VMName "WEB01" -Name "Clean-Gen2-No-OS"
-# Remove-VMCheckpoint -VMName "WEB01" -Name "Old-Checkpoint"`}
-              output={`Name               CreationTime          CheckpointType
-----               ------------          --------------
-Clean-Gen2-No-OS   01/15/2025 10:30:00   Production`}
+              command={[
+    "# Take a production checkpoint (app-consistent)",
+    "Checkpoint-VM -Name \"WEB01\" -SnapshotName \"Clean-Gen2-No-OS\" -CheckpointType Production",
+    "",
+    "# List all checkpoints",
+    "Get-VMCheckpoint -VMName \"WEB01\" | Select-Object Name, CreationTime, CheckpointType",
+    "",
+    "# To revert to a checkpoint:",
+    "# Restore-VMCheckpoint -VMName \"WEB01\" -Name \"Clean-Gen2-No-OS\"",
+    "# Remove-VMCheckpoint -VMName \"WEB01\" -Name \"Old-Checkpoint\""
+  ].join('\n')}
+              output={[
+    "Name               CreationTime          CheckpointType",
+    "----               ------------          --------------",
+    "Clean-Gen2-No-OS   01/15/2025 10:30:00   Production"
+  ].join('\n')}
             />
 
             <LabStep number={6}
               description="Export the VM for backup or migration to another host."
-              command={`# Export VM (VM must be stopped or have no saved state)
-New-Item -Path "C:\\VM-Exports" -ItemType Directory -Force
-
-Export-VM -Name "WEB01" -Path "C:\\VM-Exports"
-
-# The export creates a complete, portable VM folder:
-# C:\VM-Exports\WEB01\
-#   ├── Virtual Hard Disks\
-#   ├── Snapshots\
-#   └── WEB01.vmcx (VM config)
-
-# Import on another host:
-# Import-VM -Path "C:\VM-Exports\WEB01\Virtual Machines\<GUID>.vmcx"`}
+              command={[
+    "# Export VM (VM must be stopped or have no saved state)",
+    "New-Item -Path \"C:\\\\VM-Exports\" -ItemType Directory -Force",
+    "",
+    "Export-VM -Name \"WEB01\" -Path \"C:\\\\VM-Exports\"",
+    "",
+    "# The export creates a complete, portable VM folder:",
+    "# C:\\VM-Exports\\WEB01\\",
+    "#   ├── Virtual Hard Disks\\",
+    "#   ├── Snapshots\\",
+    "#   └── WEB01.vmcx (VM config)",
+    "",
+    "# Import on another host:",
+    "# Import-VM -Path \"C:\\VM-Exports\\WEB01\\Virtual Machines\\<GUID>.vmcx\""
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -411,41 +418,43 @@ Export-VM -Name "WEB01" -Path "C:\\VM-Exports"
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="Hyper-V PowerShell Commands" language="powershell" code={`# ── VM Lifecycle ───────────────────────────────────────────
-Get-VM                                    # List all VMs
-Get-VM -Name "WEB01"                      # Single VM
-Start-VM -Name "WEB01"
-Stop-VM  -Name "WEB01" -Force
-Restart-VM -Name "WEB01"
-Suspend-VM -Name "WEB01"                  # Save to disk (hibernation)
-Remove-VM -Name "WEB01" -Force
-
-# ── Configuration ───────────────────────────────────────────
-Set-VM -Name "WEB01" -ProcessorCount 4
-Set-VMMemory -VMName "WEB01" -StartupBytes 4GB
-Rename-VM -Name "WEB01" -NewName "WEBPROD01"
-
-# ── Disks ───────────────────────────────────────────────────
-New-VHD -Path "D:\\data.vhdx" -SizeBytes 100GB -Dynamic
-Add-VMHardDiskDrive -VMName "WEB01" -Path "D:\\data.vhdx"
-Resize-VHD -Path "D:\\data.vhdx" -SizeBytes 200GB     # Expand
-Get-VHD -Path "D:\\data.vhdx"                          # Info
-
-# ── Networking ──────────────────────────────────────────────
-New-VMSwitch -Name "External-SW" -NetAdapterName "Ethernet" -AllowManagementOS $true
-Get-VMNetworkAdapter -VMName "WEB01"
-Add-VMNetworkAdapter -VMName "WEB01" -SwitchName "External-SW"
-Connect-VMNetworkAdapter -VMName "WEB01" -SwitchName "External-SW"
-
-# ── Checkpoints ─────────────────────────────────────────────
-Checkpoint-VM -Name "WEB01" -SnapshotName "Before-Update"
-Get-VMCheckpoint -VMName "WEB01"
-Restore-VMCheckpoint -Name "Before-Update" -VMName "WEB01"
-Remove-VMCheckpoint -Name "Before-Update" -VMName "WEB01"
-
-# ── Export / Import ─────────────────────────────────────────
-Export-VM -Name "WEB01" -Path "D:\\VM-Exports"
-Import-VM -Path "D:\\VM-Exports\\WEB01\\*.vmcx"`} />
+        <CodeBlock title="Hyper-V PowerShell Commands" language="powershell" code={[
+    "# ── VM Lifecycle ───────────────────────────────────────────",
+    "Get-VM                                    # List all VMs",
+    "Get-VM -Name \"WEB01\"                      # Single VM",
+    "Start-VM -Name \"WEB01\"",
+    "Stop-VM  -Name \"WEB01\" -Force",
+    "Restart-VM -Name \"WEB01\"",
+    "Suspend-VM -Name \"WEB01\"                  # Save to disk (hibernation)",
+    "Remove-VM -Name \"WEB01\" -Force",
+    "",
+    "# ── Configuration ───────────────────────────────────────────",
+    "Set-VM -Name \"WEB01\" -ProcessorCount 4",
+    "Set-VMMemory -VMName \"WEB01\" -StartupBytes 4GB",
+    "Rename-VM -Name \"WEB01\" -NewName \"WEBPROD01\"",
+    "",
+    "# ── Disks ───────────────────────────────────────────────────",
+    "New-VHD -Path \"D:\\\\data.vhdx\" -SizeBytes 100GB -Dynamic",
+    "Add-VMHardDiskDrive -VMName \"WEB01\" -Path \"D:\\\\data.vhdx\"",
+    "Resize-VHD -Path \"D:\\\\data.vhdx\" -SizeBytes 200GB     # Expand",
+    "Get-VHD -Path \"D:\\\\data.vhdx\"                          # Info",
+    "",
+    "# ── Networking ──────────────────────────────────────────────",
+    "New-VMSwitch -Name \"External-SW\" -NetAdapterName \"Ethernet\" -AllowManagementOS $true",
+    "Get-VMNetworkAdapter -VMName \"WEB01\"",
+    "Add-VMNetworkAdapter -VMName \"WEB01\" -SwitchName \"External-SW\"",
+    "Connect-VMNetworkAdapter -VMName \"WEB01\" -SwitchName \"External-SW\"",
+    "",
+    "# ── Checkpoints ─────────────────────────────────────────────",
+    "Checkpoint-VM -Name \"WEB01\" -SnapshotName \"Before-Update\"",
+    "Get-VMCheckpoint -VMName \"WEB01\"",
+    "Restore-VMCheckpoint -Name \"Before-Update\" -VMName \"WEB01\"",
+    "Remove-VMCheckpoint -Name \"Before-Update\" -VMName \"WEB01\"",
+    "",
+    "# ── Export / Import ─────────────────────────────────────────",
+    "Export-VM -Name \"WEB01\" -Path \"D:\\\\VM-Exports\"",
+    "Import-VM -Path \"D:\\\\VM-Exports\\\\WEB01\\\\*.vmcx\""
+  ].join('\n')} />
       </section>
 
       {/* ── QUIZ ── */}

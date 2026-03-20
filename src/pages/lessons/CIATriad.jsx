@@ -339,80 +339,96 @@ export default function CIATriad() {
             <LabStep number={1}
               description="Integrity check: verify a file hasn't been tampered with using hash comparison (Windows)."
               language="powershell"
-              command={`# Generate SHA-256 hash of a file (original)
-$originalHash = Get-FileHash "C:\\Windows\\System32\\ntoskrnl.exe" -Algorithm SHA256
-$originalHash.Hash
-
-# Simulate a check — compare to a stored baseline
-# In production: store baseline hashes in a secure, read-only location
-$storedHash = "PUT_ORIGINAL_HASH_HERE"
-if ($originalHash.Hash -eq $storedHash) {
-    Write-Host "✔ File integrity VERIFIED" -ForegroundColor Green
-} else {
-    Write-Host "⚠ File MODIFIED — potential tampering!" -ForegroundColor Red
-}`}
-              output={`A1B2C3D4E5F6... (SHA-256 hash)
-✔ File integrity VERIFIED`}
+              command={[
+    "# Generate SHA-256 hash of a file (original)",
+    "$originalHash = Get-FileHash \"C:\\\\Windows\\\\System32\\\\ntoskrnl.exe\" -Algorithm SHA256",
+    "$originalHash.Hash",
+    "",
+    "# Simulate a check — compare to a stored baseline",
+    "# In production: store baseline hashes in a secure, read-only location",
+    "$storedHash = \"PUT_ORIGINAL_HASH_HERE\"",
+    "if ($originalHash.Hash -eq $storedHash) {",
+    "    Write-Host \"✔ File integrity VERIFIED\" -ForegroundColor Green",
+    "} else {",
+    "    Write-Host \"⚠ File MODIFIED — potential tampering!\" -ForegroundColor Red",
+    "}"
+  ].join('\n')}
+              output={[
+    "A1B2C3D4E5F6... (SHA-256 hash)",
+    "✔ File integrity VERIFIED"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Least Privilege check: find over-privileged accounts in Active Directory."
               language="powershell"
-              command={`# Find all members of Domain Admins
-Get-ADGroupMember "Domain Admins" | Select-Object Name, SamAccountName, ObjectClass
-
-# Find enabled admin accounts that haven't logged in for 90 days (stale)
-$cutoff = (Get-Date).AddDays(-90)
-Get-ADUser -Filter {
-    Enabled -eq $true -and LastLogonDate -lt $cutoff
-} -Properties LastLogonDate |
-Where-Object { (Get-ADPrincipalGroupMembership $_).Name -contains "Domain Admins" } |
-Select-Object Name, LastLogonDate`}
-              output={`Name           SamAccountName  ObjectClass
-----           --------------  -----------
-Administrator  Administrator   user
-sysadmin       sysadmin        user
-
-# Stale domain admins: none ✔ (good hygiene!)`}
+              command={[
+    "# Find all members of Domain Admins",
+    "Get-ADGroupMember \"Domain Admins\" | Select-Object Name, SamAccountName, ObjectClass",
+    "",
+    "# Find enabled admin accounts that haven't logged in for 90 days (stale)",
+    "$cutoff = (Get-Date).AddDays(-90)",
+    "Get-ADUser -Filter {",
+    "    Enabled -eq $true -and LastLogonDate -lt $cutoff",
+    "} -Properties LastLogonDate |",
+    "Where-Object { (Get-ADPrincipalGroupMembership $_).Name -contains \"Domain Admins\" } |",
+    "Select-Object Name, LastLogonDate"
+  ].join('\n')}
+              output={[
+    "Name           SamAccountName  ObjectClass",
+    "----           --------------  -----------",
+    "Administrator  Administrator   user",
+    "sysadmin       sysadmin        user",
+    "",
+    "# Stale domain admins: none ✔ (good hygiene!)"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Availability check: verify critical services are running and set to auto-start (Linux)."
               language="bash"
-              command={`# On Ubuntu Server VM (ssh user@192.168.100.20)
-# Check critical services
-for svc in ssh ufw cron; do
-    status=$(systemctl is-active $svc)
-    enabled=$(systemctl is-enabled $svc)
-    echo "[$status/$enabled] $svc"
-done
-
-# Find services NOT set to auto-start that are currently running
-systemctl list-units --type=service --state=running |
-  awk 'NR>1 {print $1}' |
-  while read svc; do
-    enabled=$(systemctl is-enabled "$svc" 2>/dev/null)
-    [ "$enabled" = "disabled" ] && echo "WARNING: $svc running but disabled at boot"
-  done`}
-              output={`[active/enabled] ssh
-[active/enabled] ufw
-[active/enabled] cron
-# No warnings — all critical services enabled at boot ✔`}
+              command={[
+    "# On Ubuntu Server VM (ssh user@192.168.100.20)",
+    "# Check critical services",
+    "for svc in ssh ufw cron; do",
+    "    status=$(systemctl is-active $svc)",
+    "    enabled=$(systemctl is-enabled $svc)",
+    "    echo \"[$status/$enabled] $svc\"",
+    "done",
+    "",
+    "# Find services NOT set to auto-start that are currently running",
+    "systemctl list-units --type=service --state=running |",
+    "  awk 'NR>1 {print $1}' |",
+    "  while read svc; do",
+    "    enabled=$(systemctl is-enabled \"$svc\" 2>/dev/null)",
+    "    [ \"$enabled\" = \"disabled\" ] && echo \"WARNING: $svc running but disabled at boot\"",
+    "  done"
+  ].join('\n')}
+              output={[
+    "[active/enabled] ssh",
+    "[active/enabled] ufw",
+    "[active/enabled] cron",
+    "# No warnings — all critical services enabled at boot ✔"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Confidentiality check: find world-readable sensitive files (Linux)."
               language="bash"
-              command={`# Find files readable by everyone in /etc that shouldn't be
-find /etc -maxdepth 2 -type f -readable -perm /o+r \
-  -name "*.conf" -o -name "*.key" -o -name "*.pem" 2>/dev/null |
-  head -20
-
-# Check /etc/shadow permissions (should be 640 or 000)
-ls -la /etc/shadow /etc/passwd /etc/sudoers`}
-              output={`---------- 1 root shadow  1234 Jan 15 09:00 /etc/shadow  ← Correct (000)
--rw-r--r-- 1 root root    2345 Jan 15 09:00 /etc/passwd  ← Correct (644)
--r--r----- 1 root sudo    1456 Jan 15 09:00 /etc/sudoers ← Correct (440)`}
+              command={[
+    "# Find files readable by everyone in /etc that shouldn't be",
+    "find /etc -maxdepth 2 -type f -readable -perm /o+r \\",
+    "  -name \"*.conf\" -o -name \"*.key\" -o -name \"*.pem\" 2>/dev/null |",
+    "  head -20",
+    "",
+    "# Check /etc/shadow permissions (should be 640 or 000)",
+    "ls -la /etc/shadow /etc/passwd /etc/sudoers"
+  ].join('\n')}
+              output={[
+    "---------- 1 root shadow  1234 Jan 15 09:00 /etc/shadow  ← Correct (000)",
+    "-rw-r--r-- 1 root root    2345 Jan 15 09:00 /etc/passwd  ← Correct (644)",
+    "-r--r----- 1 root sudo    1456 Jan 15 09:00 /etc/sudoers ← Correct (440)"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">

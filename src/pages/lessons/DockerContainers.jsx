@@ -221,44 +221,46 @@ export default function DockerContainers() {
           Here's a real example for a Python sysadmin tool with security best practices applied:
         </p>
         <CodeBlock className="mt-4" title="Dockerfile — Python sysadmin tool (production quality)" language="bash"
-          code={`# ── Stage 1: Build dependencies ────────────────────────────
-FROM python:3.11-slim AS builder
-
-WORKDIR /build
-
-# Copy only requirements first (better layer caching)
-COPY requirements.txt .
-
-# Install dependencies into a prefix directory
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-
-
-# ── Stage 2: Final minimal image ────────────────────────────
-FROM python:3.11-slim
-
-# Security: create non-root user
-RUN useradd --create-home --shell /bin/bash --uid 1001 appuser
-
-WORKDIR /app
-
-# Copy installed packages from builder stage
-COPY --from=builder /install /usr/local
-
-# Copy application code
-COPY --chown=appuser:appuser . .
-
-# Security: switch to non-root user
-USER appuser
-
-# Document what port the app uses (doesn't actually publish it)
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
-
-# Default command
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]`} />
+          code={[
+    "# ── Stage 1: Build dependencies ────────────────────────────",
+    "FROM python:3.11-slim AS builder",
+    "",
+    "WORKDIR /build",
+    "",
+    "# Copy only requirements first (better layer caching)",
+    "COPY requirements.txt .",
+    "",
+    "# Install dependencies into a prefix directory",
+    "RUN pip install --no-cache-dir --prefix=/install -r requirements.txt",
+    "",
+    "",
+    "# ── Stage 2: Final minimal image ────────────────────────────",
+    "FROM python:3.11-slim",
+    "",
+    "# Security: create non-root user",
+    "RUN useradd --create-home --shell /bin/bash --uid 1001 appuser",
+    "",
+    "WORKDIR /app",
+    "",
+    "# Copy installed packages from builder stage",
+    "COPY --from=builder /install /usr/local",
+    "",
+    "# Copy application code",
+    "COPY --chown=appuser:appuser . .",
+    "",
+    "# Security: switch to non-root user",
+    "USER appuser",
+    "",
+    "# Document what port the app uses (doesn't actually publish it)",
+    "EXPOSE 8080",
+    "",
+    "# Health check",
+    "HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\",
+    "  CMD curl -f http://localhost:8080/health || exit 1",
+    "",
+    "# Default command",
+    "CMD [\"python\", \"-m\", \"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8080\"]"
+  ].join('\n')} />
 
         <div className="grid sm:grid-cols-2 gap-4 mt-5">
           {[
@@ -284,69 +286,71 @@ CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080
       <section>
         <h2>docker-compose — Multi-Container Apps</h2>
         <CodeBlock title="docker-compose.yml — web app + database + reverse proxy" language="bash"
-          code={`version: '3.9'
-
-services:
-
-  # Nginx reverse proxy
-  proxy:
-    image: nginx:1.25-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
-    depends_on:
-      - app
-    restart: unless-stopped
-    networks:
-      - frontend
-
-  # Application server
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - DATABASE_URL=postgresql://appuser:${DB_PASSWORD}@db:5432/appdb
-      - SECRET_KEY=${SECRET_KEY}
-    volumes:
-      - app-data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - frontend
-      - backend
-
-  # PostgreSQL database
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: appdb
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - backend
-
-volumes:
-  db-data:
-  app-data:
-
-networks:
-  frontend:
-  backend:
-    internal: true    # db not accessible from outside`} />
+          code={[
+    "version: '3.9'",
+    "",
+    "services:",
+    "",
+    "  # Nginx reverse proxy",
+    "  proxy:",
+    "    image: nginx:1.25-alpine",
+    "    ports:",
+    "      - \"80:80\"",
+    "      - \"443:443\"",
+    "    volumes:",
+    "      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
+    "      - ./nginx/certs:/etc/nginx/certs:ro",
+    "    depends_on:",
+    "      - app",
+    "    restart: unless-stopped",
+    "    networks:",
+    "      - frontend",
+    "",
+    "  # Application server",
+    "  app:",
+    "    build:",
+    "      context: .",
+    "      dockerfile: Dockerfile",
+    "    environment:",
+    "      - DATABASE_URL=postgresql://appuser:${DB_PASSWORD}@db:5432/appdb",
+    "      - SECRET_KEY=${SECRET_KEY}",
+    "    volumes:",
+    "      - app-data:/app/data",
+    "    depends_on:",
+    "      db:",
+    "        condition: service_healthy",
+    "    restart: unless-stopped",
+    "    networks:",
+    "      - frontend",
+    "      - backend",
+    "",
+    "  # PostgreSQL database",
+    "  db:",
+    "    image: postgres:16-alpine",
+    "    environment:",
+    "      POSTGRES_USER: appuser",
+    "      POSTGRES_PASSWORD: ${DB_PASSWORD}",
+    "      POSTGRES_DB: appdb",
+    "    volumes:",
+    "      - db-data:/var/lib/postgresql/data",
+    "    healthcheck:",
+    "      test: [\"CMD-SHELL\", \"pg_isready -U appuser -d appdb\"]",
+    "      interval: 10s",
+    "      timeout: 5s",
+    "      retries: 5",
+    "    restart: unless-stopped",
+    "    networks:",
+    "      - backend",
+    "",
+    "volumes:",
+    "  db-data:",
+    "  app-data:",
+    "",
+    "networks:",
+    "  frontend:",
+    "  backend:",
+    "    internal: true    # db not accessible from outside"
+  ].join('\n')} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -367,151 +371,171 @@ networks:
 
             <LabStep number={1}
               description="Install Docker Engine on Ubuntu Server using the official install script."
-              command={`# Official Docker install (Ubuntu)
-curl -fsSL https://get.docker.com | sudo bash
-
-# Add your user to the docker group (no more sudo needed)
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Verify
-docker --version
-docker compose version`}
-              output={`Docker version 25.0.3, build 4debf41
-Docker Compose version v2.24.6`}
+              command={[
+    "# Official Docker install (Ubuntu)",
+    "curl -fsSL https://get.docker.com | sudo bash",
+    "",
+    "# Add your user to the docker group (no more sudo needed)",
+    "sudo usermod -aG docker $USER",
+    "newgrp docker",
+    "",
+    "# Verify",
+    "docker --version",
+    "docker compose version"
+  ].join('\n')}
+              output={[
+    "Docker version 25.0.3, build 4debf41",
+    "Docker Compose version v2.24.6"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Pull and run your first container — nginx web server."
-              command={`# Pull the nginx image
-docker pull nginx:alpine
-
-# Run it: -d detached, -p port map, --name friendly name
-docker run -d -p 8080:80 --name my-nginx nginx:alpine
-
-# Verify it's running
-docker ps
-
-# Test
-curl http://localhost:8080 | grep "<title>"`}
-              output={`CONTAINER ID  IMAGE          COMMAND                 STATUS
-a1b2c3d4e5f6  nginx:alpine   "/docker-entrypoint…"  Up 3 seconds
-
-<title>Welcome to nginx!</title>`}
+              command={[
+    "# Pull the nginx image",
+    "docker pull nginx:alpine",
+    "",
+    "# Run it: -d detached, -p port map, --name friendly name",
+    "docker run -d -p 8080:80 --name my-nginx nginx:alpine",
+    "",
+    "# Verify it's running",
+    "docker ps",
+    "",
+    "# Test",
+    "curl http://localhost:8080 | grep \"<title>\""
+  ].join('\n')}
+              output={[
+    "CONTAINER ID  IMAGE          COMMAND                 STATUS",
+    "a1b2c3d4e5f6  nginx:alpine   \"/docker-entrypoint…\"  Up 3 seconds",
+    "",
+    "<title>Welcome to nginx!</title>"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Explore the container — exec into it, inspect logs and file system."
-              command={`# View logs
-docker logs my-nginx
-docker logs -f my-nginx   # Follow logs
-
-# Execute a shell inside the running container
-docker exec -it my-nginx sh
-
-# Inside the container:
-ls /etc/nginx/
-cat /etc/nginx/conf.d/default.conf
-exit
-
-# Inspect container details (IP, mounts, env)
-docker inspect my-nginx | python3 -m json.tool | head -60`}
+              command={[
+    "# View logs",
+    "docker logs my-nginx",
+    "docker logs -f my-nginx   # Follow logs",
+    "",
+    "# Execute a shell inside the running container",
+    "docker exec -it my-nginx sh",
+    "",
+    "# Inside the container:",
+    "ls /etc/nginx/",
+    "cat /etc/nginx/conf.d/default.conf",
+    "exit",
+    "",
+    "# Inspect container details (IP, mounts, env)",
+    "docker inspect my-nginx | python3 -m json.tool | head -60"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Build a custom image with a Dockerfile — serve a custom HTML page."
-              command={`mkdir -p ~/docker-lab && cd ~/docker-lab
-
-# Create the HTML page
-cat > index.html << 'EOF'
-<!DOCTYPE html>
-<html>
-  <head><title>SysAdminPro Lab</title></head>
-  <body>
-    <h1>🐳 Docker Lab Running!</h1>
-    <p>Served from a custom Docker image.</p>
-  </body>
-</html>
-EOF
-
-# Create the Dockerfile
-cat > Dockerfile << 'EOF'
-FROM nginx:alpine
-COPY index.html /usr/share/nginx/html/index.html
-EOF
-
-# Build the image
-docker build -t lab-web:v1 .
-
-# Run it
-docker run -d -p 8081:80 --name lab-web lab-web:v1
-curl http://localhost:8081 | grep "SysAdminPro"`}
-              output={`Successfully built 7a8b9c0d1e2f
-Successfully tagged lab-web:v1
-
-<h1>🐳 Docker Lab Running!</h1>`}
+              command={[
+    "mkdir -p ~/docker-lab && cd ~/docker-lab",
+    "",
+    "# Create the HTML page",
+    "cat > index.html << 'EOF'",
+    "<!DOCTYPE html>",
+    "<html>",
+    "  <head><title>SysAdminPro Lab</title></head>",
+    "  <body>",
+    "    <h1>🐳 Docker Lab Running!</h1>",
+    "    <p>Served from a custom Docker image.</p>",
+    "  </body>",
+    "</html>",
+    "EOF",
+    "",
+    "# Create the Dockerfile",
+    "cat > Dockerfile << 'EOF'",
+    "FROM nginx:alpine",
+    "COPY index.html /usr/share/nginx/html/index.html",
+    "EOF",
+    "",
+    "# Build the image",
+    "docker build -t lab-web:v1 .",
+    "",
+    "# Run it",
+    "docker run -d -p 8081:80 --name lab-web lab-web:v1",
+    "curl http://localhost:8081 | grep \"SysAdminPro\""
+  ].join('\n')}
+              output={[
+    "Successfully built 7a8b9c0d1e2f",
+    "Successfully tagged lab-web:v1",
+    "",
+    "<h1>🐳 Docker Lab Running!</h1>"
+  ].join('\n')}
             />
 
             <LabStep number={5}
               description="Deploy a multi-container app with docker compose — nginx + a simple web service."
-              command={`mkdir -p ~/docker-compose-lab && cd ~/docker-compose-lab
-
-cat > docker-compose.yml << 'EOF'
-version: '3.9'
-services:
-  web:
-    image: nginx:alpine
-    ports:
-      - "9090:80"
-    volumes:
-      - ./html:/usr/share/nginx/html:ro
-    restart: unless-stopped
-
-  portainer:
-    image: portainer/portainer-ce:latest
-    ports:
-      - "9000:9000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer-data:/data
-    restart: unless-stopped
-
-volumes:
-  portainer-data:
-EOF
-
-mkdir html && echo "<h1>Docker Compose Lab ✔</h1>" > html/index.html
-
-# Start all services
-docker compose up -d
-
-# Check status
-docker compose ps`}
-              output={`NAME                 IMAGE                     STATUS
-docker-lab-web-1     nginx:alpine              Up 5 seconds
-docker-lab-portainer portainer/portainer-ce    Up 5 seconds
-
-# Access Portainer GUI: http://192.168.100.20:9000`}
+              command={[
+    "mkdir -p ~/docker-compose-lab && cd ~/docker-compose-lab",
+    "",
+    "cat > docker-compose.yml << 'EOF'",
+    "version: '3.9'",
+    "services:",
+    "  web:",
+    "    image: nginx:alpine",
+    "    ports:",
+    "      - \"9090:80\"",
+    "    volumes:",
+    "      - ./html:/usr/share/nginx/html:ro",
+    "    restart: unless-stopped",
+    "",
+    "  portainer:",
+    "    image: portainer/portainer-ce:latest",
+    "    ports:",
+    "      - \"9000:9000\"",
+    "    volumes:",
+    "      - /var/run/docker.sock:/var/run/docker.sock",
+    "      - portainer-data:/data",
+    "    restart: unless-stopped",
+    "",
+    "volumes:",
+    "  portainer-data:",
+    "EOF",
+    "",
+    "mkdir html && echo \"<h1>Docker Compose Lab ✔</h1>\" > html/index.html",
+    "",
+    "# Start all services",
+    "docker compose up -d",
+    "",
+    "# Check status",
+    "docker compose ps"
+  ].join('\n')}
+              output={[
+    "NAME                 IMAGE                     STATUS",
+    "docker-lab-web-1     nginx:alpine              Up 5 seconds",
+    "docker-lab-portainer portainer/portainer-ce    Up 5 seconds",
+    "",
+    "# Access Portainer GUI: http://192.168.100.20:9000"
+  ].join('\n')}
             />
 
             <LabStep number={6}
               description="Clean up — stop and remove all containers, images, and volumes."
-              command={`# Stop and remove compose stack
-docker compose down -v
-
-# Remove individual containers
-docker stop my-nginx lab-web
-docker rm my-nginx lab-web
-
-# Remove images
-docker rmi lab-web:v1
-
-# Full system cleanup (removes all unused resources)
-docker system prune -a --volumes -f
-
-# Verify
-docker ps -a
-docker images`}
+              command={[
+    "# Stop and remove compose stack",
+    "docker compose down -v",
+    "",
+    "# Remove individual containers",
+    "docker stop my-nginx lab-web",
+    "docker rm my-nginx lab-web",
+    "",
+    "# Remove images",
+    "docker rmi lab-web:v1",
+    "",
+    "# Full system cleanup (removes all unused resources)",
+    "docker system prune -a --volumes -f",
+    "",
+    "# Verify",
+    "docker ps -a",
+    "docker images"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -526,44 +550,46 @@ docker images`}
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="Docker Command Cheat Sheet" language="bash" code={`# ── Images ──────────────────────────────────────────────────
-docker pull nginx:alpine               # Pull image
-docker images                          # List images
-docker build -t myapp:v1 .             # Build from Dockerfile
-docker tag myapp:v1 registry/myapp:v1  # Tag for push
-docker push registry/myapp:v1          # Push to registry
-docker rmi myapp:v1                    # Remove image
-docker image prune                     # Remove dangling images
-
-# ── Containers ───────────────────────────────────────────────
-docker run -d -p 8080:80 --name web nginx:alpine
-docker run -it ubuntu:22.04 bash       # Interactive shell
-docker ps                              # Running containers
-docker ps -a                           # All containers
-docker stop web && docker rm web       # Stop + remove
-docker logs -f web                     # Follow logs
-docker exec -it web sh                 # Shell in container
-docker inspect web                     # Full details
-docker stats                           # Live resource usage
-
-# ── Volumes ──────────────────────────────────────────────────
-docker volume create mydata
-docker volume ls
-docker run -v mydata:/data nginx:alpine
-docker run -v $(pwd)/html:/usr/share/nginx/html:ro nginx:alpine
-
-# ── Compose ──────────────────────────────────────────────────
-docker compose up -d                   # Start all services
-docker compose down                    # Stop + remove containers
-docker compose down -v                 # Also remove volumes
-docker compose ps                      # Service status
-docker compose logs -f service-name    # Follow service logs
-docker compose exec service-name sh    # Shell in service
-docker compose build                   # Rebuild images
-
-# ── Cleanup ──────────────────────────────────────────────────
-docker system prune                    # Remove unused resources
-docker system prune -a --volumes -f    # Nuclear option`} />
+        <CodeBlock title="Docker Command Cheat Sheet" language="bash" code={[
+    "# ── Images ──────────────────────────────────────────────────",
+    "docker pull nginx:alpine               # Pull image",
+    "docker images                          # List images",
+    "docker build -t myapp:v1 .             # Build from Dockerfile",
+    "docker tag myapp:v1 registry/myapp:v1  # Tag for push",
+    "docker push registry/myapp:v1          # Push to registry",
+    "docker rmi myapp:v1                    # Remove image",
+    "docker image prune                     # Remove dangling images",
+    "",
+    "# ── Containers ───────────────────────────────────────────────",
+    "docker run -d -p 8080:80 --name web nginx:alpine",
+    "docker run -it ubuntu:22.04 bash       # Interactive shell",
+    "docker ps                              # Running containers",
+    "docker ps -a                           # All containers",
+    "docker stop web && docker rm web       # Stop + remove",
+    "docker logs -f web                     # Follow logs",
+    "docker exec -it web sh                 # Shell in container",
+    "docker inspect web                     # Full details",
+    "docker stats                           # Live resource usage",
+    "",
+    "# ── Volumes ──────────────────────────────────────────────────",
+    "docker volume create mydata",
+    "docker volume ls",
+    "docker run -v mydata:/data nginx:alpine",
+    "docker run -v $(pwd)/html:/usr/share/nginx/html:ro nginx:alpine",
+    "",
+    "# ── Compose ──────────────────────────────────────────────────",
+    "docker compose up -d                   # Start all services",
+    "docker compose down                    # Stop + remove containers",
+    "docker compose down -v                 # Also remove volumes",
+    "docker compose ps                      # Service status",
+    "docker compose logs -f service-name    # Follow service logs",
+    "docker compose exec service-name sh    # Shell in service",
+    "docker compose build                   # Rebuild images",
+    "",
+    "# ── Cleanup ──────────────────────────────────────────────────",
+    "docker system prune                    # Remove unused resources",
+    "docker system prune -a --volumes -f    # Nuclear option"
+  ].join('\n')} />
       </section>
 
       {/* ── QUIZ ── */}

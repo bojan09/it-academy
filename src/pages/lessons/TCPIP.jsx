@@ -414,72 +414,88 @@ export default function TCPIP() {
 
             <LabStep number={1}
               description="Verify the TCP/IP configuration of both lab VMs and validate subnetting."
-              command={`# On Ubuntu Server — check IP configuration
-ip addr show ens33
-ip route show
-
-# Calculate: what is the broadcast address for 192.168.100.0/24?
-# Network: 192.168.100.0
-# Broadcast: 192.168.100.255
-# Host range: 192.168.100.1 – 192.168.100.254
-# Confirm with ipcalc:
-sudo apt install ipcalc -y
-ipcalc 192.168.100.20/24`}
-              output={`Address:   192.168.100.20        11000000.10101000.01100100. 00010100
-Netmask:   255.255.255.0 = 24   11111111.11111111.11111111. 00000000
-Network:   192.168.100.0/24
-HostMin:   192.168.100.1
-HostMax:   192.168.100.254
-Broadcast: 192.168.100.255
-Hosts/Net: 254`}
+              command={[
+    "# On Ubuntu Server — check IP configuration",
+    "ip addr show ens33",
+    "ip route show",
+    "",
+    "# Calculate: what is the broadcast address for 192.168.100.0/24?",
+    "# Network: 192.168.100.0",
+    "# Broadcast: 192.168.100.255",
+    "# Host range: 192.168.100.1 – 192.168.100.254",
+    "# Confirm with ipcalc:",
+    "sudo apt install ipcalc -y",
+    "ipcalc 192.168.100.20/24"
+  ].join('\n')}
+              output={[
+    "Address:   192.168.100.20        11000000.10101000.01100100. 00010100",
+    "Netmask:   255.255.255.0 = 24   11111111.11111111.11111111. 00000000",
+    "Network:   192.168.100.0/24",
+    "HostMin:   192.168.100.1",
+    "HostMax:   192.168.100.254",
+    "Broadcast: 192.168.100.255",
+    "Hosts/Net: 254"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Observe the TCP three-way handshake with tcpdump while establishing an SSH connection."
-              command={`# Terminal 1 on Ubuntu — start capture on port 22
-sudo tcpdump -i ens33 -n "port 22 and host 192.168.100.10" &
-
-# Terminal 2 — initiate SSH from DC01 (PowerShell):
-# ssh Administrator@192.168.100.20
-
-# The capture will show SYN, SYN-ACK, ACK
-# Then the SSH encrypted data exchange
-sudo tcpdump -i ens33 -n -c 6 "port 22" 2>/dev/null`}
-              output={`10:30:15.001 192.168.100.10.54321 > 192.168.100.20.22: Flags [S]  seq 1234567  ← SYN
-10:30:15.002 192.168.100.20.22    > 192.168.100.10.54321: Flags [S.] seq 9876543  ← SYN-ACK
-10:30:15.003 192.168.100.10.54321 > 192.168.100.20.22:    Flags [.]              ← ACK
-10:30:15.004 192.168.100.10.54321 > 192.168.100.20.22:    Flags [P.] length 28   ← Data
-10:30:15.005 192.168.100.20.22    > 192.168.100.10.54321: Flags [P.] length 44   ← Data`}
+              command={[
+    "# Terminal 1 on Ubuntu — start capture on port 22",
+    "sudo tcpdump -i ens33 -n \"port 22 and host 192.168.100.10\" &",
+    "",
+    "# Terminal 2 — initiate SSH from DC01 (PowerShell):",
+    "# ssh Administrator@192.168.100.20",
+    "",
+    "# The capture will show SYN, SYN-ACK, ACK",
+    "# Then the SSH encrypted data exchange",
+    "sudo tcpdump -i ens33 -n -c 6 \"port 22\" 2>/dev/null"
+  ].join('\n')}
+              output={[
+    "10:30:15.001 192.168.100.10.54321 > 192.168.100.20.22: Flags [S]  seq 1234567  ← SYN",
+    "10:30:15.002 192.168.100.20.22    > 192.168.100.10.54321: Flags [S.] seq 9876543  ← SYN-ACK",
+    "10:30:15.003 192.168.100.10.54321 > 192.168.100.20.22:    Flags [.]              ← ACK",
+    "10:30:15.004 192.168.100.10.54321 > 192.168.100.20.22:    Flags [P.] length 28   ← Data",
+    "10:30:15.005 192.168.100.20.22    > 192.168.100.10.54321: Flags [P.] length 44   ← Data"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Observe UDP with a DNS query — notice no handshake, no ACK."
-              command={`# Capture DNS traffic (UDP port 53)
-sudo tcpdump -i ens33 -n -c 4 "port 53" &
-
-# Trigger a DNS lookup
-dig @192.168.100.10 dc01.lab.local`}
-              output={`10:30:20.001 192.168.100.20.51234 > 192.168.100.10.53: A? dc01.lab.local  ← Query (no handshake!)
-10:30:20.002 192.168.100.10.53   > 192.168.100.20.51234: A 192.168.100.10      ← Answer (no ACK!)
-# UDP: request + response only. No connection setup, no teardown.`}
+              command={[
+    "# Capture DNS traffic (UDP port 53)",
+    "sudo tcpdump -i ens33 -n -c 4 \"port 53\" &",
+    "",
+    "# Trigger a DNS lookup",
+    "dig @192.168.100.10 dc01.lab.local"
+  ].join('\n')}
+              output={[
+    "10:30:20.001 192.168.100.20.51234 > 192.168.100.10.53: A? dc01.lab.local  ← Query (no handshake!)",
+    "10:30:20.002 192.168.100.10.53   > 192.168.100.20.51234: A 192.168.100.10      ← Answer (no ACK!)",
+    "# UDP: request + response only. No connection setup, no teardown."
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="View active TCP connections and their states on both VMs."
-              command={`# Ubuntu — all TCP states
-ss -tn state established
-
-# See all states (LISTEN, ESTABLISHED, TIME_WAIT, etc.)
-ss -tan | awk '{print $1}' | sort | uniq -c | sort -rn
-
-# Windows DC01 (PowerShell):
-# Get-NetTCPConnection | Group-Object State | Select-Object Name, Count`}
-              output={`State     Recv-Q  Send-Q  Local Address:Port     Peer Address:Port
-ESTAB     0       0       192.168.100.20:22     192.168.100.10:54321
-
-  6 LISTEN
-  2 ESTABLISHED
-  0 TIME-WAIT`}
+              command={[
+    "# Ubuntu — all TCP states",
+    "ss -tn state established",
+    "",
+    "# See all states (LISTEN, ESTABLISHED, TIME_WAIT, etc.)",
+    "ss -tan | awk '{print $1}' | sort | uniq -c | sort -rn",
+    "",
+    "# Windows DC01 (PowerShell):",
+    "# Get-NetTCPConnection | Group-Object State | Select-Object Name, Count"
+  ].join('\n')}
+              output={[
+    "State     Recv-Q  Send-Q  Local Address:Port     Peer Address:Port",
+    "ESTAB     0       0       192.168.100.20:22     192.168.100.10:54321",
+    "",
+    "  6 LISTEN",
+    "  2 ESTABLISHED",
+    "  0 TIME-WAIT"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">

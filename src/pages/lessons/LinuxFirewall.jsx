@@ -212,57 +212,59 @@ export default function LinuxFirewall() {
       <section>
         <h2>iptables — Production Rule Set</h2>
         <CodeBlock title="server-firewall.sh — complete hardened iptables ruleset" language="bash"
-          code={`#!/bin/bash
-# server-firewall.sh — Hardened iptables ruleset for a Linux server
-# Run as root. Review before applying to production.
-
-IPT=/sbin/iptables
-ADMIN_NET="192.168.100.0/24"  # Management network
-
-# ── Flush all existing rules ────────────────────────────────
-$IPT -F          # Flush filter chains
-$IPT -X          # Delete custom chains
-$IPT -Z          # Zero counters
-
-# ── Set default policies ────────────────────────────────────
-$IPT -P INPUT   DROP    # Drop all inbound by default
-$IPT -P FORWARD DROP    # No forwarding by default
-$IPT -P OUTPUT  ACCEPT  # Allow all outbound
-
-# ── Allow loopback ──────────────────────────────────────────
-$IPT -A INPUT -i lo -j ACCEPT
-$IPT -A OUTPUT -o lo -j ACCEPT
-
-# ── Allow established/related connections (stateful) ────────
-$IPT -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-
-# ── Allow ICMP (ping) from management network only ─────────
-$IPT -A INPUT -s $ADMIN_NET -p icmp --icmp-type echo-request -j ACCEPT
-
-# ── SSH: allow from management network, rate-limit ─────────
-$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \
-  -m conntrack --ctstate NEW \
-  -m recent --set --name SSH_LIMIT
-$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \
-  -m recent --update --seconds 60 --hitcount 4 --name SSH_LIMIT \
-  -j LOG --log-prefix "[SSH-BRUTE] " --log-level 6
-$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \
-  -m recent --update --seconds 60 --hitcount 4 --name SSH_LIMIT \
-  -j DROP
-$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \
-  -m conntrack --ctstate NEW -j ACCEPT
-
-# ── Web server (if applicable) ──────────────────────────────
-# $IPT -A INPUT -p tcp --dport 80  -j ACCEPT
-# $IPT -A INPUT -p tcp --dport 443 -j ACCEPT
-
-# ── Log and drop everything else ────────────────────────────
-$IPT -A INPUT -m limit --limit 5/min -j LOG \
-  --log-prefix "[IPTABLES-DROP] " --log-level 6
-$IPT -A INPUT -j DROP
-
-echo "✔ Firewall rules applied"
-$IPT -L -v -n`} />
+          code={[
+    "#!/bin/bash",
+    "# server-firewall.sh — Hardened iptables ruleset for a Linux server",
+    "# Run as root. Review before applying to production.",
+    "",
+    "IPT=/sbin/iptables",
+    "ADMIN_NET=\"192.168.100.0/24\"  # Management network",
+    "",
+    "# ── Flush all existing rules ────────────────────────────────",
+    "$IPT -F          # Flush filter chains",
+    "$IPT -X          # Delete custom chains",
+    "$IPT -Z          # Zero counters",
+    "",
+    "# ── Set default policies ────────────────────────────────────",
+    "$IPT -P INPUT   DROP    # Drop all inbound by default",
+    "$IPT -P FORWARD DROP    # No forwarding by default",
+    "$IPT -P OUTPUT  ACCEPT  # Allow all outbound",
+    "",
+    "# ── Allow loopback ──────────────────────────────────────────",
+    "$IPT -A INPUT -i lo -j ACCEPT",
+    "$IPT -A OUTPUT -o lo -j ACCEPT",
+    "",
+    "# ── Allow established/related connections (stateful) ────────",
+    "$IPT -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
+    "",
+    "# ── Allow ICMP (ping) from management network only ─────────",
+    "$IPT -A INPUT -s $ADMIN_NET -p icmp --icmp-type echo-request -j ACCEPT",
+    "",
+    "# ── SSH: allow from management network, rate-limit ─────────",
+    "$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \\",
+    "  -m conntrack --ctstate NEW \\",
+    "  -m recent --set --name SSH_LIMIT",
+    "$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \\",
+    "  -m recent --update --seconds 60 --hitcount 4 --name SSH_LIMIT \\",
+    "  -j LOG --log-prefix \"[SSH-BRUTE] \" --log-level 6",
+    "$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \\",
+    "  -m recent --update --seconds 60 --hitcount 4 --name SSH_LIMIT \\",
+    "  -j DROP",
+    "$IPT -A INPUT -s $ADMIN_NET -p tcp --dport 22 \\",
+    "  -m conntrack --ctstate NEW -j ACCEPT",
+    "",
+    "# ── Web server (if applicable) ──────────────────────────────",
+    "# $IPT -A INPUT -p tcp --dport 80  -j ACCEPT",
+    "# $IPT -A INPUT -p tcp --dport 443 -j ACCEPT",
+    "",
+    "# ── Log and drop everything else ────────────────────────────",
+    "$IPT -A INPUT -m limit --limit 5/min -j LOG \\",
+    "  --log-prefix \"[IPTABLES-DROP] \" --log-level 6",
+    "$IPT -A INPUT -j DROP",
+    "",
+    "echo \"✔ Firewall rules applied\"",
+    "$IPT -L -v -n"
+  ].join('\n')} />
       </section>
 
       {/* ── UFW ── */}
@@ -273,45 +275,47 @@ $IPT -L -v -n`} />
           behind the scenes but provides a much simpler interface.
         </p>
         <CodeBlock className="mt-4" title="ufw — complete command reference" language="bash"
-          code={`# ── Initial setup ───────────────────────────────────────────
-sudo ufw default deny incoming    # Block all inbound by default
-sudo ufw default allow outgoing   # Allow all outbound
-sudo ufw enable                   # Enable the firewall
-sudo ufw status verbose           # Show all rules
-
-# ── Allow by service name ─────────────────────────────────
-sudo ufw allow ssh                # Port 22 TCP
-sudo ufw allow http               # Port 80 TCP
-sudo ufw allow https              # Port 443 TCP
-
-# ── Allow by port number ──────────────────────────────────
-sudo ufw allow 8080/tcp
-sudo ufw allow 53/udp
-sudo ufw allow 5900:5910/tcp      # Port range
-
-# ── Restrict by source IP ─────────────────────────────────
-sudo ufw allow from 192.168.100.0/24 to any port 22
-sudo ufw allow from 192.168.100.10 to any port 5432   # Postgres from DC01
-
-# ── Block specific IPs ────────────────────────────────────
-sudo ufw deny from 203.0.113.100
-sudo ufw deny from 198.51.100.0/24 to any port 22
-
-# ── Rate limiting (brute-force protection) ────────────────
-sudo ufw limit ssh                # Max 6 connections/30s from same IP
-
-# ── Manage existing rules ─────────────────────────────────
-sudo ufw status numbered          # Show rules with line numbers
-sudo ufw delete 5                 # Delete rule #5
-sudo ufw delete allow 8080/tcp    # Delete by specification
-
-# ── Logging ───────────────────────────────────────────────
-sudo ufw logging on               # Enable logging
-sudo ufw logging medium           # low/medium/high/full
-grep "UFW BLOCK" /var/log/ufw.log | tail -20
-
-# ── Reset ─────────────────────────────────────────────────
-sudo ufw reset                    # Remove all rules, disable`} />
+          code={[
+    "# ── Initial setup ───────────────────────────────────────────",
+    "sudo ufw default deny incoming    # Block all inbound by default",
+    "sudo ufw default allow outgoing   # Allow all outbound",
+    "sudo ufw enable                   # Enable the firewall",
+    "sudo ufw status verbose           # Show all rules",
+    "",
+    "# ── Allow by service name ─────────────────────────────────",
+    "sudo ufw allow ssh                # Port 22 TCP",
+    "sudo ufw allow http               # Port 80 TCP",
+    "sudo ufw allow https              # Port 443 TCP",
+    "",
+    "# ── Allow by port number ──────────────────────────────────",
+    "sudo ufw allow 8080/tcp",
+    "sudo ufw allow 53/udp",
+    "sudo ufw allow 5900:5910/tcp      # Port range",
+    "",
+    "# ── Restrict by source IP ─────────────────────────────────",
+    "sudo ufw allow from 192.168.100.0/24 to any port 22",
+    "sudo ufw allow from 192.168.100.10 to any port 5432   # Postgres from DC01",
+    "",
+    "# ── Block specific IPs ────────────────────────────────────",
+    "sudo ufw deny from 203.0.113.100",
+    "sudo ufw deny from 198.51.100.0/24 to any port 22",
+    "",
+    "# ── Rate limiting (brute-force protection) ────────────────",
+    "sudo ufw limit ssh                # Max 6 connections/30s from same IP",
+    "",
+    "# ── Manage existing rules ─────────────────────────────────",
+    "sudo ufw status numbered          # Show rules with line numbers",
+    "sudo ufw delete 5                 # Delete rule #5",
+    "sudo ufw delete allow 8080/tcp    # Delete by specification",
+    "",
+    "# ── Logging ───────────────────────────────────────────────",
+    "sudo ufw logging on               # Enable logging",
+    "sudo ufw logging medium           # low/medium/high/full",
+    "grep \"UFW BLOCK\" /var/log/ufw.log | tail -20",
+    "",
+    "# ── Reset ─────────────────────────────────────────────────",
+    "sudo ufw reset                    # Remove all rules, disable"
+  ].join('\n')} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -331,84 +335,100 @@ sudo ufw reset                    # Remove all rules, disable`} />
 
             <LabStep number={1}
               description="Check current firewall status and ensure ufw is installed."
-              command={`sudo ufw status verbose
-sudo ufw version
-
-# If ufw is not installed:
-sudo apt install ufw -y`}
-              output={`Status: inactive
-ufw 0.36.2`}
+              command={[
+    "sudo ufw status verbose",
+    "sudo ufw version",
+    "",
+    "# If ufw is not installed:",
+    "sudo apt install ufw -y"
+  ].join('\n')}
+              output={[
+    "Status: inactive",
+    "ufw 0.36.2"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Set default policies and allow SSH before enabling — otherwise you'll be locked out."
-              command={`# Set defaults FIRST
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-
-# Allow SSH from management network BEFORE enabling
-sudo ufw allow from 192.168.100.0/24 to any port 22
-
-# Enable — this is safe now because SSH is already allowed
-sudo ufw enable
-
-# Confirm status
-sudo ufw status verbose`}
-              output={`Status: active
-Logging: on (low)
-Default: deny (incoming), allow (outgoing)
-To                         Action  From
---                         ------  ----
-22/tcp                     ALLOW   192.168.100.0/24`}
+              command={[
+    "# Set defaults FIRST",
+    "sudo ufw default deny incoming",
+    "sudo ufw default allow outgoing",
+    "",
+    "# Allow SSH from management network BEFORE enabling",
+    "sudo ufw allow from 192.168.100.0/24 to any port 22",
+    "",
+    "# Enable — this is safe now because SSH is already allowed",
+    "sudo ufw enable",
+    "",
+    "# Confirm status",
+    "sudo ufw status verbose"
+  ].join('\n')}
+              output={[
+    "Status: active",
+    "Logging: on (low)",
+    "Default: deny (incoming), allow (outgoing)",
+    "To                         Action  From",
+    "--                         ------  ----",
+    "22/tcp                     ALLOW   192.168.100.0/24"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Add service rules for this lab server — DNS and LDAP access from DC01."
-              command={`# Allow DNS queries (if this server runs DNS)
-# sudo ufw allow 53/udp
-# sudo ufw allow 53/tcp
-
-# Allow HTTPS for future web services
-sudo ufw allow 443/tcp
-
-# Allow from DC01 only for AD-joined services
-sudo ufw allow from 192.168.100.10 to any port 389   # LDAP
-sudo ufw allow from 192.168.100.10 to any port 636   # LDAPS
-
-# Enable rate limiting on SSH
-sudo ufw limit ssh comment "Rate limit SSH connections"
-
-# View all rules
-sudo ufw status numbered`}
+              command={[
+    "# Allow DNS queries (if this server runs DNS)",
+    "# sudo ufw allow 53/udp",
+    "# sudo ufw allow 53/tcp",
+    "",
+    "# Allow HTTPS for future web services",
+    "sudo ufw allow 443/tcp",
+    "",
+    "# Allow from DC01 only for AD-joined services",
+    "sudo ufw allow from 192.168.100.10 to any port 389   # LDAP",
+    "sudo ufw allow from 192.168.100.10 to any port 636   # LDAPS",
+    "",
+    "# Enable rate limiting on SSH",
+    "sudo ufw limit ssh comment \"Rate limit SSH connections\"",
+    "",
+    "# View all rules",
+    "sudo ufw status numbered"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Test the firewall is working by attempting a blocked connection from DC01."
-              command={`# From DC01 PowerShell — test if blocked port is actually blocked
-Test-NetConnection -ComputerName 192.168.100.20 -Port 3306  # MySQL - should fail
-
-# From Ubuntu — watch the ufw log in real-time
-sudo tail -f /var/log/ufw.log`}
-              output={`ComputerName     : 192.168.100.20
-RemotePort       : 3306
-TcpTestSucceeded : False  ← Blocked by ufw ✔
-
-[UFW BLOCK] IN=ens33 SRC=192.168.100.10 DST=192.168.100.20 DPT=3306`}
+              command={[
+    "# From DC01 PowerShell — test if blocked port is actually blocked",
+    "Test-NetConnection -ComputerName 192.168.100.20 -Port 3306  # MySQL - should fail",
+    "",
+    "# From Ubuntu — watch the ufw log in real-time",
+    "sudo tail -f /var/log/ufw.log"
+  ].join('\n')}
+              output={[
+    "ComputerName     : 192.168.100.20",
+    "RemotePort       : 3306",
+    "TcpTestSucceeded : False  ← Blocked by ufw ✔",
+    "",
+    "[UFW BLOCK] IN=ens33 SRC=192.168.100.10 DST=192.168.100.20 DPT=3306"
+  ].join('\n')}
             />
 
             <LabStep number={5}
               description="Install iptables-persistent to save rules across reboots, then verify."
-              command={`# Save current ufw/iptables rules persistently
-sudo apt install iptables-persistent -y
-# Answer YES to save current IPv4 and IPv6 rules
-
-# View the saved rules
-cat /etc/iptables/rules.v4
-
-# After reboot — verify rules are still active
-sudo reboot
-# (reconnect via SSH)
-sudo ufw status verbose`}
+              command={[
+    "# Save current ufw/iptables rules persistently",
+    "sudo apt install iptables-persistent -y",
+    "# Answer YES to save current IPv4 and IPv6 rules",
+    "",
+    "# View the saved rules",
+    "cat /etc/iptables/rules.v4",
+    "",
+    "# After reboot — verify rules are still active",
+    "sudo reboot",
+    "# (reconnect via SSH)",
+    "sudo ufw status verbose"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">

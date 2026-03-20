@@ -152,31 +152,33 @@ export default function LinuxNetworking() {
       {/* ── IP COMMAND ── */}
       <section>
         <h2>The ip Command — Complete Reference</h2>
-        <CodeBlock title="ip command — all essential operations" language="bash" code={`# ── Interface management ────────────────────────────────────
-ip addr show                    # All interfaces and IPs
-ip addr show eth0               # Specific interface
-ip addr add 192.168.100.50/24 dev eth0    # Add IP (temporary)
-ip addr del 192.168.100.50/24 dev eth0   # Remove IP
-ip link show                    # Interface state info
-ip link set eth0 up             # Bring interface up
-ip link set eth0 down           # Bring interface down
-ip link set eth0 mtu 9000       # Set jumbo frames
-
-# ── Routing ─────────────────────────────────────────────────
-ip route show                   # Routing table
-ip route show table all         # All routing tables
-ip route add default via 192.168.100.1          # Set default GW
-ip route add 10.0.0.0/8 via 192.168.100.254     # Static route
-ip route del 10.0.0.0/8                         # Delete route
-ip route get 8.8.8.8            # Which route would be used?
-
-# ── ARP / Neighbour table ────────────────────────────────────
-ip neigh show                   # ARP table (replaces arp -n)
-ip neigh flush all              # Clear ARP cache
-
-# ── Statistics ──────────────────────────────────────────────
-ip -s link show eth0            # Packet/error counters
-ss -s                           # Socket statistics summary`} />
+        <CodeBlock title="ip command — all essential operations" language="bash" code={[
+    "# ── Interface management ────────────────────────────────────",
+    "ip addr show                    # All interfaces and IPs",
+    "ip addr show eth0               # Specific interface",
+    "ip addr add 192.168.100.50/24 dev eth0    # Add IP (temporary)",
+    "ip addr del 192.168.100.50/24 dev eth0   # Remove IP",
+    "ip link show                    # Interface state info",
+    "ip link set eth0 up             # Bring interface up",
+    "ip link set eth0 down           # Bring interface down",
+    "ip link set eth0 mtu 9000       # Set jumbo frames",
+    "",
+    "# ── Routing ─────────────────────────────────────────────────",
+    "ip route show                   # Routing table",
+    "ip route show table all         # All routing tables",
+    "ip route add default via 192.168.100.1          # Set default GW",
+    "ip route add 10.0.0.0/8 via 192.168.100.254     # Static route",
+    "ip route del 10.0.0.0/8                         # Delete route",
+    "ip route get 8.8.8.8            # Which route would be used?",
+    "",
+    "# ── ARP / Neighbour table ────────────────────────────────────",
+    "ip neigh show                   # ARP table (replaces arp -n)",
+    "ip neigh flush all              # Clear ARP cache",
+    "",
+    "# ── Statistics ──────────────────────────────────────────────",
+    "ip -s link show eth0            # Packet/error counters",
+    "ss -s                           # Socket statistics summary"
+  ].join('\n')} />
       </section>
 
       {/* ── NETPLAN CONFIG ── */}
@@ -189,45 +191,49 @@ ss -s                           # Socket statistics summary`} />
         </p>
 
         <CodeBlock className="mt-4" title="/etc/netplan/00-lab-config.yaml — static IP with DNS" language="bash"
-          code={`network:
-  version: 2
-  renderer: networkd        # Use systemd-networkd backend
-
-  ethernets:
-    eth0:                   # Interface name (check with: ip link show)
-      dhcp4: false          # Disable DHCP for IPv4
-      dhcp6: false          # Disable DHCP for IPv6
-
-      addresses:
-        - 192.168.100.20/24  # Static IP and prefix length
-
-      routes:
-        - to: default        # Default route (gateway)
-          via: 192.168.100.1
-
-      nameservers:
-        addresses:
-          - 192.168.100.10   # Primary DNS (DC01)
-          - 8.8.8.8          # Secondary DNS (Google fallback)
-        search:
-          - lab.local        # DNS search domain`} />
+          code={[
+    "network:",
+    "  version: 2",
+    "  renderer: networkd        # Use systemd-networkd backend",
+    "",
+    "  ethernets:",
+    "    eth0:                   # Interface name (check with: ip link show)",
+    "      dhcp4: false          # Disable DHCP for IPv4",
+    "      dhcp6: false          # Disable DHCP for IPv6",
+    "",
+    "      addresses:",
+    "        - 192.168.100.20/24  # Static IP and prefix length",
+    "",
+    "      routes:",
+    "        - to: default        # Default route (gateway)",
+    "          via: 192.168.100.1",
+    "",
+    "      nameservers:",
+    "        addresses:",
+    "          - 192.168.100.10   # Primary DNS (DC01)",
+    "          - 8.8.8.8          # Secondary DNS (Google fallback)",
+    "        search:",
+    "          - lab.local        # DNS search domain"
+  ].join('\n')} />
 
         <CodeBlock className="mt-4" title="Apply, test, and troubleshoot Netplan" language="bash"
-          code={`# Test config without applying (dry run)
-sudo netplan try              # Applies for 120s, auto-reverts if no confirmation
-
-# Apply permanently
-sudo netplan apply
-
-# Generate config files without applying (debug)
-sudo netplan generate
-
-# If something breaks — check for syntax errors
-sudo netplan --debug apply
-
-# View effective network config
-resolvectl status             # DNS resolution status
-resolvectl dns                # Active DNS servers`} />
+          code={[
+    "# Test config without applying (dry run)",
+    "sudo netplan try              # Applies for 120s, auto-reverts if no confirmation",
+    "",
+    "# Apply permanently",
+    "sudo netplan apply",
+    "",
+    "# Generate config files without applying (debug)",
+    "sudo netplan generate",
+    "",
+    "# If something breaks — check for syntax errors",
+    "sudo netplan --debug apply",
+    "",
+    "# View effective network config",
+    "resolvectl status             # DNS resolution status",
+    "resolvectl dns                # Active DNS servers"
+  ].join('\n')} />
       </section>
 
       {/* ── DNS RESOLUTION ── */}
@@ -258,59 +264,63 @@ resolvectl dns                # Active DNS servers`} />
         </div>
 
         <CodeBlock className="mt-4" title="DNS diagnostic commands" language="bash"
-          code={`# Modern DNS lookup (replaces nslookup)
-dig dc01.lab.local                    # Forward lookup
-dig -x 192.168.100.10                 # Reverse lookup (PTR)
-dig @192.168.100.10 lab.local SOA     # Query specific server
-dig +short google.com A               # Short output
-
-# nslookup (still widely used)
-nslookup dc01.lab.local
-nslookup dc01.lab.local 192.168.100.10  # Use specific server
-
-# systemd-resolved (Ubuntu modern)
-resolvectl query dc01.lab.local
-resolvectl statistics
-resolvectl flush-caches
-
-# Check what DNS servers are actually being used
-cat /etc/resolv.conf
-resolvectl dns eth0`} />
+          code={[
+    "# Modern DNS lookup (replaces nslookup)",
+    "dig dc01.lab.local                    # Forward lookup",
+    "dig -x 192.168.100.10                 # Reverse lookup (PTR)",
+    "dig @192.168.100.10 lab.local SOA     # Query specific server",
+    "dig +short google.com A               # Short output",
+    "",
+    "# nslookup (still widely used)",
+    "nslookup dc01.lab.local",
+    "nslookup dc01.lab.local 192.168.100.10  # Use specific server",
+    "",
+    "# systemd-resolved (Ubuntu modern)",
+    "resolvectl query dc01.lab.local",
+    "resolvectl statistics",
+    "resolvectl flush-caches",
+    "",
+    "# Check what DNS servers are actually being used",
+    "cat /etc/resolv.conf",
+    "resolvectl dns eth0"
+  ].join('\n')} />
       </section>
 
       {/* ── DIAGNOSTICS ── */}
       <section>
         <h2>Network Diagnostics Toolkit</h2>
-        <CodeBlock title="Complete diagnostic workflow" language="bash" code={`# ── Layer 1/2: Interface ────────────────────────────────────
-ip link show                          # Check link state (UP/DOWN)
-ethtool eth0                          # Physical link speed and duplex
-ip -s link show eth0                  # Packet/error/drop counters
-
-# ── Layer 3: IP & Routing ────────────────────────────────────
-ip addr show                          # Check IP assignment
-ip route show                         # Check routing table
-ping -c 4 192.168.100.1               # Ping gateway
-ping -c 4 8.8.8.8                     # Ping external (tests routing)
-traceroute 8.8.8.8                    # Trace path (UDP)
-tracepath 8.8.8.8                     # Trace path (no root needed)
-mtr --report 8.8.8.8                  # Combined ping+traceroute
-
-# ── Layer 4: TCP/UDP ─────────────────────────────────────────
-ss -tlnp                              # Listening TCP ports + process
-ss -tlnp state established            # Active connections
-ss -udp -i                            # UDP sockets
-nc -zv 192.168.100.10 389             # Test TCP port connectivity
-
-# ── Layer 7: Application ─────────────────────────────────────
-curl -I https://example.com           # HTTP headers
-curl -v http://192.168.100.10         # Verbose HTTP debug
-wget --spider https://example.com     # Test URL without downloading
-
-# ── Packet capture ───────────────────────────────────────────
-sudo tcpdump -i eth0 -n                        # All traffic
-sudo tcpdump -i eth0 -n port 53                # DNS only
-sudo tcpdump -i eth0 -n host 192.168.100.10    # Specific host
-sudo tcpdump -i eth0 -n -w /tmp/cap.pcap       # Save to file`} />
+        <CodeBlock title="Complete diagnostic workflow" language="bash" code={[
+    "# ── Layer 1/2: Interface ────────────────────────────────────",
+    "ip link show                          # Check link state (UP/DOWN)",
+    "ethtool eth0                          # Physical link speed and duplex",
+    "ip -s link show eth0                  # Packet/error/drop counters",
+    "",
+    "# ── Layer 3: IP & Routing ────────────────────────────────────",
+    "ip addr show                          # Check IP assignment",
+    "ip route show                         # Check routing table",
+    "ping -c 4 192.168.100.1               # Ping gateway",
+    "ping -c 4 8.8.8.8                     # Ping external (tests routing)",
+    "traceroute 8.8.8.8                    # Trace path (UDP)",
+    "tracepath 8.8.8.8                     # Trace path (no root needed)",
+    "mtr --report 8.8.8.8                  # Combined ping+traceroute",
+    "",
+    "# ── Layer 4: TCP/UDP ─────────────────────────────────────────",
+    "ss -tlnp                              # Listening TCP ports + process",
+    "ss -tlnp state established            # Active connections",
+    "ss -udp -i                            # UDP sockets",
+    "nc -zv 192.168.100.10 389             # Test TCP port connectivity",
+    "",
+    "# ── Layer 7: Application ─────────────────────────────────────",
+    "curl -I https://example.com           # HTTP headers",
+    "curl -v http://192.168.100.10         # Verbose HTTP debug",
+    "wget --spider https://example.com     # Test URL without downloading",
+    "",
+    "# ── Packet capture ───────────────────────────────────────────",
+    "sudo tcpdump -i eth0 -n                        # All traffic",
+    "sudo tcpdump -i eth0 -n port 53                # DNS only",
+    "sudo tcpdump -i eth0 -n host 192.168.100.10    # Specific host",
+    "sudo tcpdump -i eth0 -n -w /tmp/cap.pcap       # Save to file"
+  ].join('\n')} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -326,89 +336,103 @@ sudo tcpdump -i eth0 -n -w /tmp/cap.pcap       # Save to file`} />
 
             <LabStep number={1}
               description="Audit the current network configuration on the Ubuntu Server VM."
-              command={`# Check interface name (may be ens33, eth0, or enp3s0)
-ip link show
-
-# Check current IP, gateway, and DNS
-ip addr show
-ip route show
-cat /etc/resolv.conf
-resolvectl status | head -20`}
-              output={`2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP
-    link/ether 00:0c:29:ab:cd:ef brd ff:ff:ff:ff:ff:ff
-    inet 192.168.100.20/24 brd 192.168.100.255 scope global ens33`}
+              command={[
+    "# Check interface name (may be ens33, eth0, or enp3s0)",
+    "ip link show",
+    "",
+    "# Check current IP, gateway, and DNS",
+    "ip addr show",
+    "ip route show",
+    "cat /etc/resolv.conf",
+    "resolvectl status | head -20"
+  ].join('\n')}
+              output={[
+    "2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP",
+    "    link/ether 00:0c:29:ab:cd:ef brd ff:ff:ff:ff:ff:ff",
+    "    inet 192.168.100.20/24 brd 192.168.100.255 scope global ens33"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Verify and update the Netplan static IP configuration. Check your interface name first!"
-              command={`# Backup existing config
-sudo cp /etc/netplan/00-installer-config.yaml \
-        /etc/netplan/00-installer-config.yaml.bak
-
-# Write the correct config (replace ens33 with YOUR interface name)
-sudo tee /etc/netplan/00-lab-config.yaml > /dev/null << 'EOF'
-network:
-  version: 2
-  renderer: networkd
-  ethernets:
-    ens33:
-      dhcp4: false
-      addresses: [192.168.100.20/24]
-      routes:
-        - to: default
-          via: 192.168.100.1
-      nameservers:
-        addresses: [192.168.100.10, 8.8.8.8]
-        search: [lab.local]
-EOF
-
-# Test before applying
-sudo netplan try`}
+              command={[
+    "# Backup existing config",
+    "sudo cp /etc/netplan/00-installer-config.yaml \\",
+    "        /etc/netplan/00-installer-config.yaml.bak",
+    "",
+    "# Write the correct config (replace ens33 with YOUR interface name)",
+    "sudo tee /etc/netplan/00-lab-config.yaml > /dev/null << 'EOF'",
+    "network:",
+    "  version: 2",
+    "  renderer: networkd",
+    "  ethernets:",
+    "    ens33:",
+    "      dhcp4: false",
+    "      addresses: [192.168.100.20/24]",
+    "      routes:",
+    "        - to: default",
+    "          via: 192.168.100.1",
+    "      nameservers:",
+    "        addresses: [192.168.100.10, 8.8.8.8]",
+    "        search: [lab.local]",
+    "EOF",
+    "",
+    "# Test before applying",
+    "sudo netplan try"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Run a full connectivity diagnostic to confirm all layers are working."
-              command={`# L3: Can we reach the gateway?
-ping -c 3 192.168.100.1
-
-# L3: Can we reach DC01?
-ping -c 3 192.168.100.10
-
-# L3: Can we reach the internet?
-ping -c 3 8.8.8.8
-
-# L7: DNS resolution via DC01
-dig @192.168.100.10 dc01.lab.local +short
-
-# L7: Internet DNS
-dig google.com +short | head -3
-
-# Port test: is LDAP open on DC01?
-nc -zv 192.168.100.10 389 && echo "LDAP open ✔"`}
-              output={`PING 192.168.100.1: 64 bytes, time=0.421ms ✔
-PING 192.168.100.10: 64 bytes, time=0.633ms ✔
-PING 8.8.8.8: 64 bytes, time=12.5ms ✔
-192.168.100.10
-142.250.80.46
-Connection to 192.168.100.10 389 port [tcp/ldap] succeeded! ✔`}
+              command={[
+    "# L3: Can we reach the gateway?",
+    "ping -c 3 192.168.100.1",
+    "",
+    "# L3: Can we reach DC01?",
+    "ping -c 3 192.168.100.10",
+    "",
+    "# L3: Can we reach the internet?",
+    "ping -c 3 8.8.8.8",
+    "",
+    "# L7: DNS resolution via DC01",
+    "dig @192.168.100.10 dc01.lab.local +short",
+    "",
+    "# L7: Internet DNS",
+    "dig google.com +short | head -3",
+    "",
+    "# Port test: is LDAP open on DC01?",
+    "nc -zv 192.168.100.10 389 && echo \"LDAP open ✔\""
+  ].join('\n')}
+              output={[
+    "PING 192.168.100.1: 64 bytes, time=0.421ms ✔",
+    "PING 192.168.100.10: 64 bytes, time=0.633ms ✔",
+    "PING 8.8.8.8: 64 bytes, time=12.5ms ✔",
+    "192.168.100.10",
+    "142.250.80.46",
+    "Connection to 192.168.100.10 389 port [tcp/ldap] succeeded! ✔"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Capture DNS traffic with tcpdump to see what happens when you do a lookup."
-              command={`# Open second terminal, start capture
-sudo tcpdump -i ens33 -n port 53 &
-TCPDUMP_PID=$!
-
-# Trigger DNS lookups
-dig dc01.lab.local
-dig google.com
-
-# Stop capture
-sleep 2 && kill $TCPDUMP_PID`}
-              output={`10:15:22 192.168.100.20.52341 > 192.168.100.10.53: A? dc01.lab.local
-10:15:22 192.168.100.10.53 > 192.168.100.20.52341: A 192.168.100.10
-10:15:23 192.168.100.20.51422 > 192.168.100.10.53: A? google.com
-10:15:23 192.168.100.10.53 > 192.168.100.20.51422: A 142.250.80.46 (forwarded)`}
+              command={[
+    "# Open second terminal, start capture",
+    "sudo tcpdump -i ens33 -n port 53 &",
+    "TCPDUMP_PID=$!",
+    "",
+    "# Trigger DNS lookups",
+    "dig dc01.lab.local",
+    "dig google.com",
+    "",
+    "# Stop capture",
+    "sleep 2 && kill $TCPDUMP_PID"
+  ].join('\n')}
+              output={[
+    "10:15:22 192.168.100.20.52341 > 192.168.100.10.53: A? dc01.lab.local",
+    "10:15:22 192.168.100.10.53 > 192.168.100.20.52341: A 192.168.100.10",
+    "10:15:23 192.168.100.20.51422 > 192.168.100.10.53: A? google.com",
+    "10:15:23 192.168.100.10.53 > 192.168.100.20.51422: A 142.250.80.46 (forwarded)"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">

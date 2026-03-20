@@ -259,128 +259,130 @@ export default function GroupPolicy() {
 
             <LabStep number={1}
               description="Install GPMC and verify the Group Policy PowerShell module is available."
-              command={`# Install Group Policy Management Console
-Install-WindowsFeature GPMC
-
-# Import the GP module
-Import-Module GroupPolicy
-
-# List all GPOs in the domain
-Get-GPO -All | Select-Object DisplayName, GpoStatus, CreationTime`}
-              output={`DisplayName               GpoStatus        CreationTime
------------               ---------        ------------
-Default Domain Policy     AllSettingsEnabled  01/15/2025
-Default Domain Controllers Policy  AllSettingsEnabled  01/15/2025`}
+              command={[
+    "# Install Group Policy Management Console",
+    "Install-WindowsFeature GPMC",
+    "",
+    "# Import the GP module",
+    "Import-Module GroupPolicy",
+    "",
+    "# List all GPOs in the domain",
+    "Get-GPO -All | Select-Object DisplayName, GpoStatus, CreationTime"
+  ].join('\n')}
+              output={[
+    "DisplayName               GpoStatus        CreationTime",
+    "-----------               ---------        ------------",
+    "Default Domain Policy     AllSettingsEnabled  01/15/2025",
+    "Default Domain Controllers Policy  AllSettingsEnabled  01/15/2025"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Create a new GPO for IT department security settings and link it to the IT OU."
-              command={`# Create new GPO
-New-GPO -Name "IT-Security-Baseline" \`
-  -Comment "Security baseline for IT department users and computers"
-
-# Link to IT OU
-New-GPLink \`
-  -Name "IT-Security-Baseline" \`
-  -Target "OU=IT,DC=lab,DC=local" \`
-  -LinkEnabled Yes
-
-# Verify the link
-Get-GPInheritance -Target "OU=IT,DC=lab,DC=local"`}
-              output={`Name         : IT
-GpoLinks     : {IT-Security-Baseline}
-InheritedGpoLinks : {IT-Security-Baseline, Default Domain Policy}
-BlockInheritance  : False`}
+              command={[
+    "# Create new GPO",
+    "New-GPO -Name \"IT-Security-Baseline\" -Comment \"Security baseline for IT department users and computers\"",
+    "",
+    "# Link to IT OU",
+    "New-GPLink -Name \"IT-Security-Baseline\" -Target \"OU=IT,DC=lab,DC=local\" -LinkEnabled Yes",
+    "",
+    "# Verify the link",
+    "Get-GPInheritance -Target \"OU=IT,DC=lab,DC=local\""
+  ].join('\n')}
+              output={[
+    "Name         : IT",
+    "GpoLinks     : {IT-Security-Baseline}",
+    "InheritedGpoLinks : {IT-Security-Baseline, Default Domain Policy}",
+    "BlockInheritance  : False"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Configure a password policy via the Default Domain Policy. Password policies MUST be configured at the domain level to affect domain accounts."
-              command={`# Set minimum password length to 14 characters
-Set-GPRegistryValue \`
-  -Name "Default Domain Policy" \`
-  -Key "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Netlogon\\Parameters" \`
-  -ValueName "MinimumPasswordLength" \`
-  -Type DWord \`
-  -Value 14
-
-# Better approach: use Fine-Grained Password Policy for granular control
-# Create a PSO (Password Settings Object) for IT admins
-New-ADFineGrainedPasswordPolicy \`
-  -Name "AdminPasswordPolicy" \`
-  -Precedence 10 \`
-  -MinPasswordLength 16 \`
-  -PasswordHistoryCount 24 \`
-  -LockoutThreshold 5 \`
-  -LockoutDuration "00:30:00" \`
-  -ComplexityEnabled $true
-
-# Apply to Domain Admins group
-Add-ADFineGrainedPasswordPolicySubject \`
-  -Identity "AdminPasswordPolicy" \`
-  -Subjects "Domain Admins"`}
+              command={[
+    "# Set minimum password length to 14 characters",
+    "Set-GPRegistryValue -Name \"Default Domain Policy\" -Key \"HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\Netlogon\\\\Parameters\" -ValueName \"MinimumPasswordLength\" -Type DWord -Value 14",
+    "",
+    "# Better approach: use Fine-Grained Password Policy for granular control",
+    "# Create a PSO (Password Settings Object) for IT admins",
+    "New-ADFineGrainedPasswordPolicy -Name \"AdminPasswordPolicy\" -Precedence 10 -MinPasswordLength 16 -PasswordHistoryCount 24 -LockoutThreshold 5 -LockoutDuration \"00:30:00\" -ComplexityEnabled $true",
+    "",
+    "# Apply to Domain Admins group",
+    "Add-ADFineGrainedPasswordPolicySubject -Identity \"AdminPasswordPolicy\" -Subjects \"Domain Admins\""
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Use Group Policy Preferences to map a network drive for the IT OU. Preferences are more flexible than old-style GP settings — they support item-level targeting."
-              command={`# GP Preferences drive mapping via PowerShell
-# (Typically done via GPMC GUI, but scriptable via XML injection)
-
-# Create the drive map XML
-$xml = @'
-<DriveMapSettings clsid="{8FDDCC1A-0C3C-43cd-A6B4-71A6DF20DA8C}">
-  <Drive clsid="{935D1B74-9CB8-4e3c-9914-7DD559B7A417}"
-    name="H:" status="H:" image="2" changed="2025-01-15 09:00:00"
-    uid="{12345678-1234-1234-1234-123456789012}">
-    <Properties action="U" thisDrive="NOCHANGE" allDrives="NOCHANGE"
-      userName="" path="\\\\DC01\\IT-Share" label="IT Share"
-      persistent="1" useLetter="1" letter="H"/>
-  </Drive>
-</DriveMapSettings>
-'@
-
-# Force GP refresh on DC01 to test locally
-gpupdate /force
-
-# Check applied policies
-gpresult /r`}
-              output={`COMPUTER SETTINGS
-  Applied Group Policy Objects
-    Default Domain Controllers Policy
-    Default Domain Policy
-
-USER SETTINGS (ASMITH - LAB\\asmith)
-  Applied Group Policy Objects
-    IT-Security-Baseline
-    Default Domain Policy`}
+              command={[
+    "# GP Preferences drive mapping via PowerShell",
+    "# (Typically done via GPMC GUI, but scriptable via XML injection)",
+    "",
+    "# Create the drive map XML",
+    "$xml = @'",
+    "<DriveMapSettings clsid=\"{8FDDCC1A-0C3C-43cd-A6B4-71A6DF20DA8C}\">",
+    "  <Drive clsid=\"{935D1B74-9CB8-4e3c-9914-7DD559B7A417}\"",
+    "    name=\"H:\" status=\"H:\" image=\"2\" changed=\"2025-01-15 09:00:00\"",
+    "    uid=\"{12345678-1234-1234-1234-123456789012}\">",
+    "    <Properties action=\"U\" thisDrive=\"NOCHANGE\" allDrives=\"NOCHANGE\"",
+    "      userName=\"\" path=\"\\\\\\\\DC01\\\\IT-Share\" label=\"IT Share\"",
+    "      persistent=\"1\" useLetter=\"1\" letter=\"H\"/>",
+    "  </Drive>",
+    "</DriveMapSettings>",
+    "'@",
+    "",
+    "# Force GP refresh on DC01 to test locally",
+    "gpupdate /force",
+    "",
+    "# Check applied policies",
+    "gpresult /r"
+  ].join('\n')}
+              output={[
+    "COMPUTER SETTINGS",
+    "  Applied Group Policy Objects",
+    "    Default Domain Controllers Policy",
+    "    Default Domain Policy",
+    "",
+    "USER SETTINGS (ASMITH - LAB\\\\asmith)",
+    "  Applied Group Policy Objects",
+    "    IT-Security-Baseline",
+    "    Default Domain Policy"
+  ].join('\n')}
             />
 
             <LabStep number={5}
               description="Generate a full GPO diagnostic report for user asmith."
-              command={`# HTML report — open in browser
-gpresult /user LAB\\asmith /h "C:\\GPReport-asmith.html" /f
-Start-Process "C:\\GPReport-asmith.html"
-
-# Quick text summary
-gpresult /user LAB\\asmith /r /scope user
-
-# Remote refresh on a specific computer
-Invoke-GPUpdate -Computer "WS01" -Force -RandomDelayInMinutes 0`}
+              command={[
+    "# HTML report — open in browser",
+    "gpresult /user LAB\\\\asmith /h \"C:\\\\GPReport-asmith.html\" /f",
+    "Start-Process \"C:\\\\GPReport-asmith.html\"",
+    "",
+    "# Quick text summary",
+    "gpresult /user LAB\\\\asmith /r /scope user",
+    "",
+    "# Remote refresh on a specific computer",
+    "Invoke-GPUpdate -Computer \"WS01\" -Force -RandomDelayInMinutes 0"
+  ].join('\n')}
             />
 
             <LabStep number={6}
               description="Back up all GPOs — critical before any major changes."
-              command={`# Back up all GPOs to a timestamped folder
-$backupPath = "C:\\GPO-Backups\\$(Get-Date -Format 'yyyy-MM-dd')"
-New-Item -Path $backupPath -ItemType Directory -Force
-
-Backup-GPO -All -Path $backupPath
-
-# List the backups
-Get-GPOBackup -All -Path $backupPath | Select-Object DisplayName, BackupId, Timestamp`}
-              output={`DisplayName                BackupId                             Timestamp
------------                --------                             ---------
-Default Domain Policy      {ABC12345-...}                       01/15/2025 09:30:00
-IT-Security-Baseline       {DEF67890-...}                       01/15/2025 09:30:01`}
+              command={[
+    "# Back up all GPOs to a timestamped folder",
+    "$backupPath = \"C:\\\\GPO-Backups\\\\$(Get-Date -Format 'yyyy-MM-dd')\"",
+    "New-Item -Path $backupPath -ItemType Directory -Force",
+    "",
+    "Backup-GPO -All -Path $backupPath",
+    "",
+    "# List the backups",
+    "Get-GPOBackup -All -Path $backupPath | Select-Object DisplayName, BackupId, Timestamp"
+  ].join('\n')}
+              output={[
+    "DisplayName                BackupId                             Timestamp",
+    "-----------                --------                             ---------",
+    "Default Domain Policy      {ABC12345-...}                       01/15/2025 09:30:00",
+    "IT-Security-Baseline       {DEF67890-...}                       01/15/2025 09:30:01"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -418,36 +420,37 @@ IT-Security-Baseline       {DEF67890-...}                       01/15/2025 09:30
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="Group Policy PowerShell Commands" language="powershell" code={`# ── GPO Lifecycle ──────────────────────────────────────────
-Get-GPO -All
-New-GPO -Name "My-Policy"
-Remove-GPO -Name "My-Policy"
-Copy-GPO -SourceName "Template" -TargetName "New-Policy"
-Rename-GPO -Name "Old-Name" -TargetName "New-Name"
-
-# ── Linking ─────────────────────────────────────────────────
-New-GPLink -Name "My-Policy" -Target "OU=IT,DC=lab,DC=local"
-Set-GPLink -Name "My-Policy" -Target "OU=IT,DC=lab,DC=local" -Enforced Yes
-Remove-GPLink -Name "My-Policy" -Target "OU=IT,DC=lab,DC=local"
-Get-GPInheritance -Target "OU=IT,DC=lab,DC=local"
-
-# ── Reporting ───────────────────────────────────────────────
-gpresult /r                              # Current user/computer summary
-gpresult /h report.html /f              # Full HTML report
-gpresult /scope user /r                  # User settings only
-Get-GPResultantSetOfPolicy -ReportType Html -Path report.html
-
-# ── Refresh & Apply ─────────────────────────────────────────
-gpupdate /force                          # Force refresh locally
-gpupdate /force /target:user             # User policy only
-gpupdate /force /target:computer         # Computer policy only
-Invoke-GPUpdate -Computer "WS01" -Force  # Remote refresh
-
-# ── Backup & Restore ────────────────────────────────────────
-Backup-GPO -All -Path C:\\GPO-Backups
-Restore-GPO -Name "My-Policy" -Path C:\\GPO-Backups
-Import-GPO -BackupGpoName "My-Policy" -Path C:\\GPO-Backups \`
-  -TargetName "My-Policy" -CreateIfNeeded`} />
+        <CodeBlock title="Group Policy PowerShell Commands" language="powershell" code={[
+    "# ── GPO Lifecycle ──────────────────────────────────────────",
+    "Get-GPO -All",
+    "New-GPO -Name \"My-Policy\"",
+    "Remove-GPO -Name \"My-Policy\"",
+    "Copy-GPO -SourceName \"Template\" -TargetName \"New-Policy\"",
+    "Rename-GPO -Name \"Old-Name\" -TargetName \"New-Name\"",
+    "",
+    "# ── Linking ─────────────────────────────────────────────────",
+    "New-GPLink -Name \"My-Policy\" -Target \"OU=IT,DC=lab,DC=local\"",
+    "Set-GPLink -Name \"My-Policy\" -Target \"OU=IT,DC=lab,DC=local\" -Enforced Yes",
+    "Remove-GPLink -Name \"My-Policy\" -Target \"OU=IT,DC=lab,DC=local\"",
+    "Get-GPInheritance -Target \"OU=IT,DC=lab,DC=local\"",
+    "",
+    "# ── Reporting ───────────────────────────────────────────────",
+    "gpresult /r                              # Current user/computer summary",
+    "gpresult /h report.html /f              # Full HTML report",
+    "gpresult /scope user /r                  # User settings only",
+    "Get-GPResultantSetOfPolicy -ReportType Html -Path report.html",
+    "",
+    "# ── Refresh & Apply ─────────────────────────────────────────",
+    "gpupdate /force                          # Force refresh locally",
+    "gpupdate /force /target:user             # User policy only",
+    "gpupdate /force /target:computer         # Computer policy only",
+    "Invoke-GPUpdate -Computer \"WS01\" -Force  # Remote refresh",
+    "",
+    "# ── Backup & Restore ────────────────────────────────────────",
+    "Backup-GPO -All -Path C:\\\\GPO-Backups",
+    "Restore-GPO -Name \"My-Policy\" -Path C:\\\\GPO-Backups",
+    "Import-GPO -BackupGpoName \"My-Policy\" -Path C:\\\\GPO-Backups -TargetName \"My-Policy\" -CreateIfNeeded"
+  ].join('\n')} />
       </section>
 
       {/* ── QUIZ ── */}

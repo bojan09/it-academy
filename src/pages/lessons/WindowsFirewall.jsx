@@ -259,125 +259,121 @@ export default function WindowsFirewall() {
 
             <LabStep number={1}
               description="Audit the current firewall state and review active profiles."
-              command={`# Check all profiles status
-Get-NetFirewallProfile | Select-Object Name, Enabled, DefaultInboundAction, DefaultOutboundAction
-
-# See all enabled inbound rules
-Get-NetFirewallRule -Direction Inbound -Enabled True |
-  Select-Object DisplayName, Profile, Action |
-  Sort-Object DisplayName |
-  Format-Table -AutoSize
-
-# Count rules by profile
-Get-NetFirewallRule | Group-Object Profile | Select-Object Name, Count`}
-              output={`Name     Enabled  DefaultInboundAction  DefaultOutboundAction
-----     -------  --------------------  ---------------------
-Domain   True     Block                 Allow
-Private  True     Block                 Allow
-Public   True     Block                 Allow
-
-Name    Count
-----    -----
-Any     145
-Domain  32
-Public  18`}
+              command={[
+    "# Check all profiles status",
+    "Get-NetFirewallProfile | Select-Object Name, Enabled, DefaultInboundAction, DefaultOutboundAction",
+    "",
+    "# See all enabled inbound rules",
+    "Get-NetFirewallRule -Direction Inbound -Enabled True |",
+    "  Select-Object DisplayName, Profile, Action |",
+    "  Sort-Object DisplayName |",
+    "  Format-Table -AutoSize",
+    "",
+    "# Count rules by profile",
+    "Get-NetFirewallRule | Group-Object Profile | Select-Object Name, Count"
+  ].join('\n')}
+              output={[
+    "Name     Enabled  DefaultInboundAction  DefaultOutboundAction",
+    "----     -------  --------------------  ---------------------",
+    "Domain   True     Block                 Allow",
+    "Private  True     Block                 Allow",
+    "Public   True     Block                 Allow",
+    "",
+    "Name    Count",
+    "----    -----",
+    "Any     145",
+    "Domain  32",
+    "Public  18"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Create a new inbound rule to allow a custom application port — only on the Domain profile."
-              command={`# Allow TCP 8443 for a web management interface (Domain profile only)
-New-NetFirewallRule \`
-  -DisplayName "WebMgmt-HTTPS-8443" \`
-  -Description "Web management interface — internal only" \`
-  -Direction Inbound \`
-  -Protocol TCP \`
-  -LocalPort 8443 \`
-  -Action Allow \`
-  -Profile Domain \`
-  -Enabled True \`
-  -RemoteAddress "192.168.100.0/24"
-
-# Verify the rule was created
-Get-NetFirewallRule -DisplayName "WebMgmt-HTTPS-8443" |
-  Get-NetFirewallPortFilter`}
-              output={`Protocol  LocalPort  RemotePort
---------  ---------  ----------
-TCP       8443       Any`}
+              command={[
+    "# Allow TCP 8443 for a web management interface (Domain profile only)",
+    "New-NetFirewallRule -DisplayName \"WebMgmt-HTTPS-8443\" -Description \"Web management interface — internal only\" -Direction Inbound -Protocol TCP -LocalPort 8443 -Action Allow -Profile Domain -Enabled True -RemoteAddress \"192.168.100.0/24\"",
+    "",
+    "# Verify the rule was created",
+    "Get-NetFirewallRule -DisplayName \"WebMgmt-HTTPS-8443\" |",
+    "  Get-NetFirewallPortFilter"
+  ].join('\n')}
+              output={[
+    "Protocol  LocalPort  RemotePort",
+    "--------  ---------  ----------",
+    "TCP       8443       Any"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Block a specific remote IP address — useful for blocking known malicious IPs."
-              command={`# Block all inbound traffic from a specific IP
-New-NetFirewallRule \`
-  -DisplayName "BLOCK-SuspiciousIP-10.0.0.99" \`
-  -Direction Inbound \`
-  -RemoteAddress "10.0.0.99" \`
-  -Action Block \`
-  -Profile Any \`
-  -Enabled True
-
-# Block outbound to a suspicious domain's IP as well
-New-NetFirewallRule \`
-  -DisplayName "BLOCK-OUT-SuspiciousIP-10.0.0.99" \`
-  -Direction Outbound \`
-  -RemoteAddress "10.0.0.99" \`
-  -Action Block \`
-  -Profile Any \`
-  -Enabled True`}
+              command={[
+    "# Block all inbound traffic from a specific IP",
+    "New-NetFirewallRule -DisplayName \"BLOCK-SuspiciousIP-10.0.0.99\" -Direction Inbound -RemoteAddress \"10.0.0.99\" -Action Block -Profile Any -Enabled True",
+    "",
+    "# Block outbound to a suspicious domain's IP as well",
+    "New-NetFirewallRule -DisplayName \"BLOCK-OUT-SuspiciousIP-10.0.0.99\" -Direction Outbound -RemoteAddress \"10.0.0.99\" -Action Block -Profile Any -Enabled True"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Enable and test Windows Firewall logging to capture dropped packets."
-              command={`# Enable logging for dropped packets on the Domain profile
-Set-NetFirewallProfile -Profile Domain \`
-  -LogBlocked True \`
-  -LogFileName "C:\Windows\System32\LogFiles\Firewall\pfirewall.log" \`
-  -LogMaxSizeKilobytes 4096
-
-# Trigger a blocked connection (test from Ubuntu VM)
-# ssh -p 2222 user@192.168.100.10  ← this will be blocked (no rule for 2222)
-
-# Read the firewall log
-Get-Content "C:\Windows\System32\LogFiles\Firewall\pfirewall.log" |
-  Select-Object -Last 20`}
-              output={`#Version: 1.5
-#Software: Microsoft Windows Firewall
-#Fields: date time action protocol src-ip dst-ip src-port dst-port
-2025-01-15 10:23:45 DROP TCP 192.168.100.20 192.168.100.10 54321 2222`}
+              command={[
+    "# Enable logging for dropped packets on the Domain profile",
+    "Set-NetFirewallProfile -Profile Domain -LogBlocked True -LogFileName \"C:\\Windows\\System32\\LogFiles\\Firewall\\pfirewall.log\" -LogMaxSizeKilobytes 4096",
+    "",
+    "# Trigger a blocked connection (test from Ubuntu VM)",
+    "# ssh -p 2222 user@192.168.100.10  ← this will be blocked (no rule for 2222)",
+    "",
+    "# Read the firewall log",
+    "Get-Content \"C:\\Windows\\System32\\LogFiles\\Firewall\\pfirewall.log\" |",
+    "  Select-Object -Last 20"
+  ].join('\n')}
+              output={[
+    "#Version: 1.5",
+    "#Software: Microsoft Windows Firewall",
+    "#Fields: date time action protocol src-ip dst-ip src-port dst-port",
+    "2025-01-15 10:23:45 DROP TCP 192.168.100.20 192.168.100.10 54321 2222"
+  ].join('\n')}
             />
 
             <LabStep number={5}
               description="Export all custom firewall rules for documentation and backup."
-              command={`# Export all firewall rules to CSV for documentation
-Get-NetFirewallRule |
-  Where-Object { $_.Owner -ne $null -or $_.DisplayGroup -eq "" } |
-  Select-Object DisplayName, Direction, Action, Enabled, Profile, Description |
-  Export-Csv "C:\Firewall-Rules-Backup.csv" -NoTypeInformation
-
-# Export full policy for restore (wfw format)
-netsh advfirewall export "C:\Firewall-Policy-Backup.wfw"
-
-# Restore from backup:
-# netsh advfirewall import "C:\Firewall-Policy-Backup.wfw"`}
-              output={`✔ C:\Firewall-Rules-Backup.csv written (47 rows)
-✔ C:\Firewall-Policy-Backup.wfw exported successfully`}
+              command={[
+    "# Export all firewall rules to CSV for documentation",
+    "Get-NetFirewallRule |",
+    "  Where-Object { $_.Owner -ne $null -or $_.DisplayGroup -eq \"\" } |",
+    "  Select-Object DisplayName, Direction, Action, Enabled, Profile, Description |",
+    "  Export-Csv \"C:\\Firewall-Rules-Backup.csv\" -NoTypeInformation",
+    "",
+    "# Export full policy for restore (wfw format)",
+    "netsh advfirewall export \"C:\\Firewall-Policy-Backup.wfw\"",
+    "",
+    "# Restore from backup:",
+    "# netsh advfirewall import \"C:\\Firewall-Policy-Backup.wfw\""
+  ].join('\n')}
+              output={[
+    "✔ C:\\Firewall-Rules-Backup.csv written (47 rows)",
+    "✔ C:\\Firewall-Policy-Backup.wfw exported successfully"
+  ].join('\n')}
             />
 
             <LabStep number={6}
               description="Deploy a firewall rule via Group Policy to all domain computers simultaneously."
-              command={`# Create a GPO for firewall rules
-$gpo = New-GPO -Name "Server-Firewall-Baseline"
-New-GPLink -Name "Server-Firewall-Baseline" -Target "DC=lab,DC=local"
-
-# Use Set-GPRegistryValue to configure firewall via GP
-# In production, use GPMC GUI: Computer Configuration →
-# Windows Settings → Security Settings → Windows Firewall with Advanced Security
-
-# Verify firewall rules are applied via GP
-gpresult /r | Select-String "Firewall"
-
-# Force refresh on all domain computers
-Invoke-GPUpdate -Computer "WS01" -Force`}
+              command={[
+    "# Create a GPO for firewall rules",
+    "$gpo = New-GPO -Name \"Server-Firewall-Baseline\"",
+    "New-GPLink -Name \"Server-Firewall-Baseline\" -Target \"DC=lab,DC=local\"",
+    "",
+    "# Use Set-GPRegistryValue to configure firewall via GP",
+    "# In production, use GPMC GUI: Computer Configuration →",
+    "# Windows Settings → Security Settings → Windows Firewall with Advanced Security",
+    "",
+    "# Verify firewall rules are applied via GP",
+    "gpresult /r | Select-String \"Firewall\"",
+    "",
+    "# Force refresh on all domain computers",
+    "Invoke-GPUpdate -Computer \"WS01\" -Force"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -414,34 +410,33 @@ Invoke-GPUpdate -Computer "WS01" -Force`}
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="Windows Firewall PowerShell Commands" language="powershell" code={`# ── Profile Management ─────────────────────────────────────
-Get-NetFirewallProfile
-Set-NetFirewallProfile -Profile Domain -Enabled True
-Set-NetFirewallProfile -Profile Domain -DefaultInboundAction Block
-
-# ── Rule Management ─────────────────────────────────────────
-Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' }
-Get-NetFirewallRule -DisplayName "Remote Desktop*"
-New-NetFirewallRule -DisplayName "Allow-HTTP" -Direction Inbound \`
-  -Protocol TCP -LocalPort 80 -Action Allow -Profile Domain
-Set-NetFirewallRule -DisplayName "Allow-HTTP" -Enabled False
-Remove-NetFirewallRule -DisplayName "Allow-HTTP"
-Disable-NetFirewallRule -DisplayName "Allow-HTTP"
-Enable-NetFirewallRule -DisplayName "Allow-HTTP"
-
-# ── Scope (restrict by IP) ───────────────────────────────────
-New-NetFirewallRule -DisplayName "Allow-RDP-JumpHost" \`
-  -Direction Inbound -Protocol TCP -LocalPort 3389 \`
-  -RemoteAddress "192.168.100.50" -Action Allow -Profile Domain
-
-# ── Logging ─────────────────────────────────────────────────
-Set-NetFirewallProfile -Profile Domain -LogBlocked True
-Set-NetFirewallProfile -Profile Domain -LogAllowed True
-
-# ── Backup / Restore ─────────────────────────────────────────
-netsh advfirewall export "C:\fw-backup.wfw"
-netsh advfirewall import "C:\fw-backup.wfw"
-netsh advfirewall reset   # Factory reset (dangerous!)`} />
+        <CodeBlock title="Windows Firewall PowerShell Commands" language="powershell" code={[
+    "# ── Profile Management ─────────────────────────────────────",
+    "Get-NetFirewallProfile",
+    "Set-NetFirewallProfile -Profile Domain -Enabled True",
+    "Set-NetFirewallProfile -Profile Domain -DefaultInboundAction Block",
+    "",
+    "# ── Rule Management ─────────────────────────────────────────",
+    "Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' }",
+    "Get-NetFirewallRule -DisplayName \"Remote Desktop*\"",
+    "New-NetFirewallRule -DisplayName \"Allow-HTTP\" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -Profile Domain",
+    "Set-NetFirewallRule -DisplayName \"Allow-HTTP\" -Enabled False",
+    "Remove-NetFirewallRule -DisplayName \"Allow-HTTP\"",
+    "Disable-NetFirewallRule -DisplayName \"Allow-HTTP\"",
+    "Enable-NetFirewallRule -DisplayName \"Allow-HTTP\"",
+    "",
+    "# ── Scope (restrict by IP) ───────────────────────────────────",
+    "New-NetFirewallRule -DisplayName \"Allow-RDP-JumpHost\" -Direction Inbound -Protocol TCP -LocalPort 3389 -RemoteAddress \"192.168.100.50\" -Action Allow -Profile Domain",
+    "",
+    "# ── Logging ─────────────────────────────────────────────────",
+    "Set-NetFirewallProfile -Profile Domain -LogBlocked True",
+    "Set-NetFirewallProfile -Profile Domain -LogAllowed True",
+    "",
+    "# ── Backup / Restore ─────────────────────────────────────────",
+    "netsh advfirewall export \"C:\\fw-backup.wfw\"",
+    "netsh advfirewall import \"C:\\fw-backup.wfw\"",
+    "netsh advfirewall reset   # Factory reset (dangerous!)"
+  ].join('\n')} />
       </section>
 
       <section>

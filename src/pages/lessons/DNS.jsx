@@ -263,98 +263,108 @@ export default function DNS() {
 
             <LabStep number={1}
               description="Verify the AD-integrated forward lookup zone created during AD DS promotion."
-              command={`# View all DNS zones
-Get-DnsServerZone
-
-# View all A records in lab.local
-Get-DnsServerResourceRecord -ZoneName "lab.local" -RRType "A"
-
-# Verify SRV records AD created (critical for AD health)
-Resolve-DnsName -Name "_ldap._tcp.dc._msdcs.lab.local" -Type SRV`}
-              output={`ZoneName   ZoneType  IsAutoCreated  IsDsIntegrated
---------   --------  -------------  ---------------
-lab.local  Primary   False          True            ← AD-integrated ✔
-
-HostName  RecordType  TimeToLive  RecordData
---------  ----------  ----------  ----------
-dc01      A           01:00:00    192.168.100.10
-_msdcs    NS          01:00:00    dc01.lab.local`}
+              command={[
+    "# View all DNS zones",
+    "Get-DnsServerZone",
+    "",
+    "# View all A records in lab.local",
+    "Get-DnsServerResourceRecord -ZoneName \"lab.local\" -RRType \"A\"",
+    "",
+    "# Verify SRV records AD created (critical for AD health)",
+    "Resolve-DnsName -Name \"_ldap._tcp.dc._msdcs.lab.local\" -Type SRV"
+  ].join('\n')}
+              output={[
+    "ZoneName   ZoneType  IsAutoCreated  IsDsIntegrated",
+    "--------   --------  -------------  ---------------",
+    "lab.local  Primary   False          True            ← AD-integrated ✔",
+    "",
+    "HostName  RecordType  TimeToLive  RecordData",
+    "--------  ----------  ----------  ----------",
+    "dc01      A           01:00:00    192.168.100.10",
+    "_msdcs    NS          01:00:00    dc01.lab.local"
+  ].join('\n')}
             />
 
             <LabStep number={2}
               description="Create a reverse lookup zone for the 192.168.100.0/24 network. This enables PTR records and reverse lookups."
-              command={`Add-DnsServerPrimaryZone \`
-  -NetworkID "192.168.100.0/24" \`
-  -ReplicationScope "Forest" \`
-  -DynamicUpdate "Secure"
-
-# Verify zone created
-Get-DnsServerZone | Where-Object { $_.IsReverseLookupZone }`}
-              output={`ZoneName                     ZoneType IsReverseLookupZone IsDsIntegrated
---------                     -------- ------------------- ---------------
-100.168.192.in-addr.arpa     Primary  True                True`}
+              command={[
+    "Add-DnsServerPrimaryZone -NetworkID \"192.168.100.0/24\" -ReplicationScope \"Forest\" -DynamicUpdate \"Secure\"",
+    "",
+    "# Verify zone created",
+    "Get-DnsServerZone | Where-Object { $_.IsReverseLookupZone }"
+  ].join('\n')}
+              output={[
+    "ZoneName                     ZoneType IsReverseLookupZone IsDsIntegrated",
+    "--------                     -------- ------------------- ---------------",
+    "100.168.192.in-addr.arpa     Primary  True                True"
+  ].join('\n')}
             />
 
             <LabStep number={3}
               description="Create a PTR record for DC01 and add an A record for a new server."
-              command={`# PTR record for DC01
-Add-DnsServerResourceRecordPtr \`
-  -ZoneName "100.168.192.in-addr.arpa" \`
-  -Name "10" \`
-  -PtrDomainName "dc01.lab.local"
-
-# Add A record for Ubuntu server
-Add-DnsServerResourceRecordA \`
-  -ZoneName "lab.local" \`
-  -Name "srv01" \`
-  -IPv4Address "192.168.100.20" \`
-  -TimeToLive "01:00:00"
-
-# Test reverse lookup
-Resolve-DnsName -Name "192.168.100.10" -Type PTR`}
-              output={`Name                 Type  TTL  Section  NameHost
-----                 ----  ---  -------  --------
-10.100.168.192...    PTR   600  Answer   dc01.lab.local`}
+              command={[
+    "# PTR record for DC01",
+    "Add-DnsServerResourceRecordPtr -ZoneName \"100.168.192.in-addr.arpa\" -Name \"10\" -PtrDomainName \"dc01.lab.local\"",
+    "",
+    "# Add A record for Ubuntu server",
+    "Add-DnsServerResourceRecordA -ZoneName \"lab.local\" -Name \"srv01\" -IPv4Address \"192.168.100.20\" -TimeToLive \"01:00:00\"",
+    "",
+    "# Test reverse lookup",
+    "Resolve-DnsName -Name \"192.168.100.10\" -Type PTR"
+  ].join('\n')}
+              output={[
+    "Name                 Type  TTL  Section  NameHost",
+    "----                 ----  ---  -------  --------",
+    "10.100.168.192...    PTR   600  Answer   dc01.lab.local"
+  ].join('\n')}
             />
 
             <LabStep number={4}
               description="Configure a forwarder so DC01 can resolve internet names. Point to Cloudflare DNS."
-              command={`# Add forwarder — Cloudflare DNS (1.1.1.1) + Google (8.8.8.8)
-Add-DnsServerForwarder -IPAddress 1.1.1.1, 8.8.8.8
-
-# Verify forwarders
-Get-DnsServerForwarder
-
-# Test internet resolution through the forwarder
-Resolve-DnsName -Name "microsoft.com" -Server 192.168.100.10`}
-              output={`IPAddress  ReorderedIPAddresses  UseRootHint
----------  --------------------  -----------
-1.1.1.1    {1.1.1.1, 8.8.8.8}   False
-
-Name        Type  TTL    IPAddress
-----------  ----  -----  ---------
-microsoft.com  A  1800   20.236.44.162`}
+              command={[
+    "# Add forwarder — Cloudflare DNS (1.1.1.1) + Google (8.8.8.8)",
+    "Add-DnsServerForwarder -IPAddress 1.1.1.1, 8.8.8.8",
+    "",
+    "# Verify forwarders",
+    "Get-DnsServerForwarder",
+    "",
+    "# Test internet resolution through the forwarder",
+    "Resolve-DnsName -Name \"microsoft.com\" -Server 192.168.100.10"
+  ].join('\n')}
+              output={[
+    "IPAddress  ReorderedIPAddresses  UseRootHint",
+    "---------  --------------------  -----------",
+    "1.1.1.1    {1.1.1.1, 8.8.8.8}   False",
+    "",
+    "Name        Type  TTL    IPAddress",
+    "----------  ----  -----  ---------",
+    "microsoft.com  A  1800   20.236.44.162"
+  ].join('\n')}
             />
 
             <LabStep number={5}
               description="Run DCDiag DNS tests to verify AD-DNS health — the gold standard check."
-              command={`# Full DNS diagnostic
-dcdiag /test:dns /v
-
-# Quick DNS check
-dcdiag /test:dns /s:DC01
-
-# Check DNS event log for errors
-Get-EventLog -LogName "DNS Server" -EntryType Error -Newest 10`}
-              output={`Starting test: DNS
-   DC: dc01.lab.local
-   TEST: Basic (Targeted)
-      Query for 'dc01.lab.local' returned correct IP: 192.168.100.10 ✔
-   TEST: Forwarders/Root hints
-      Forwarder: 1.1.1.1 [Responding]  ✔
-   TEST: Dynamic update
-      Test record dcdiag-test  registered & deleted in zone lab.local ✔
-......................... DC01 passed test DNS`}
+              command={[
+    "# Full DNS diagnostic",
+    "dcdiag /test:dns /v",
+    "",
+    "# Quick DNS check",
+    "dcdiag /test:dns /s:DC01",
+    "",
+    "# Check DNS event log for errors",
+    "Get-EventLog -LogName \"DNS Server\" -EntryType Error -Newest 10"
+  ].join('\n')}
+              output={[
+    "Starting test: DNS",
+    "   DC: dc01.lab.local",
+    "   TEST: Basic (Targeted)",
+    "      Query for 'dc01.lab.local' returned correct IP: 192.168.100.10 ✔",
+    "   TEST: Forwarders/Root hints",
+    "      Forwarder: 1.1.1.1 [Responding]  ✔",
+    "   TEST: Dynamic update",
+    "      Test record dcdiag-test  registered & deleted in zone lab.local ✔",
+    "......................... DC01 passed test DNS"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -392,32 +402,34 @@ Get-EventLog -LogName "DNS Server" -EntryType Error -Newest 10`}
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="DNS PowerShell & nslookup Commands" language="powershell" code={`# ── Zone Management ────────────────────────────────────────
-Get-DnsServerZone
-Add-DnsServerPrimaryZone -Name "test.lab.local" -ZoneFile "test.lab.local.dns"
-Remove-DnsServerZone -Name "test.lab.local" -Force
-
-# ── Record Management ───────────────────────────────────────
-Get-DnsServerResourceRecord -ZoneName "lab.local"
-Get-DnsServerResourceRecord -ZoneName "lab.local" -RRType "A"
-Add-DnsServerResourceRecordA -ZoneName "lab.local" -Name "www" -IPv4Address "192.168.100.50"
-Add-DnsServerResourceRecordCName -ZoneName "lab.local" -Name "alias" -HostNameAlias "srv01.lab.local"
-Remove-DnsServerResourceRecord -ZoneName "lab.local" -RRType "A" -Name "www"
-
-# ── Forwarders ──────────────────────────────────────────────
-Get-DnsServerForwarder
-Add-DnsServerForwarder -IPAddress 1.1.1.1
-Remove-DnsServerForwarder -IPAddress 1.1.1.1
-
-# ── Diagnostics ─────────────────────────────────────────────
-dcdiag /test:dns /v
-nslookup server01.lab.local          # Forward lookup
-nslookup 192.168.100.10              # Reverse lookup
-nslookup -type=SRV _ldap._tcp.dc._msdcs.lab.local
-Resolve-DnsName -Name "lab.local" -Type SOA
-ipconfig /displaydns                 # View client cache
-ipconfig /flushdns                   # Clear client cache
-Clear-DnsClientCache                 # PowerShell flush`} />
+        <CodeBlock title="DNS PowerShell & nslookup Commands" language="powershell" code={[
+    "# ── Zone Management ────────────────────────────────────────",
+    "Get-DnsServerZone",
+    "Add-DnsServerPrimaryZone -Name \"test.lab.local\" -ZoneFile \"test.lab.local.dns\"",
+    "Remove-DnsServerZone -Name \"test.lab.local\" -Force",
+    "",
+    "# ── Record Management ───────────────────────────────────────",
+    "Get-DnsServerResourceRecord -ZoneName \"lab.local\"",
+    "Get-DnsServerResourceRecord -ZoneName \"lab.local\" -RRType \"A\"",
+    "Add-DnsServerResourceRecordA -ZoneName \"lab.local\" -Name \"www\" -IPv4Address \"192.168.100.50\"",
+    "Add-DnsServerResourceRecordCName -ZoneName \"lab.local\" -Name \"alias\" -HostNameAlias \"srv01.lab.local\"",
+    "Remove-DnsServerResourceRecord -ZoneName \"lab.local\" -RRType \"A\" -Name \"www\"",
+    "",
+    "# ── Forwarders ──────────────────────────────────────────────",
+    "Get-DnsServerForwarder",
+    "Add-DnsServerForwarder -IPAddress 1.1.1.1",
+    "Remove-DnsServerForwarder -IPAddress 1.1.1.1",
+    "",
+    "# ── Diagnostics ─────────────────────────────────────────────",
+    "dcdiag /test:dns /v",
+    "nslookup server01.lab.local          # Forward lookup",
+    "nslookup 192.168.100.10              # Reverse lookup",
+    "nslookup -type=SRV _ldap._tcp.dc._msdcs.lab.local",
+    "Resolve-DnsName -Name \"lab.local\" -Type SOA",
+    "ipconfig /displaydns                 # View client cache",
+    "ipconfig /flushdns                   # Clear client cache",
+    "Clear-DnsClientCache                 # PowerShell flush"
+  ].join('\n')} />
       </section>
 
       {/* ── QUIZ ── */}

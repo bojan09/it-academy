@@ -223,76 +223,77 @@ export default function DHCP() {
           </div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Install the DHCP Server role on DC01."
-              command={`Install-WindowsFeature DHCP -IncludeManagementTools`}
-              output={`Success Restart Needed Exit Code Feature Result
-------- -------------- --------- ---------------
-True    No             Success   {DHCP Server}`} />
+              command={"Install-WindowsFeature DHCP -IncludeManagementTools"}
+              output={[
+    "Success Restart Needed Exit Code Feature Result",
+    "------- -------------- --------- ---------------",
+    "True    No             Success   {DHCP Server}"
+  ].join('\n')} />
 
             <LabStep number={2} description="Authorise the DHCP server in Active Directory. Unauthorised DHCP servers are blocked by AD."
-              command={`# Authorise in Active Directory
-Add-DhcpServerInDC -DnsName "DC01.lab.local" -IPAddress 192.168.100.10
-
-# Notify the service of the post-install config
-Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 \`
-  -Name ConfigurationState -Value 2`}
+              command={[
+    "# Authorise in Active Directory",
+    "Add-DhcpServerInDC -DnsName \"DC01.lab.local\" -IPAddress 192.168.100.10",
+    "",
+    "# Notify the service of the post-install config",
+    "Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\ServerManager\\Roles\\12 -Name ConfigurationState -Value 2"
+  ].join('\n')}
             />
 
             <LabStep number={3} description="Create the scope for the lab network. Exclude the static IP range at the bottom."
-              command={`# Create the scope
-Add-DhcpServerv4Scope \`
-  -Name "Lab Network" \`
-  -StartRange 192.168.100.1 \`
-  -EndRange 192.168.100.254 \`
-  -SubnetMask 255.255.255.0 \`
-  -LeaseDuration "08:00:00" \`
-  -State Active
-
-# Exclude static IP range (servers, routers, printers)
-Add-DhcpServerv4ExclusionRange \`
-  -ScopeId 192.168.100.0 \`
-  -StartRange 192.168.100.1 \`
-  -EndRange 192.168.100.49`}
+              command={[
+    "# Create the scope",
+    "Add-DhcpServerv4Scope -Name \"Lab Network\" -StartRange 192.168.100.1 -EndRange 192.168.100.254 -SubnetMask 255.255.255.0 -LeaseDuration \"08:00:00\" -State Active",
+    "",
+    "# Exclude static IP range (servers, routers, printers)",
+    "Add-DhcpServerv4ExclusionRange -ScopeId 192.168.100.0 -StartRange 192.168.100.1 -EndRange 192.168.100.49"
+  ].join('\n')}
             />
 
             <LabStep number={4} description="Set scope options — gateway, DNS server, and domain name."
-              command={`# Option 3: Default Gateway
-Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -OptionId 3 -Value 192.168.100.1
-
-# Option 6: DNS Servers (point to DC01)
-Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -OptionId 6 -Value 192.168.100.10
-
-# Option 15: DNS Domain Name
-Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -OptionId 15 -Value "lab.local"
-
-# Verify scope config
-Get-DhcpServerv4Scope`}
-              output={`ScopeId         SubnetMask      Name         State   StartRange       EndRange
--------         ----------      ----         -----   ----------       --------
-192.168.100.0   255.255.255.0   Lab Network  Active  192.168.100.50   192.168.100.254`}
+              command={[
+    "# Option 3: Default Gateway",
+    "Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -OptionId 3 -Value 192.168.100.1",
+    "",
+    "# Option 6: DNS Servers (point to DC01)",
+    "Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -OptionId 6 -Value 192.168.100.10",
+    "",
+    "# Option 15: DNS Domain Name",
+    "Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -OptionId 15 -Value \"lab.local\"",
+    "",
+    "# Verify scope config",
+    "Get-DhcpServerv4Scope"
+  ].join('\n')}
+              output={[
+    "ScopeId         SubnetMask      Name         State   StartRange       EndRange",
+    "-------         ----------      ----         -----   ----------       --------",
+    "192.168.100.0   255.255.255.0   Lab Network  Active  192.168.100.50   192.168.100.254"
+  ].join('\n')}
             />
 
             <LabStep number={5} description="Create a reservation for the Ubuntu Server VM (MAC address from the VM's network adapter settings)."
-              command={`# Replace the MAC address with your Ubuntu VM's actual MAC
-Add-DhcpServerv4Reservation \`
-  -ScopeId 192.168.100.0 \`
-  -IPAddress 192.168.100.20 \`
-  -ClientId "00-0C-29-AB-CD-EF" \`
-  -Name "srv01-ubuntu" \`
-  -Description "Ubuntu Server VM"
-
-# View all reservations
-Get-DhcpServerv4Reservation -ScopeId 192.168.100.0`}
+              command={[
+    "# Replace the MAC address with your Ubuntu VM's actual MAC",
+    "Add-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress 192.168.100.20 -ClientId \"00-0C-29-AB-CD-EF\" -Name \"srv01-ubuntu\" -Description \"Ubuntu Server VM\"",
+    "",
+    "# View all reservations",
+    "Get-DhcpServerv4Reservation -ScopeId 192.168.100.0"
+  ].join('\n')}
             />
 
             <LabStep number={6} description="Test from the Ubuntu VM — release and renew the DHCP lease."
-              command={`# On Ubuntu Server:
-sudo dhclient -r eth0    # Release current lease
-sudo dhclient eth0       # Request new lease
-ip addr show eth0        # Verify assigned IP`}
-              output={`2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP>
-    inet 192.168.100.20/24 brd 192.168.100.255 scope global eth0
-    valid_lft 28800sec preferred_lft 28800sec
-✔ Reservation working correctly`}
+              command={[
+    "# On Ubuntu Server:",
+    "sudo dhclient -r eth0    # Release current lease",
+    "sudo dhclient eth0       # Request new lease",
+    "ip addr show eth0        # Verify assigned IP"
+  ].join('\n')}
+              output={[
+    "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP>",
+    "    inet 192.168.100.20/24 brd 192.168.100.255 scope global eth0",
+    "    valid_lft 28800sec preferred_lft 28800sec",
+    "✔ Reservation working correctly"
+  ].join('\n')}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -330,21 +331,23 @@ ip addr show eth0        # Verify assigned IP`}
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="DHCP PowerShell Commands" language="powershell" code={`# Scope management
-Get-DhcpServerv4Scope
-Get-DhcpServerv4ScopeStatistics -ScopeId 192.168.100.0
-Get-DhcpServerv4Lease -ScopeId 192.168.100.0
-Remove-DhcpServerv4Lease -ScopeId 192.168.100.0 -ClientId "00-0C-29-AB-CD-EF"
-
-# Reservations
-Get-DhcpServerv4Reservation -ScopeId 192.168.100.0
-Add-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress x.x.x.x -ClientId "MAC"
-Remove-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress x.x.x.x
-
-# Server health
-Get-DhcpServerInDC
-Get-DhcpServerv4Statistics
-netsh dhcp server show all`} />
+        <CodeBlock title="DHCP PowerShell Commands" language="powershell" code={[
+    "# Scope management",
+    "Get-DhcpServerv4Scope",
+    "Get-DhcpServerv4ScopeStatistics -ScopeId 192.168.100.0",
+    "Get-DhcpServerv4Lease -ScopeId 192.168.100.0",
+    "Remove-DhcpServerv4Lease -ScopeId 192.168.100.0 -ClientId \"00-0C-29-AB-CD-EF\"",
+    "",
+    "# Reservations",
+    "Get-DhcpServerv4Reservation -ScopeId 192.168.100.0",
+    "Add-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress x.x.x.x -ClientId \"MAC\"",
+    "Remove-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress x.x.x.x",
+    "",
+    "# Server health",
+    "Get-DhcpServerInDC",
+    "Get-DhcpServerv4Statistics",
+    "netsh dhcp server show all"
+  ].join('\n')} />
       </section>
 
       {/* ── QUIZ ── */}
