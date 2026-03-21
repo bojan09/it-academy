@@ -1,570 +1,301 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import LessonCard from '../components/LessonCard.jsx'
-import ProgressBar from '../components/ProgressBar.jsx'
-import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useProgress, getLevelForXP } from '../hooks/useProgress.js'
 
-// ─── Learning path data ───────────────────────────────────────────────────────
-const LEARNING_PATHS = [
-  {
-    icon: '🖥️',
-    title: 'Windows Server 2025',
-    description: 'Active Directory, Group Policy, DHCP, DNS, Hyper-V and enterprise administration.',
-    href: '/windows-server-2025',
-    xp: 500,
-    lessonCount: 12,
-    readTime: '~6 hrs',
-    progress: 0,
-  },
-  {
-    icon: '🐧',
-    title: 'Linux Fundamentals',
-    description: 'Shell mastery, file system, permissions, networking, and server hardening.',
-    href: '/linux',
-    xp: 350,
-    lessonCount: 10,
-    readTime: '~5 hrs',
-    progress: 0,
-  },
-  {
-    icon: '🌐',
-    title: 'Network Fundamentals',
-    description: 'TCP/IP, subnetting, VLANs, routing protocols, and network troubleshooting.',
-    href: '/networking',
-    xp: 400,
-    lessonCount: 8,
-    readTime: '~4 hrs',
-    progress: 0,
-  },
-  {
-    icon: '🛡️',
-    title: 'Cybersecurity',
-    description: 'Threat modeling, hardening, firewalls, intrusion detection, and incident response.',
-    href: '/cybersecurity',
-    xp: 600,
-    lessonCount: 14,
-    readTime: '~7 hrs',
-    progress: 0,
-  },
-  {
-    icon: '🐍',
-    title: 'Python for SysAdmins',
-    description: 'Automation scripts, API integration, monitoring tools, and infrastructure as code.',
-    href: '/python',
-    xp: 450,
-    lessonCount: 9,
-    readTime: '~5 hrs',
-    progress: 0,
-  },
-  {
-    icon: '⚡',
-    title: 'PowerShell',
-    description: 'Scripting, automation, Active Directory management, and remote administration.',
-    href: '/powershell',
-    xp: 380,
-    lessonCount: 8,
-    readTime: '~4 hrs',
-    progress: 0,
-  },
-  {
-    icon: '🔧',
-    title: 'DevOps',
-    description: 'CI/CD pipelines, Docker, Kubernetes, Terraform, and infrastructure automation.',
-    href: '/devops',
-    xp: 700,
-    lessonCount: 16,
-    readTime: '~8 hrs',
-    progress: 0,
-  },
-  {
-    icon: '🔍',
-    title: 'Troubleshooting',
-    description: 'Systematic diagnostic methodology for Windows, Linux, network, and application issues.',
-    href: '/troubleshooting',
-    xp: 300,
-    lessonCount: 6,
-    readTime: '~3 hrs',
-    progress: 0,
-  },
+const COURSES = [
+  { id:'windows-server-2025', icon:'🖥️', title:'Windows Server 2025', description:'Active Directory, DHCP, DNS, Group Policy, Hyper-V, RDS, backup, and server hardening.', href:'/windows-server-2025', totalXP:1090, lessonCount:12, readTime:'~6 hrs', badge:'Most Popular', badgeColor:'bg-brand-500/20 text-brand-300 border-brand-500/30', accent:'from-brand-500 to-brand-700', category:'server', lessonIds:['ws2025-01','ws2025-02','ws2025-03','ws2025-04','ws2025-05','ws2025-06','ws2025-07','ws2025-08','ws2025-09','ws2025-10','ws2025-11','ws2025-12'] },
+  { id:'linux', icon:'🐧', title:'Linux Fundamentals', description:'Shell mastery, filesystem, permissions, systemd, networking, SSH, firewall, disk, and hardening.', href:'/linux', totalXP:760, lessonCount:10, readTime:'~5 hrs', badge:null, accent:'from-emerald-500 to-emerald-700', category:'os', lessonIds:['linux-01','linux-02','linux-03','linux-04','linux-05','linux-06','linux-07','linux-08','linux-09','linux-10'] },
+  { id:'cybersecurity', icon:'🛡️', title:'Cybersecurity', description:'CIA triad, hardening, firewalls, PKI/TLS, IDS/SIEM, vulnerability scanning, and AD security.', href:'/cybersecurity', totalXP:900, lessonCount:10, readTime:'~7 hrs', badge:'High Demand', badgeColor:'bg-accent-red/10 text-accent-red border-accent-red/20', accent:'from-accent-red to-red-700', category:'security', lessonIds:['sec-01','sec-02','sec-03','sec-04','sec-05','sec-06','sec-07','sec-08','sec-09','sec-10'] },
+  { id:'devops', icon:'🔧', title:'DevOps', description:'Docker, CI/CD, Terraform, Ansible, Kubernetes, and Prometheus & Grafana monitoring.', href:'/devops', totalXP:750, lessonCount:8, readTime:'~8 hrs', badge:'Career Booster', badgeColor:'bg-accent-purple/10 text-accent-purple border-accent-purple/20', accent:'from-accent-purple to-purple-700', category:'devops', lessonIds:['devops-01','devops-02','devops-03','devops-04','devops-05','devops-06','devops-07','devops-08'] },
+  { id:'networking', icon:'🌐', title:'Network Fundamentals', description:'OSI model, TCP/IP, subnetting, VLANs, routing, DNS, wireless, and troubleshooting.', href:'/networking', totalXP:620, lessonCount:8, readTime:'~4 hrs', badge:null, accent:'from-accent-cyan to-cyan-700', category:'networking', lessonIds:['net-01','net-02','net-03','net-04','net-05','net-06','net-07','net-08'] },
+  { id:'python', icon:'🐍', title:'Python for SysAdmins', description:'Automation, subprocess, network scripts, log parsing, monitoring, Ansible, and CLI tools.', href:'/python', totalXP:730, lessonCount:9, readTime:'~5 hrs', badge:null, accent:'from-yellow-500 to-yellow-700', category:'scripting', lessonIds:['py-01','py-02','py-03','py-04','py-05','py-06','py-07','py-08','py-09'] },
+  { id:'powershell', icon:'⚡', title:'PowerShell', description:'Pipeline, scripting, AD management, remoting, DSC, filesystem, registry, and reporting.', href:'/powershell', totalXP:630, lessonCount:8, readTime:'~4 hrs', badge:null, accent:'from-brand-400 to-indigo-700', category:'scripting', lessonIds:['ps-01','ps-02','ps-03','ps-04','ps-05','ps-06','ps-07','ps-08'] },
+  { id:'troubleshooting', icon:'🔬', title:'Troubleshooting', description:'Structured methodology for Windows, Linux, networking, Active Directory, and performance.', href:'/troubleshooting', totalXP:480, lessonCount:6, readTime:'~3 hrs', badge:null, accent:'from-accent-amber to-orange-700', category:'ops', lessonIds:['trouble-01','trouble-02','trouble-03','trouble-04','trouble-05','trouble-06'] },
+  { id:'windows', icon:'🪟', title:'Windows Desktop', description:'Architecture, user permissions, registry, processes, networking, and event viewer & logging.', href:'/windows', totalXP:380, lessonCount:6, readTime:'~3 hrs', badge:null, accent:'from-sky-400 to-sky-700', category:'os', lessonIds:['win-01','win-02','win-03','win-04','win-05','win-06'] },
+  { id:'unix', icon:'🖥️', title:'Unix Systems', description:'Unix philosophy, POSIX shell scripting, BSD systems, permissions, and process management.', href:'/unix', totalXP:330, lessonCount:5, readTime:'~3 hrs', badge:null, accent:'from-slate-400 to-slate-600', category:'os', lessonIds:['unix-01','unix-02','unix-03','unix-04','unix-05'] },
 ]
 
-const STATS = [
-  { value: '15+', label: 'Learning Paths' },
-  { value: '80+', label: 'Lessons' },
-  { value: '500+', label: 'Lab Exercises' },
-  { value: '100%', label: 'Free to Start' },
+const TOTAL_LESSONS = COURSES.reduce((s, c) => s + c.lessonCount, 0)
+const TOTAL_XP      = COURSES.reduce((s, c) => s + c.totalXP, 0)
+
+const CATEGORIES = [
+  { id:'all', label:'All Courses' },
+  { id:'server', label:'Server' },
+  { id:'os', label:'OS & Desktop' },
+  { id:'security', label:'Security' },
+  { id:'devops', label:'DevOps' },
+  { id:'networking', label:'Networking' },
+  { id:'scripting', label:'Scripting' },
+  { id:'ops', label:'Operations' },
 ]
 
 const FEATURES = [
-  {
-    icon: '🧪',
-    title: 'Real VMware Labs',
-    desc: 'Every lesson ships with hands-on VMware exercises. No theory without practice.',
-  },
-  {
-    icon: '🏆',
-    title: 'XP & Level System',
-    desc: 'Earn XP to level up from Junior SysAdmin to Infrastructure Pro. Six levels total.',
-  },
-  {
-    icon: '🔐',
-    title: 'Progressive Unlocking',
-    desc: 'Structured learning paths. Each lesson unlocks when the previous one is mastered.',
-  },
-  {
-    icon: '📊',
-    title: 'Progress Tracking',
-    desc: 'Track every lesson, quiz score, and completion rate. All stored locally — no account needed.',
-  },
-  {
-    icon: '📖',
-    title: 'Glossary Tooltips',
-    desc: 'Hover over any technical term to see a clear, contextual definition inline.',
-  },
-  {
-    icon: '📋',
-    title: 'Printable Cheat Sheets',
-    desc: 'Quick-reference command sheets for Linux, PowerShell, networking. Print-optimised.',
-  },
-  {
-    icon: '⌘',
-    title: 'Command Palette',
-    desc: 'Press Cmd+K to instantly jump to any lesson, topic, or glossary term across the platform.',
-  },
-  {
-    icon: '🔥',
-    title: 'Daily Streak',
-    desc: 'Build a learning habit. Track consecutive study days and earn streak badges.',
-  },
-  {
-    icon: '🔌',
-    title: 'Port & Protocol Lookup',
-    desc: 'Search any port number — get the service, risk level, security notes, and the check command.',
-  },
+  { icon:'🧪', title:'VMware Lab Exercises', desc:'Every lesson includes hands-on exercises on real virtual machines — not toy examples.' },
+  { icon:'🏆', title:'XP & Achievements', desc:'Earn XP and unlock badges as you complete lessons and pass quizzes.' },
+  { icon:'🔒', title:'Sequential Unlocking', desc:'Lessons unlock as you complete them — building real knowledge layer by layer.' },
+  { icon:'📊', title:'Progress Tracking', desc:'Your progress is saved locally. Pick up exactly where you left off.' },
+  { icon:'📖', title:'Glossary Engine', desc:'Key terms highlighted throughout lessons with instant tooltip definitions on hover.' },
+  { icon:'📋', title:'Cheat Sheets', desc:'Command references, port tables, and troubleshooting guides always a click away.' },
 ]
 
-const TOOLS = [
-  { icon: '🔌', label: 'Port Lookup',       href: '/port-lookup',   desc: 'Search 35+ ports & protocols' },
-  { icon: '🧪', label: 'VMware Lab Setup',  href: '/vmware-setup',  desc: 'Step-by-step environment guide' },
-  { icon: '📋', label: 'Cheat Sheets',      href: '/cheatsheets',   desc: 'Linux, PowerShell, Networking' },
-  { icon: '🔍', label: 'Troubleshooting',   href: '/troubleshooting',desc: 'Systematic diagnostic steps' },
-]
-
-// ─── Hero terminal animation ─────────────────────────────────────────────────
-const TERMINAL_LINES = [
-  { text: '$ ssh admin@server01.lab.local', delay: 0 },
-  { text: 'Connected to server01 — Windows Server 2025', delay: 800, color: 'text-accent-green' },
-  { text: '$ Get-ADUser -Filter * | Select Name', delay: 1600 },
-  { text: 'Retrieving Active Directory users...', delay: 2400, color: 'text-accent-cyan' },
-  { text: 'CN=Administrator, DC=lab, DC=local', delay: 3200, color: 'text-slate-300' },
-  { text: 'CN=sysadmin, DC=lab, DC=local', delay: 3600, color: 'text-slate-300' },
-  { text: '$ _', delay: 4200, blink: true },
-]
-
-function TerminalWindow() {
-  const [visibleLines, setVisibleLines] = useState(0)
-
-  useEffect(() => {
-    TERMINAL_LINES.forEach((line, i) => {
-      setTimeout(() => setVisibleLines(i + 1), line.delay + 400)
-    })
-  }, [])
-
+function ProgressPill({ completed, total }) {
+  const pct = Math.round((completed / total) * 100)
+  if (completed === 0) return null
+  const color = pct === 100 ? 'from-accent-green to-emerald-400' : 'from-brand-500 to-brand-400'
   return (
-    <div className="w-full max-w-lg bg-surface-900 rounded-2xl border border-surface-600
-                    shadow-card-lg overflow-hidden">
-      {/* Title bar */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-surface-800 border-b border-surface-700">
-        <div className="w-3 h-3 rounded-full bg-accent-red/70" />
-        <div className="w-3 h-3 rounded-full bg-accent-amber/70" />
-        <div className="w-3 h-3 rounded-full bg-accent-green/70" />
-        <span className="ml-2 text-xs font-mono text-slate-500">terminal — ssh session</span>
+    <div className="mt-3">
+      <div className="flex justify-between text-[10px] text-slate-500 mb-1 font-mono">
+        <span>{completed}/{total} lessons</span><span>{pct}%</span>
       </div>
-      {/* Body */}
-      <div className="p-4 min-h-[180px] font-mono text-sm space-y-1">
-        {TERMINAL_LINES.slice(0, visibleLines).map((line, i) => (
-          <div
-            key={i}
-            className={`${line.color || 'text-slate-300'} leading-relaxed
-                        ${line.blink ? 'animate-pulse' : ''}`}
-          >
-            {line.text}
-          </div>
-        ))}
+      <div className="h-1.5 rounded-full bg-surface-700 overflow-hidden">
+        <div className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-700`}
+             style={{ width: `${pct}%` }} />
       </div>
     </div>
   )
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-function Section({ children, className = '' }) {
+function CourseCard({ course, completedLessons }) {
+  const completed  = course.lessonIds.filter(id => completedLessons.includes(id)).length
+  const total      = course.lessonIds.length
+  const isComplete = completed === total && total > 0
   return (
-    <section className={`px-4 sm:px-6 lg:px-8 ${className}`}>
-      <div className="max-w-7xl mx-auto">
-        {children}
+    <Link to={course.href}
+      className="course-card block group relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+      aria-label={`${course.title} — ${total} lessons`}>
+      <div className={`course-card-accent bg-gradient-to-r ${course.accent}`} />
+      <div className="pt-4 pb-5 px-4">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <span className="text-2xl leading-none">{course.icon}</span>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {isComplete && <span className="tag text-[10px] bg-accent-green/10 text-accent-green border-accent-green/20 py-0.5">✓ Complete</span>}
+            {course.badge && !isComplete && <span className={`tag text-[10px] border ${course.badgeColor} py-0.5`}>{course.badge}</span>}
+          </div>
+        </div>
+        <h3 className="font-bold text-white text-sm leading-snug mb-1.5 group-hover:text-brand-300 transition-colors">{course.title}</h3>
+        <p className="text-slate-400 text-[12px] leading-relaxed line-clamp-2 mb-3">{course.description}</p>
+        <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono">
+          <span>{course.lessonCount} lessons</span>
+          <span className="text-slate-700">·</span>
+          <span>{course.readTime}</span>
+          <span className="text-slate-700">·</span>
+          <span className="text-accent-amber">{course.totalXP} XP</span>
+        </div>
+        <ProgressPill completed={completed} total={total} />
       </div>
-    </section>
+    </Link>
   )
 }
 
-// ─── Personalised recommendations ────────────────────────────────────────────
-const RECOMMENDATION_PATHS = [
-  { id: 'windows-server-2025', icon: '🖥️', title: 'Windows Server 2025', tagline: 'Most in-demand enterprise skill', href: '/windows-server-2025', firstLesson: '/windows-server-2025/active-directory', prereqs: [], lessonIds: ['ws2025-01','ws2025-02','ws2025-03','ws2025-04','ws2025-05','ws2025-06','ws2025-07','ws2025-08','ws2025-09','ws2025-10','ws2025-11','ws2025-12'] },
-  { id: 'linux',               icon: '🐧', title: 'Linux Fundamentals',   tagline: 'Essential for every sysadmin',   href: '/linux',               firstLesson: '/linux/filesystem',                        prereqs: [], lessonIds: ['linux-01','linux-02','linux-03','linux-04','linux-05','linux-06','linux-07','linux-08','linux-09','linux-10'] },
-  { id: 'networking',          icon: '🌐', title: 'Network Fundamentals', tagline: 'The non-negotiable foundation',  href: '/networking',          firstLesson: '/networking/osi-model',                    prereqs: [], lessonIds: ['net-01','net-02','net-03','net-04','net-05','net-06','net-07','net-08'] },
-  { id: 'cybersecurity',       icon: '🛡️', title: 'Cybersecurity',        tagline: 'Defend before you attack',       href: '/cybersecurity',       firstLesson: '/cybersecurity/cia-triad',                 prereqs: ['windows-server-2025', 'linux'], lessonIds: ['sec-01','sec-02','sec-03','sec-04','sec-05','sec-06','sec-07','sec-08','sec-09','sec-10'] },
-  { id: 'powershell',          icon: '⚡', title: 'PowerShell',           tagline: 'Automate Windows like a pro',    href: '/powershell',          firstLesson: '/powershell/fundamentals',                 prereqs: ['windows-server-2025'], lessonIds: ['ps-01','ps-02','ps-03','ps-04','ps-05','ps-06','ps-07','ps-08'] },
-  { id: 'python',              icon: '🐍', title: 'Python for SysAdmins', tagline: 'Automate everything else',       href: '/python',              firstLesson: '/python/filesystem',                       prereqs: ['linux'], lessonIds: ['py-01','py-02','py-03','py-04','py-05','py-06','py-07','py-08','py-09'] },
-  { id: 'devops',              icon: '🔧', title: 'DevOps',               tagline: 'The modern infra stack',         href: '/devops',              firstLesson: '/devops/docker',                           prereqs: ['linux', 'python'], lessonIds: ['devops-01','devops-02','devops-03','devops-04','devops-05','devops-06','devops-07','devops-08'] },
-]
-
-function RecommendationsSection() {
-  const [progress] = useLocalStorage('sysadminpro_progress', null)
+export default function Home() {
+  const { progress } = useProgress()
   const completedLessons = progress?.completedLessons ?? []
-  const totalXP          = progress?.totalXP ?? 0
+  const xp               = progress?.xp ?? 0
+  const level            = getLevelForXP(xp)
+  const completedCount   = completedLessons.length
+  const overallPct       = Math.round((completedCount / TOTAL_LESSONS) * 100)
+  const hasStarted       = completedCount > 0
 
-  // Score each path: higher = better recommendation
-  const scored = RECOMMENDATION_PATHS.map(path => {
-    const done       = path.lessonIds.filter(id => completedLessons.includes(id)).length
-    const pct        = Math.round(done / path.lessonIds.length * 100)
-    const isComplete = pct === 100
-    const isStarted  = done > 0 && !isComplete
-    const prereqsDone = path.prereqs.every(preId => {
-      const pre = RECOMMENDATION_PATHS.find(p => p.id === preId)
-      return pre && pre.lessonIds.some(id => completedLessons.includes(id))
-    })
+  const [activeCategory, setActiveCategory] = useState('all')
 
-    let score = 0
-    if (isStarted)  score = 100  // In-progress → highest priority
-    if (!isStarted && !isComplete && prereqsDone) score = 80  // Ready to start
-    if (!isStarted && !isComplete && !prereqsDone) score = 40  // Not ready yet
-    if (isComplete) score = 0    // Already done
+  const filteredCourses = useMemo(() =>
+    activeCategory === 'all' ? COURSES : COURSES.filter(c => c.category === activeCategory),
+    [activeCategory])
 
-    return { ...path, done, pct, isComplete, isStarted, prereqsDone, score }
-  })
-
-  // Sort by score desc, take top 3
-  const recommended = scored.sort((a, b) => b.score - a.score).slice(0, 3)
-
-  // Don't show if all courses complete or no meaningful progress data
-  if (scored.filter(p => p.isComplete).length === scored.length) return null
+  const spotlightCourses = COURSES.filter(c =>
+    ['windows-server-2025','cybersecurity','devops','linux'].includes(c.id))
 
   return (
-    <Section className="py-20">
-      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
-        <div>
-          <p className="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-2">
-            {totalXP > 0 ? 'Personalised For You' : 'Recommended Starting Point'}
+    <div className="min-h-screen">
+
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden border-b border-surface-700/50">
+        <div className="absolute inset-0 pointer-events-none select-none" style={{ backgroundImage:'linear-gradient(rgba(99,102,241,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.04) 1px,transparent 1px)', backgroundSize:'40px 40px' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background:'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%)' }} />
+
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 sm:pt-24 sm:pb-16 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 mb-6 fade-up">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+            <span className="text-xs font-semibold text-brand-300 tracking-wide">
+              {TOTAL_LESSONS} lessons · 10 complete courses · Production-quality IT training
+            </span>
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-4 fade-up" style={{ animationDelay:'60ms' }}>
+            Master Enterprise IT.<br />
+            <span className="bg-gradient-to-r from-brand-400 to-accent-cyan bg-clip-text text-transparent">Learn by doing.</span>
+          </h1>
+
+          <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto mb-8 fade-up" style={{ animationDelay:'120ms' }}>
+            A complete SysAdmin learning platform with hands-on VMware labs, XP progression, and real-world scenarios — covering Windows Server, Linux, Cybersecurity, DevOps, and more.
           </p>
-          <h2 className="section-title">
-            {totalXP > 0 ? 'Continue Your Learning' : 'Where to Start'}
-          </h2>
-          <p className="text-slate-400 mt-2 text-sm">
-            {totalXP > 0
-              ? `You have ${totalXP.toLocaleString()} XP. Here's what to tackle next.`
-              : 'New to the platform? Start here — these three paths build on each other.'}
+
+          <div className="flex flex-wrap gap-3 justify-center mb-10 fade-up" style={{ animationDelay:'180ms' }}>
+            <Link to={hasStarted ? '/dashboard' : '/windows-server-2025/intro'} className="btn-primary">
+              {hasStarted ? 'Resume Learning →' : 'Start for Free →'}
+            </Link>
+            <Link to="/dashboard" className="btn-secondary">
+              {hasStarted ? 'View Progress' : 'Browse All Courses'}
+            </Link>
+          </div>
+
+          {/* Platform stats strip */}
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 py-4 border-t border-b border-surface-700/40 fade-up" style={{ animationDelay:'240ms' }}>
+            {[
+              { v:`${TOTAL_LESSONS}`, l:'Lessons', i:'📚' },
+              { v:'10', l:'Courses', i:'🗂️' },
+              { v:TOTAL_XP.toLocaleString(), l:'Total XP Available', i:'⭐' },
+              { v:'82', l:'Lab Exercises', i:'🧪' },
+            ].map(s => (
+              <div key={s.l} className="text-center px-2">
+                <div className="text-lg sm:text-xl font-black text-white font-mono">{s.i} {s.v}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5 uppercase tracking-widest">{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Personal progress strip — only shown when user has started */}
+          {hasStarted && (
+            <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 fade-up" style={{ animationDelay:'300ms' }}>
+              {[
+                { v:completedCount, l:'Lessons Done', c:'text-brand-300' },
+                { v:xp, l:'XP Earned', c:'text-accent-amber' },
+                { v:`${overallPct}%`, l:'Overall Progress', c:'text-accent-green' },
+                { v:level.name, l:'Current Level', c:'text-accent-purple' },
+              ].map(s => (
+                <div key={s.l} className="card py-3 px-4 text-center">
+                  <p className={`text-lg font-black font-mono ${s.c}`}>{s.v}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">{s.l}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── SPOTLIGHT ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-6">
+        <div className="flex items-end justify-between mb-6 flex-wrap gap-3">
+          <div>
+            <p className="text-xs font-semibold text-brand-400 uppercase tracking-widest font-mono mb-1">Most popular</p>
+            <h2 className="section-title">Start here</h2>
+          </div>
+          <Link to="/dashboard" className="btn-ghost text-sm">All courses →</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {spotlightCourses.map((course, i) => (
+            <div key={course.id} className="fade-up" style={{ animationDelay:`${i * 60}ms` }}>
+              <CourseCard course={course} completedLessons={completedLessons} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── ALL COURSES + FILTER TABS ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest font-mono mb-1">Complete library</p>
+            <h2 className="section-title">All Learning Paths</h2>
+          </div>
+          <p className="text-slate-500 text-xs font-mono">
+            {filteredCourses.length} courses · {filteredCourses.reduce((s,c) => s + c.lessonCount, 0)} lessons
           </p>
         </div>
-        {totalXP > 0 && (
-          <Link to="/dashboard" className="btn-ghost text-sm flex-shrink-0">
-            View full dashboard →
-          </Link>
-        )}
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        {recommended.map((path, idx) => (
-          <Link key={path.id} to={path.isStarted ? path.href : path.firstLesson}
-                className="card p-6 group flex flex-col gap-4 hover:border-brand-500/30">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <span className="text-3xl group-hover:scale-110 transition-transform duration-200">
-                {path.icon}
-              </span>
-              {idx === 0 && !path.isComplete && (
-                <span className="badge bg-brand-500/15 text-brand-300 border border-brand-500/20 text-[10px]">
-                  {path.isStarted ? '⚡ In Progress' : '✨ Recommended'}
-                </span>
-              )}
-              {path.isComplete && (
-                <span className="badge bg-accent-green/15 text-accent-green border border-accent-green/20 text-[10px]">
-                  ✓ Complete
-                </span>
-              )}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {CATEGORIES.map(cat => (
+            <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+              className={[
+                'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150',
+                activeCategory === cat.id
+                  ? 'bg-brand-500/20 text-brand-300 border-brand-500/40'
+                  : 'bg-surface-800 text-slate-400 border-surface-700 hover:border-surface-600 hover:text-slate-300',
+              ].join(' ')}>
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredCourses.map((course, i) => (
+            <div key={course.id} className="fade-up" style={{ animationDelay:`${i * 50}ms` }}>
+              <CourseCard course={course} completedLessons={completedLessons} />
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Content */}
-            <div className="flex-1">
-              <h3 className="font-bold text-white text-[15px] mb-1 group-hover:text-brand-300
-                             transition-colors">
-                {path.title}
-              </h3>
-              <p className="text-xs text-slate-500">{path.tagline}</p>
-            </div>
-
-            {/* Progress */}
-            {path.isStarted && (
-              <div>
-                <div className="flex justify-between text-[11px] mb-1.5">
-                  <span className="text-slate-500 font-mono">{path.done}/{path.lessonIds.length} lessons</span>
-                  <span className="text-brand-300 font-mono">{path.pct}%</span>
-                </div>
-                <ProgressBar value={path.pct} showPercent={false} size="sm" />
+      {/* ── FEATURES ── */}
+      <section className="border-t border-surface-700/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest font-mono text-center mb-2">What makes this different</p>
+          <h2 className="section-title text-center mb-2">Built for real sysadmins</h2>
+          <p className="text-slate-400 text-sm text-center mb-10 max-w-xl mx-auto leading-relaxed">
+            Every lesson includes VMware lab exercises, real-world scenarios, and commands you'll use on the job — not toy examples.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map((f, i) => (
+              <div key={f.title} className="card p-6 fade-up" style={{ animationDelay:`${i * 80}ms` }}>
+                <span className="text-3xl mb-3 block">{f.icon}</span>
+                <h3 className="font-bold text-white text-sm mb-1.5">{f.title}</h3>
+                <p className="text-slate-400 text-xs leading-relaxed">{f.desc}</p>
               </div>
-            )}
-
-            {/* CTA */}
-            <div className="flex items-center gap-2 text-sm font-semibold text-brand-400
-                             group-hover:text-brand-300 transition-colors">
-              {path.isStarted ? 'Continue' : path.isComplete ? 'Review' : 'Start Now'}
-              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
-                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </Section>
-  )
-}
-
-// ─── Home page ────────────────────────────────────────────────────────────────
-export default function Home() {
-  return (
-    <div className="overflow-x-hidden">
-
-      {/* ── HERO ──────────────────────────────────────────────────── */}
-      <section className="relative min-h-[90vh] flex items-center justify-center
-                          px-4 sm:px-6 lg:px-8 py-20 overflow-hidden">
-        {/* Background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-surface-950 via-surface-900 to-surface-950" />
-        <div className="absolute inset-0 bg-dot-pattern opacity-100" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                        w-[600px] h-[600px] bg-brand-600/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute top-20 right-10 w-64 h-64 bg-accent-cyan/5 rounded-full
-                        blur-[80px] pointer-events-none animate-float" />
-
-        <div className="relative z-10 max-w-7xl mx-auto w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-
-            {/* Left — copy */}
-            <div className="text-center lg:text-left">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
-                              bg-brand-500/10 border border-brand-500/20 text-brand-300
-                              text-xs font-semibold mb-6 animate-fade-up">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                Production-Quality IT Training — Free Beta
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6
-                             animate-fade-up animate-delay-100">
-                <span className="text-white">Master IT</span><br />
-                <span className="gradient-text">Infrastructure</span><br />
-                <span className="text-white">Like a Pro</span>
-              </h1>
-
-              <p className="text-slate-400 text-lg sm:text-xl leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0
-                            animate-fade-up animate-delay-200">
-                Hands-on labs, real VMware exercises, progressive lesson unlocking,
-                and an XP system that rewards every step forward.
-              </p>
-
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start
-                              gap-3 mb-10 animate-fade-up animate-delay-300">
-                <Link to="/windows-server-2025" className="btn-primary text-base px-6 py-3 w-full sm:w-auto justify-center">
-                  Start with Windows Server 2025
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-                <Link to="/linux" className="btn-secondary text-base px-6 py-3 w-full sm:w-auto justify-center">
-                  Explore All Paths
-                </Link>
-              </div>
-
-              {/* Stats row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fade-up animate-delay-400">
-                {STATS.map((s) => (
-                  <div key={s.label} className="text-center lg:text-left">
-                    <div className="text-2xl font-extrabold gradient-text">{s.value}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right — terminal */}
-            <div className="flex justify-center lg:justify-end animate-fade-up animate-delay-300">
-              <TerminalWindow />
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── LEARNING PATHS ────────────────────────────────────────── */}
-      <Section className="py-20">
-        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-10">
-          <div>
-            <p className="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-2">
-              Learning Paths
-            </p>
-            <h2 className="section-title">Choose Your Path</h2>
-            <p className="text-slate-400 mt-2 text-sm max-w-lg">
-              Structured courses built for real-world sysadmin and DevOps work. Start anywhere.
-            </p>
-          </div>
-          <Link to="/linux" className="btn-ghost text-sm flex-shrink-0">
-            View all paths →
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {LEARNING_PATHS.map((path) => (
-            <LessonCard key={path.title} {...path} />
-          ))}
-        </div>
-      </Section>
-
-      {/* ── FEATURES ──────────────────────────────────────────────── */}
-      <Section className="py-20">
-        <div className="text-center mb-12">
-          <p className="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-2">
-            Platform Features
-          </p>
-          <h2 className="section-title">Built for Working Professionals</h2>
-          <p className="text-slate-400 mt-3 max-w-xl mx-auto text-sm">
-            Every feature is designed around how real IT teams learn and operate.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="card p-6 group">
-              <div className="text-3xl mb-4 group-hover:scale-110 transition-transform duration-200 w-fit">
-                {f.icon}
-              </div>
-              <h3 className="font-semibold text-white mb-2 text-[15px]">{f.title}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── SAMPLE LAB PREVIEW ────────────────────────────────────── */}
-      <Section className="py-20">
-        <div className="card-glass rounded-2xl overflow-hidden border border-brand-500/10">
-          <div className="grid lg:grid-cols-2 gap-0">
-            {/* Left */}
-            <div className="p-8 lg:p-12">
-              <span className="badge bg-brand-500/10 text-brand-300 border border-brand-500/20 mb-4">
-                🧪 Lab Preview
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 tracking-tight">
-                Real VMware Lab Exercises
-              </h2>
-              <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                Every lesson ends with a hands-on VMware lab. Follow step-by-step instructions,
-                run real commands, and see real output — just like a production environment.
-              </p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Step-by-step VMware instructions',
-                  'Real commands with expected output',
-                  'Production-accurate sysadmin scenarios',
-                  'Checkpoint quizzes after each lab',
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
-                    <svg className="w-4 h-4 text-accent-green flex-shrink-0" fill="none"
-                         viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/windows-server-2025" className="btn-primary">
-                Try a Lab Exercise
+      {/* ── QUICK ACCESS ── */}
+      <section className="border-t border-surface-700/50 bg-surface-900/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <h2 className="section-title mb-6">Quick Access</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { href:'/cheatsheets',  icon:'📋', label:'Cheat Sheets',  desc:'Command references' },
+              { href:'/glossary',     icon:'📖', label:'Glossary',      desc:'70+ IT definitions' },
+              { href:'/it-models',    icon:'🗂️', label:'IT Models',     desc:'OSI, ITIL, CIA…' },
+              { href:'/port-lookup',  icon:'🔌', label:'Port Lookup',   desc:'Common port numbers' },
+              { href:'/vmware-setup', icon:'🖥️', label:'VMware Setup',  desc:'Lab environment guide' },
+              { href:'/dashboard',    icon:'📊', label:'Dashboard',     desc:'Progress & badges' },
+              { href:'/certificate',  icon:'🏅', label:'Certificates',  desc:'Course completion' },
+              { href:'/search',       icon:'🔍', label:'Search',        desc:'Find any lesson' },
+            ].map(t => (
+              <Link key={t.href} to={t.href}
+                className="card p-4 flex flex-col gap-2 hover:border-brand-600/40 group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
+                <span className="text-2xl">{t.icon}</span>
+                <div>
+                  <p className="font-semibold text-white text-sm group-hover:text-brand-300 transition-colors">{t.label}</p>
+                  <p className="text-slate-500 text-[11px] font-mono">{t.desc}</p>
+                </div>
               </Link>
-            </div>
-
-            {/* Right — mini code block */}
-            <div className="bg-surface-900 p-8 lg:p-12 border-t lg:border-t-0 lg:border-l border-surface-700">
-              <div className="text-xs font-mono text-slate-500 mb-3 uppercase tracking-widest">
-                Lab 3 — Active Directory Setup
-              </div>
-              <div className="code-block text-xs leading-6 space-y-1">
-                <div><span className="text-slate-500"># Step 1: Install AD DS role</span></div>
-                <div><span className="text-accent-cyan">Install-WindowsFeature</span> <span className="text-accent-amber">-Name</span> AD-Domain-Services <span className="text-accent-amber">-IncludeManagementTools</span></div>
-                <div className="mt-2"><span className="text-slate-500"># Step 2: Promote to Domain Controller</span></div>
-                <div><span className="text-accent-cyan">Install-ADDSForest</span> \</div>
-                <div className="ml-4"><span className="text-accent-amber">-DomainName</span> <span className="text-accent-green">"lab.local"</span> \</div>
-                <div className="ml-4"><span className="text-accent-amber">-DomainNetBIOSName</span> <span className="text-accent-green">"LAB"</span> \</div>
-                <div className="ml-4"><span className="text-accent-amber">-InstallDNS</span> <span className="text-accent-amber">-Force</span></div>
-                <div className="mt-2 text-accent-green">✔ Domain controller promoted successfully</div>
-                <div className="text-slate-500">Restarting in 10 seconds...</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
-      </Section>
+      </section>
 
-      {/* ── TOOLS ROW ─────────────────────────────────────────────── */}
-      <Section className="py-20">
-        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
-          <div>
-            <p className="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-2">
-              Quick Tools
-            </p>
-            <h2 className="section-title">Reference Tools</h2>
-            <p className="text-slate-400 mt-2 text-sm">Practical utilities you'll use every day on the job.</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TOOLS.map(tool => (
-            <Link key={tool.label} to={tool.href}
-                  className="card p-5 group flex flex-col gap-3">
-              <span className="text-2xl group-hover:scale-110 transition-transform duration-200 w-fit">
-                {tool.icon}
-              </span>
-              <div>
-                <p className="font-semibold text-white text-sm group-hover:text-brand-300 transition-colors">
-                  {tool.label}
-                </p>
-                <p className="text-xs text-slate-500 mt-0.5">{tool.desc}</p>
-              </div>
+      {/* ── FOOTER CTA ── */}
+      <section className="border-t border-surface-700/50">
+        <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+          <div className="text-5xl mb-4">🚀</div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 tracking-tight">
+            {hasStarted ? 'Keep the momentum going.' : 'Ready to level up?'}
+          </h2>
+          <p className="text-slate-400 mb-6 text-sm leading-relaxed max-w-lg mx-auto">
+            {hasStarted
+              ? `You've completed ${completedCount} lessons and earned ${xp} XP. The next lesson is waiting.`
+              : 'Start with Windows Server 2025 — the most in-demand enterprise skill — or jump to whichever topic you need right now.'}
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link to={hasStarted ? '/dashboard' : '/windows-server-2025/intro'} className="btn-primary">
+              {hasStarted ? 'Resume Learning →' : 'Start for Free →'}
             </Link>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── PERSONALISED RECOMMENDATIONS ──────────────────────── */}
-      <RecommendationsSection />
-
-      {/* ── CTA BANNER ────────────────────────────────────────────── */}
-      <Section className="py-20">
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br
-                        from-brand-600 via-brand-700 to-brand-900 p-10 lg:p-16 text-center">
-          <div className="absolute inset-0 bg-dot-pattern opacity-50" />
-          <div className="relative z-10">
-            <div className="text-4xl mb-4">🚀</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 tracking-tight">
-              Ready to level up?
-            </h2>
-            <p className="text-brand-200 text-lg mb-8 max-w-xl mx-auto">
-              Start with Windows Server 2025 — the most in-demand enterprise skill in 2025.
-            </p>
-            <Link to="/windows-server-2025"
-                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white
-                             text-brand-700 font-bold text-base hover:bg-brand-50
-                             transition-all duration-200 shadow-card hover:shadow-card-lg active:scale-95">
-              Begin Windows Server 2025 →
+            <Link to="/dashboard" className="btn-secondary">
+              {hasStarted ? 'View Progress' : 'Browse All Courses'}
             </Link>
           </div>
         </div>
-      </Section>
+      </section>
 
     </div>
   )

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Breadcrumb from './Breadcrumb.jsx'
 import LessonCard from './LessonCard.jsx'
 import ProgressBar from './ProgressBar.jsx'
+import CourseCompletionBanner from './CourseCompletionBanner.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 // ─── View toggle ──────────────────────────────────────────────────────────────
@@ -187,6 +188,17 @@ export default function CoursePage({
   return (
     <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-10">
       <Breadcrumb crumbs={breadcrumbs} />
+
+      {/* ── Course completion banner ─────────────────────────────── */}
+      {courseProgress === 100 && (
+        <div className="mb-6">
+          <CourseCompletionBanner
+            courseTitle={title}
+            courseHref={`/${id}`}
+            totalXP={totalXP}
+          />
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════════
           HERO

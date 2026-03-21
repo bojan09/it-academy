@@ -109,6 +109,7 @@ import PythonCLITool     from './pages/lessons/PythonCLITool.jsx'
 import NetworkingRouting              from './pages/lessons/NetworkingRouting.jsx'
 import NetworkingDNS                  from './pages/lessons/NetworkingDNS.jsx'
 import NetworkingTroubleshootingLesson from './pages/lessons/NetworkingTroubleshootingLesson.jsx'
+import NetworkingWireless             from './pages/lessons/NetworkingWireless.jsx'
 
 // ── DevOps lessons ────────────────────────────────────────────────────────────
 import DevOpsPrinciples  from './pages/lessons/DevOpsPrinciples.jsx'
@@ -273,8 +274,9 @@ export default function App() {
         <Route path="networking/subnetting" element={<NetworkingSubnetting />} />
         <Route path="networking/vlans"      element={<NetworkingVLANs />} />
         <Route path="networking/routing"    element={<NetworkingRouting />} />
-        <Route path="networking/dns"            element={<NetworkingDNS />} />
+        <Route path="networking/dns"             element={<NetworkingDNS />} />
         <Route path="networking/troubleshooting" element={<NetworkingTroubleshootingLesson />} />
+        <Route path="networking/wireless"        element={<NetworkingWireless />} />
         <Route path="networking/:lesson"         element={<Placeholder title="Networking — lesson coming soon" />} />
 
         {/* ── PowerShell lessons ────────────────────────────────── */}

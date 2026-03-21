@@ -188,7 +188,7 @@ export default function LessonLayout({
         </article>
 
         {/* ── RIGHT — sticky sidebar ── */}
-        <aside className="lg:w-64 xl:w-72 flex-shrink-0">
+        <aside className="lg:w-64 xl:w-72 flex-shrink-0 no-print" aria-label="Lesson sidebar">
           <div className="lg:sticky lg:top-[78px] space-y-4">
 
             {/* Lesson progress card */}

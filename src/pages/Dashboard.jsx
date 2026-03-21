@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useProgress, getLevelForXP, BADGES, LEVELS } from '../hooks/useProgress.js'
 import ProgressBar from '../components/ProgressBar.jsx'
+import CourseProgressRing from '../components/CourseProgressRing.jsx'
+import PlatformProgress from '../components/PlatformProgress.jsx'
 import StreakTracker from '../components/StreakTracker.jsx'
 import Breadcrumb from '../components/Breadcrumb.jsx'
 import StudyTimer from '../components/StudyTimer.jsx'
@@ -142,18 +144,24 @@ function LevelRing({ xp }) {
   )
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, color = 'text-white' }) {
+// ─── Stat card — upgraded with accent border ──────────────────────────────────
+function StatCard({ icon, label, value, sub, color = 'text-white', borderColor = '' }) {
   return (
-    <div className="card p-5 flex items-start gap-4">
-      <div className="w-10 h-10 rounded-xl bg-surface-700 flex items-center justify-center
-                      text-xl flex-shrink-0">
+    <div className={`card p-5 flex items-start gap-4 relative overflow-hidden
+                     ${borderColor ? `border-l-2 ${borderColor}` : ''}`}>
+      {/* subtle bg glow */}
+      <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-10
+                      bg-current pointer-events-none" style={{ color: 'inherit' }} />
+      <div className="w-10 h-10 rounded-xl bg-surface-700/80 flex items-center justify-center
+                      text-xl flex-shrink-0 relative z-10">
         {icon}
       </div>
-      <div>
-        <p className="text-[11px] text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
-        <p className={`text-2xl font-bold font-mono ${color}`}>{value}</p>
-        {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+      <div className="relative z-10 min-w-0">
+        <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-0.5 font-semibold">
+          {label}
+        </p>
+        <p className={`text-2xl font-bold font-mono leading-none ${color}`}>{value}</p>
+        {sub && <p className="text-[11px] text-slate-500 mt-1">{sub}</p>}
       </div>
     </div>
   )
@@ -286,12 +294,63 @@ export default function Dashboard() {
 
         {/* Stat cards grid */}
         <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <StatCard icon="⚡" label="Total XP"        value={totalXP.toLocaleString()}   color="text-accent-amber" sub="experience points" />
-          <StatCard icon="📚" label="Lessons Done"    value={totalCompleted}              color="text-accent-green" sub="lessons completed" />
-          <StatCard icon="🔥" label="Day Streak"      value={streak}                      color="text-orange-400"   sub="consecutive days" />
-          <StatCard icon="📝" label="Quizzes Passed"  value={`${totalQuizPassed}/${totalQuizzes}`} color="text-brand-300" sub="quiz attempts" />
-          <StatCard icon="🎯" label="Avg Quiz Score"  value={totalQuizzes ? `${avgQuizScore}%` : '—'} color={avgQuizScore >= 80 ? 'text-accent-green' : 'text-accent-amber'} sub="across all quizzes" />
-          <StatCard icon="🏆" label="Badges Earned"   value={`${earnedBadges.length}/${BADGES.length}`} color="text-accent-purple" sub="achievements" />
+          <StatCard icon="⚡" label="Total XP"       value={totalXP.toLocaleString()}
+                    color="text-accent-amber"  borderColor="border-accent-amber/60"
+                    sub="experience points" />
+          <StatCard icon="📚" label="Lessons Done"   value={totalCompleted}
+                    color="text-accent-green"  borderColor="border-accent-green/60"
+                    sub={`of 82 lessons`} />
+          <StatCard icon="🔥" label="Day Streak"     value={streak}
+                    color="text-orange-400"    borderColor="border-orange-500/60"
+                    sub="consecutive days" />
+          <StatCard icon="📝" label="Quizzes Passed" value={`${totalQuizPassed}/${totalQuizzes}`}
+                    color="text-brand-300"     borderColor="border-brand-500/60"
+                    sub="quiz attempts" />
+          <StatCard icon="🎯" label="Avg Quiz Score" value={totalQuizzes ? `${avgQuizScore}%` : '—'}
+                    color={avgQuizScore >= 80 ? 'text-accent-green' : 'text-accent-amber'}
+                    borderColor={avgQuizScore >= 80 ? 'border-accent-green/60' : 'border-accent-amber/60'}
+                    sub="across all quizzes" />
+          <StatCard icon="🏆" label="Badges Earned"  value={`${earnedBadges.length}/${BADGES.length}`}
+                    color="text-accent-purple" borderColor="border-accent-purple/60"
+                    sub="achievements" />
+        </div>
+      </div>
+
+      {/* ── PLATFORM PROGRESS OVERVIEW ── */}
+      <PlatformProgress completedLessons={completedLessons} />
+
+      {/* ── COURSE RINGS OVERVIEW ── */}
+      <div className="card p-6 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+            Course Overview
+          </p>
+          <span className="text-[11px] text-slate-500 font-mono">
+            {courseStats.filter(c=>c.pct===100).length}/{courseStats.length} complete
+          </span>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-3">
+          {courseStats.map(c => {
+            const ringColor = c.pct === 100 ? 'text-accent-green'
+              : c.pct > 0 ? 'text-brand-400' : 'text-slate-400'
+            return (
+              <Link key={c.id} to={c.href}
+                    className="flex flex-col items-center gap-1.5 group">
+                <CourseProgressRing
+                  percent={c.pct}
+                  size={52}
+                  stroke={5}
+                  color={ringColor}
+                  label={c.pct === 100 ? '✓' : `${c.pct}%`}
+                  animate
+                />
+                <p className="text-[9px] text-slate-500 text-center leading-tight
+                               group-hover:text-slate-300 transition-colors line-clamp-2">
+                  {c.title.replace('Fundamentals','').replace('for SysAdmins','').trim()}
+                </p>
+              </Link>
+            )
+          })}
         </div>
       </div>
 
@@ -346,21 +405,26 @@ export default function Dashboard() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeCourses.map(c => (
-                <Link key={c.id} to={c.href} className="card p-5 group hover:border-brand-500/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">{c.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white text-sm group-hover:text-brand-300
-                                   transition-colors truncate">{c.title}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 font-mono">
-                        {c.done}/{c.lessonIds.length} lessons
-                      </p>
+                <Link key={c.id} to={c.href} className="card p-5 group hover:border-brand-500/30
+                                                         flex items-center gap-4">
+                  <CourseProgressRing
+                    percent={c.pct}
+                    size={64}
+                    stroke={6}
+                    color="text-brand-400"
+                    sublabel={`${c.done}/${c.lessonIds.length}`}
+                    animate
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white text-sm group-hover:text-brand-300
+                                  transition-colors truncate">{c.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 font-mono">
+                      {c.lessonIds.length - c.done} lessons left
+                    </p>
+                    <div className="mt-2">
+                      <ProgressBar value={c.pct} showPercent={false} size="sm" />
                     </div>
-                    <span className={`text-sm font-bold font-mono flex-shrink-0 ${c.accent}`}>
-                      {c.pct}%
-                    </span>
                   </div>
-                  <ProgressBar value={c.pct} showPercent={false} size="sm" />
                 </Link>
               ))}
             </div>
