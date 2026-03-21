@@ -40,6 +40,10 @@ import GroupPolicy        from './pages/lessons/GroupPolicy.jsx'
 import HyperV             from './pages/lessons/HyperV.jsx'
 import WS2025FileServices from './pages/lessons/WS2025FileServices.jsx'
 import WindowsFirewall    from './pages/lessons/WindowsFirewall.jsx'
+import WS2025RDS          from './pages/lessons/WS2025RDS.jsx'
+import WS2025Backup       from './pages/lessons/WS2025Backup.jsx'
+import WS2025WAC          from './pages/lessons/WS2025WAC.jsx'
+import WS2025Hardening    from './pages/lessons/WS2025Hardening.jsx'
 
 // ── Linux lessons ─────────────────────────────────────────────────────────────
 import LinuxFilesystem    from './pages/lessons/LinuxFilesystem.jsx'
@@ -65,41 +69,118 @@ import PowerShellPipeline     from './pages/lessons/PowerShellPipeline.jsx'
 import PowerShellScripting    from './pages/lessons/PowerShellScripting.jsx'
 import PSActiveDirectory      from './pages/lessons/PSActiveDirectory.jsx'
 import PSRemoting             from './pages/lessons/PSRemoting.jsx'
+import PSFilesystem           from './pages/lessons/PSFilesystem.jsx'
+import PSDSC                  from './pages/lessons/PSDSC.jsx'
+import PSReporting            from './pages/lessons/PSReporting.jsx'
 
 // ── Cybersecurity lessons ─────────────────────────────────────────────────────
-import CIATriad                      from './pages/lessons/CIATriad.jsx'
-import ThreatModelling               from './pages/lessons/ThreatModelling.jsx'
-import CybersecurityWindowsHardening from './pages/lessons/CybersecurityWindowsHardening.jsx'
-import CybersecurityIncidentResponse from './pages/lessons/CybersecurityIncidentResponse.jsx'
+import CIATriad                       from './pages/lessons/CIATriad.jsx'
+import ThreatModelling                from './pages/lessons/ThreatModelling.jsx'
+import CybersecurityWindowsHardening  from './pages/lessons/CybersecurityWindowsHardening.jsx'
+import CybersecurityLinuxHardening    from './pages/lessons/CybersecurityLinuxHardening.jsx'
+import CybersecurityFirewall          from './pages/lessons/CybersecurityFirewall.jsx'
+import CybersecurityPKI               from './pages/lessons/CybersecurityPKI.jsx'
+import CybersecurityIDSSIEM           from './pages/lessons/CybersecurityIDSSIEM.jsx'
+import CybersecurityVulnScanning      from './pages/lessons/CybersecurityVulnScanning.jsx'
+import CybersecurityIncidentResponse  from './pages/lessons/CybersecurityIncidentResponse.jsx'
 
 // ── Python lessons ────────────────────────────────────────────────────────────
-import PythonBasics     from './pages/lessons/PythonBasics.jsx'
-import PythonAutomation from './pages/lessons/PythonAutomation.jsx'
-import PythonSubprocess from './pages/lessons/PythonSubprocess.jsx'
-import PythonLogParsing from './pages/lessons/PythonLogParsing.jsx'
-import PythonMonitoring from './pages/lessons/PythonMonitoring.jsx'
+import PythonBasics      from './pages/lessons/PythonBasics.jsx'
+import PythonAutomation  from './pages/lessons/PythonAutomation.jsx'
+import PythonSubprocess  from './pages/lessons/PythonSubprocess.jsx'
+import PythonNetworking  from './pages/lessons/PythonNetworking.jsx'
+import PythonLogParsing  from './pages/lessons/PythonLogParsing.jsx'
+import PythonScheduling  from './pages/lessons/PythonScheduling.jsx'
+import PythonMonitoring  from './pages/lessons/PythonMonitoring.jsx'
+import PythonCLITool     from './pages/lessons/PythonCLITool.jsx'
+
+// ── Networking lessons (Phase 14) ─────────────────────────────────────────────
+import NetworkingRouting from './pages/lessons/NetworkingRouting.jsx'
+import NetworkingDNS     from './pages/lessons/NetworkingDNS.jsx'
 
 // ── DevOps lessons ────────────────────────────────────────────────────────────
-import DevOpsPrinciples from './pages/lessons/DevOpsPrinciples.jsx'
-import DevOpsGit        from './pages/lessons/DevOpsGit.jsx'
-import DockerContainers from './pages/lessons/DockerContainers.jsx'
-import DevOpsCICD       from './pages/lessons/DevOpsCICD.jsx'
+import DevOpsPrinciples  from './pages/lessons/DevOpsPrinciples.jsx'
+import DevOpsGit         from './pages/lessons/DevOpsGit.jsx'
+import DockerContainers  from './pages/lessons/DockerContainers.jsx'
+import DevOpsCICD        from './pages/lessons/DevOpsCICD.jsx'
+import DevOpsTerraform   from './pages/lessons/DevOpsTerraform.jsx'
+import DevOpsAnsible     from './pages/lessons/DevOpsAnsible.jsx'
+import DevOpsKubernetes  from './pages/lessons/DevOpsKubernetes.jsx'
+import DevOpsMonitoring  from './pages/lessons/DevOpsMonitoring.jsx'
 
 // ── Troubleshooting lessons ───────────────────────────────────────────────────
-import TroubleshootingMethodology from './pages/lessons/TroubleshootingMethodology.jsx'
-import WindowsTroubleshooting     from './pages/lessons/WindowsTroubleshooting.jsx'
-import LinuxTroubleshooting       from './pages/lessons/LinuxTroubleshooting.jsx'
-import TroubleshootingNetworking  from './pages/lessons/TroubleshootingNetworking.jsx'
-import TroubleshootingPerformance from './pages/lessons/TroubleshootingPerformance.jsx'
+import TroubleshootingMethodology      from './pages/lessons/TroubleshootingMethodology.jsx'
+import WindowsTroubleshooting          from './pages/lessons/WindowsTroubleshooting.jsx'
+import LinuxTroubleshooting            from './pages/lessons/LinuxTroubleshooting.jsx'
+import TroubleshootingNetworking       from './pages/lessons/TroubleshootingNetworking.jsx'
+import TroubleshootingActiveDirectory  from './pages/lessons/TroubleshootingActiveDirectory.jsx'
+import TroubleshootingPerformance      from './pages/lessons/TroubleshootingPerformance.jsx'
 
-// ── Placeholder for lessons not yet built ─────────────────────────────────────
-const Placeholder = ({ title }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
-    <div className="text-5xl">🚧</div>
-    <h1 className="text-2xl font-bold text-white">{title}</h1>
-    <p className="text-slate-400 text-sm">This lesson is coming soon — check back after the next update.</p>
-  </div>
-)
+// ── Polished "Coming Soon" placeholder ────────────────────────────────────────
+const Placeholder = ({ title }) => {
+  const isLesson = title && !title.includes('not found')
+  const course = title?.replace(/\s*[—–-].*/, '').trim() || ''
+  const lesson = title?.replace(/^.*[—–-]\s*/, '').trim() || ''
+
+  if (!isLesson) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
+        <div className="text-6xl">🔍</div>
+        <h1 className="text-2xl font-bold text-white">Page Not Found</h1>
+        <p className="text-slate-400 text-sm">The page you're looking for doesn't exist.</p>
+        <a href="/" className="btn-primary mt-2">Back to Home</a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-16 flex flex-col items-center text-center gap-6">
+      {/* Icon */}
+      <div className="w-20 h-20 rounded-2xl bg-brand-500/10 border border-brand-500/20
+                      flex items-center justify-center text-4xl">
+        📖
+      </div>
+
+      {/* Heading */}
+      <div>
+        <div className="tag mb-3">{course}</div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          {lesson || title}
+        </h1>
+        <p className="text-slate-400 mt-3 text-sm leading-relaxed max-w-md mx-auto">
+          This lesson is actively being developed and will be available in the next
+          platform update. The course structure and learning path are already set up —
+          content is being written and reviewed.
+        </p>
+      </div>
+
+      {/* Status card */}
+      <div className="card p-5 w-full text-left">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-accent-amber animate-pulse" />
+          <span className="text-xs font-semibold text-accent-amber uppercase tracking-widest">
+            In Development
+          </span>
+        </div>
+        <p className="text-sm text-slate-400 leading-relaxed">
+          While you wait, explore other available lessons in this course or try a
+          different learning path. All core courses have multiple complete lessons
+          available right now.
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <a href={`/${course.toLowerCase().replace(/\s+/g, '-')}`}
+           className="btn-primary">
+          ← Back to {course || 'Course'}
+        </a>
+        <a href="/" className="btn-secondary">Browse All Courses</a>
+        <a href="/dashboard" className="btn-ghost">My Dashboard</a>
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   return (
@@ -142,6 +223,10 @@ export default function App() {
         <Route path="windows-server-2025/hyper-v"          element={<HyperV />} />
         <Route path="windows-server-2025/file-services"    element={<WS2025FileServices />} />
         <Route path="windows-server-2025/firewall"         element={<WindowsFirewall />} />
+        <Route path="windows-server-2025/rds"              element={<WS2025RDS />} />
+        <Route path="windows-server-2025/backup"           element={<WS2025Backup />} />
+        <Route path="windows-server-2025/wac"              element={<WS2025WAC />} />
+        <Route path="windows-server-2025/hardening"        element={<WS2025Hardening />} />
         <Route path="windows-server-2025/:lesson"          element={<Placeholder title="Windows Server 2025 — lesson coming soon" />} />
 
         {/* ── Unix lessons ──────────────────────────────────────── */}
@@ -166,6 +251,8 @@ export default function App() {
         <Route path="networking/tcp-ip"     element={<TCPIP />} />
         <Route path="networking/subnetting" element={<NetworkingSubnetting />} />
         <Route path="networking/vlans"      element={<NetworkingVLANs />} />
+        <Route path="networking/routing"    element={<NetworkingRouting />} />
+        <Route path="networking/dns"        element={<NetworkingDNS />} />
         <Route path="networking/:lesson"    element={<Placeholder title="Networking — lesson coming soon" />} />
 
         {/* ── PowerShell lessons ────────────────────────────────── */}
@@ -174,37 +261,53 @@ export default function App() {
         <Route path="powershell/scripting"        element={<PowerShellScripting />} />
         <Route path="powershell/active-directory" element={<PSActiveDirectory />} />
         <Route path="powershell/remoting"         element={<PSRemoting />} />
+        <Route path="powershell/filesystem"       element={<PSFilesystem />} />
+        <Route path="powershell/dsc"              element={<PSDSC />} />
+        <Route path="powershell/reporting"        element={<PSReporting />} />
         <Route path="powershell/:lesson"          element={<Placeholder title="PowerShell — lesson coming soon" />} />
 
         {/* ── Cybersecurity lessons ─────────────────────────────── */}
         <Route path="cybersecurity/cia-triad"         element={<CIATriad />} />
         <Route path="cybersecurity/threat-modelling"  element={<ThreatModelling />} />
         <Route path="cybersecurity/windows-hardening" element={<CybersecurityWindowsHardening />} />
+        <Route path="cybersecurity/linux-hardening"   element={<CybersecurityLinuxHardening />} />
+        <Route path="cybersecurity/firewall"          element={<CybersecurityFirewall />} />
+        <Route path="cybersecurity/pki"               element={<CybersecurityPKI />} />
+        <Route path="cybersecurity/ids-siem"          element={<CybersecurityIDSSIEM />} />
+        <Route path="cybersecurity/vuln-scanning"     element={<CybersecurityVulnScanning />} />
         <Route path="cybersecurity/incident-response" element={<CybersecurityIncidentResponse />} />
         <Route path="cybersecurity/:lesson"           element={<Placeholder title="Cybersecurity — lesson coming soon" />} />
 
         {/* ── Python lessons ────────────────────────────────────── */}
-        <Route path="python/basics"      element={<PythonBasics />} />
-        <Route path="python/filesystem"  element={<PythonAutomation />} />
-        <Route path="python/subprocess"  element={<PythonSubprocess />} />
-        <Route path="python/log-parsing" element={<PythonLogParsing />} />
-        <Route path="python/monitoring"  element={<PythonMonitoring />} />
-        <Route path="python/:lesson"     element={<Placeholder title="Python — lesson coming soon" />} />
+        <Route path="python/basics"       element={<PythonBasics />} />
+        <Route path="python/filesystem"   element={<PythonAutomation />} />
+        <Route path="python/subprocess"   element={<PythonSubprocess />} />
+        <Route path="python/networking"   element={<PythonNetworking />} />
+        <Route path="python/log-parsing"  element={<PythonLogParsing />} />
+        <Route path="python/scheduling"   element={<PythonScheduling />} />
+        <Route path="python/monitoring"   element={<PythonMonitoring />} />
+        <Route path="python/cli-tool"     element={<PythonCLITool />} />
+        <Route path="python/:lesson"      element={<Placeholder title="Python — lesson coming soon" />} />
 
         {/* ── DevOps lessons ────────────────────────────────────── */}
         <Route path="devops/principles" element={<DevOpsPrinciples />} />
         <Route path="devops/git"        element={<DevOpsGit />} />
         <Route path="devops/docker"     element={<DockerContainers />} />
         <Route path="devops/cicd"       element={<DevOpsCICD />} />
+        <Route path="devops/terraform"  element={<DevOpsTerraform />} />
+        <Route path="devops/ansible"    element={<DevOpsAnsible />} />
+        <Route path="devops/kubernetes" element={<DevOpsKubernetes />} />
+        <Route path="devops/monitoring" element={<DevOpsMonitoring />} />
         <Route path="devops/:lesson"    element={<Placeholder title="DevOps — lesson coming soon" />} />
 
         {/* ── Troubleshooting lessons ───────────────────────────── */}
-        <Route path="troubleshooting/methodology" element={<TroubleshootingMethodology />} />
-        <Route path="troubleshooting/windows"     element={<WindowsTroubleshooting />} />
-        <Route path="troubleshooting/linux"       element={<LinuxTroubleshooting />} />
-        <Route path="troubleshooting/networking"  element={<TroubleshootingNetworking />} />
-        <Route path="troubleshooting/performance" element={<TroubleshootingPerformance />} />
-        <Route path="troubleshooting/:lesson"     element={<Placeholder title="Troubleshooting — lesson coming soon" />} />
+        <Route path="troubleshooting/methodology"      element={<TroubleshootingMethodology />} />
+        <Route path="troubleshooting/windows"          element={<WindowsTroubleshooting />} />
+        <Route path="troubleshooting/linux"            element={<LinuxTroubleshooting />} />
+        <Route path="troubleshooting/networking"       element={<TroubleshootingNetworking />} />
+        <Route path="troubleshooting/active-directory" element={<TroubleshootingActiveDirectory />} />
+        <Route path="troubleshooting/performance"      element={<TroubleshootingPerformance />} />
+        <Route path="troubleshooting/:lesson"          element={<Placeholder title="Troubleshooting — lesson coming soon" />} />
 
         {/* ── 404 catch-all ─────────────────────────────────────── */}
         <Route path="*" element={<Placeholder title="Page not found" />} />
