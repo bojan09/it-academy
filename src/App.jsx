@@ -26,10 +26,19 @@ import DevOps            from './pages/DevOps.jsx'
 import Troubleshooting   from './pages/Troubleshooting.jsx'
 
 // ── Windows Desktop lessons ───────────────────────────────────────────────────
-import WindowsArchitecture from './pages/lessons/WindowsArchitecture.jsx'
+import WindowsArchitecture  from './pages/lessons/WindowsArchitecture.jsx'
+import WindowsPermissions   from './pages/lessons/WindowsPermissions.jsx'
+import WindowsRegistry      from './pages/lessons/WindowsRegistry.jsx'
+import WindowsProcesses     from './pages/lessons/WindowsProcesses.jsx'
+import WindowsNetworking    from './pages/lessons/WindowsNetworking.jsx'
+import WindowsEventViewer   from './pages/lessons/WindowsEventViewer.jsx'
 
 // ── Unix lessons ──────────────────────────────────────────────────────────────
-import UnixPhilosophy from './pages/lessons/UnixPhilosophy.jsx'
+import UnixPhilosophy    from './pages/lessons/UnixPhilosophy.jsx'
+import UnixPOSIXShell    from './pages/lessons/UnixPOSIXShell.jsx'
+import UnixBSD           from './pages/lessons/UnixBSD.jsx'
+import UnixPermissions   from './pages/lessons/UnixPermissions.jsx'
+import UnixProcesses     from './pages/lessons/UnixProcesses.jsx'
 
 // ── Windows Server 2025 lessons ───────────────────────────────────────────────
 import WS2025Intro        from './pages/lessons/WS2025Intro.jsx'
@@ -83,6 +92,7 @@ import CybersecurityPKI               from './pages/lessons/CybersecurityPKI.jsx
 import CybersecurityIDSSIEM           from './pages/lessons/CybersecurityIDSSIEM.jsx'
 import CybersecurityVulnScanning      from './pages/lessons/CybersecurityVulnScanning.jsx'
 import CybersecurityIncidentResponse  from './pages/lessons/CybersecurityIncidentResponse.jsx'
+import CybersecurityADSecurity        from './pages/lessons/CybersecurityADSecurity.jsx'
 
 // ── Python lessons ────────────────────────────────────────────────────────────
 import PythonBasics      from './pages/lessons/PythonBasics.jsx'
@@ -92,11 +102,13 @@ import PythonNetworking  from './pages/lessons/PythonNetworking.jsx'
 import PythonLogParsing  from './pages/lessons/PythonLogParsing.jsx'
 import PythonScheduling  from './pages/lessons/PythonScheduling.jsx'
 import PythonMonitoring  from './pages/lessons/PythonMonitoring.jsx'
+import PythonAnsible     from './pages/lessons/PythonAnsible.jsx'
 import PythonCLITool     from './pages/lessons/PythonCLITool.jsx'
 
-// ── Networking lessons (Phase 14) ─────────────────────────────────────────────
-import NetworkingRouting from './pages/lessons/NetworkingRouting.jsx'
-import NetworkingDNS     from './pages/lessons/NetworkingDNS.jsx'
+// ── Networking lessons ────────────────────────────────────────────────────────
+import NetworkingRouting              from './pages/lessons/NetworkingRouting.jsx'
+import NetworkingDNS                  from './pages/lessons/NetworkingDNS.jsx'
+import NetworkingTroubleshootingLesson from './pages/lessons/NetworkingTroubleshootingLesson.jsx'
 
 // ── DevOps lessons ────────────────────────────────────────────────────────────
 import DevOpsPrinciples  from './pages/lessons/DevOpsPrinciples.jsx'
@@ -211,8 +223,13 @@ export default function App() {
         <Route path="troubleshooting"     element={<Troubleshooting />} />
 
         {/* ── Windows Desktop lessons ───────────────────────────── */}
-        <Route path="windows/architecture" element={<WindowsArchitecture />} />
-        <Route path="windows/:lesson"      element={<Placeholder title="Windows Desktop — lesson coming soon" />} />
+        <Route path="windows/architecture"  element={<WindowsArchitecture />} />
+        <Route path="windows/permissions"   element={<WindowsPermissions />} />
+        <Route path="windows/registry"      element={<WindowsRegistry />} />
+        <Route path="windows/processes"     element={<WindowsProcesses />} />
+        <Route path="windows/networking"    element={<WindowsNetworking />} />
+        <Route path="windows/event-viewer"  element={<WindowsEventViewer />} />
+        <Route path="windows/:lesson"       element={<Placeholder title="Windows Desktop — lesson coming soon" />} />
 
         {/* ── Windows Server 2025 lessons ───────────────────────── */}
         <Route path="windows-server-2025/intro"            element={<WS2025Intro />} />
@@ -230,8 +247,12 @@ export default function App() {
         <Route path="windows-server-2025/:lesson"          element={<Placeholder title="Windows Server 2025 — lesson coming soon" />} />
 
         {/* ── Unix lessons ──────────────────────────────────────── */}
-        <Route path="unix/philosophy" element={<UnixPhilosophy />} />
-        <Route path="unix/:lesson"    element={<Placeholder title="Unix — lesson coming soon" />} />
+        <Route path="unix/philosophy"  element={<UnixPhilosophy />} />
+        <Route path="unix/posix-shell" element={<UnixPOSIXShell />} />
+        <Route path="unix/bsd"         element={<UnixBSD />} />
+        <Route path="unix/permissions" element={<UnixPermissions />} />
+        <Route path="unix/processes"   element={<UnixProcesses />} />
+        <Route path="unix/:lesson"     element={<Placeholder title="Unix — lesson coming soon" />} />
 
         {/* ── Linux lessons ─────────────────────────────────────── */}
         <Route path="linux/filesystem"  element={<LinuxFilesystem />} />
@@ -252,8 +273,9 @@ export default function App() {
         <Route path="networking/subnetting" element={<NetworkingSubnetting />} />
         <Route path="networking/vlans"      element={<NetworkingVLANs />} />
         <Route path="networking/routing"    element={<NetworkingRouting />} />
-        <Route path="networking/dns"        element={<NetworkingDNS />} />
-        <Route path="networking/:lesson"    element={<Placeholder title="Networking — lesson coming soon" />} />
+        <Route path="networking/dns"            element={<NetworkingDNS />} />
+        <Route path="networking/troubleshooting" element={<NetworkingTroubleshootingLesson />} />
+        <Route path="networking/:lesson"         element={<Placeholder title="Networking — lesson coming soon" />} />
 
         {/* ── PowerShell lessons ────────────────────────────────── */}
         <Route path="powershell/fundamentals"     element={<PowerShellFundamentals />} />
@@ -276,6 +298,7 @@ export default function App() {
         <Route path="cybersecurity/ids-siem"          element={<CybersecurityIDSSIEM />} />
         <Route path="cybersecurity/vuln-scanning"     element={<CybersecurityVulnScanning />} />
         <Route path="cybersecurity/incident-response" element={<CybersecurityIncidentResponse />} />
+        <Route path="cybersecurity/ad-security"       element={<CybersecurityADSecurity />} />
         <Route path="cybersecurity/:lesson"           element={<Placeholder title="Cybersecurity — lesson coming soon" />} />
 
         {/* ── Python lessons ────────────────────────────────────── */}
@@ -286,6 +309,7 @@ export default function App() {
         <Route path="python/log-parsing"  element={<PythonLogParsing />} />
         <Route path="python/scheduling"   element={<PythonScheduling />} />
         <Route path="python/monitoring"   element={<PythonMonitoring />} />
+        <Route path="python/ansible"      element={<PythonAnsible />} />
         <Route path="python/cli-tool"     element={<PythonCLITool />} />
         <Route path="python/:lesson"      element={<Placeholder title="Python — lesson coming soon" />} />
 
