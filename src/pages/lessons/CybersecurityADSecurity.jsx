@@ -3,6 +3,65 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYADSECURITY_1 = `# Find accounts with SPNs (potential Kerberoasting targets)
+Get-ADUser -Filter {ServicePrincipalName -like '*'} \`\`
+  -Properties ServicePrincipalName, PasswordLastSet, PasswordNeverExpires |
+  Select-Object Name, SamAccountName, PasswordLastSet, PasswordNeverExpires,
+    ServicePrincipalName |
+  Format-Table -AutoSize
+
+# HIGH RISK: SPNs on accounts with PasswordNeverExpires=True
+# These are the weakest Kerberoasting targets
+Get-ADUser -Filter {ServicePrincipalName -like '*' -and PasswordNeverExpires -eq $true} \`\`
+  -Properties ServicePrincipalName, PasswordLastSet
+
+# Monitor for Kerberoasting: Event ID 4769 with ticket encryption type 0x17 (RC4)
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4769} -MaxEvents 50 |
+  Where-Object { $_.Properties[8].Value -eq '0x17' } |
+  Select-Object TimeCreated,
+    @{N='Account'; E={$_.Properties[0].Value}},
+    @{N='Service'; E={$_.Properties[2].Value}}`
+const CODE_CYBERSECURITYADSECURITY_2 = `# Protected Users group prevents:
+# - NTLM authentication (forces Kerberos)
+# - DES/RC4 Kerberos encryption (forces AES)
+# - Credential caching on workstations
+# - Kerberos delegation
+
+# Add a user to Protected Users
+Add-ADGroupMember -Identity 'Protected Users' -Members 'Administrator'
+
+# See current members
+Get-ADGroupMember -Identity 'Protected Users' | Select-Object Name
+
+# WARNING: Test before applying to service accounts
+# Protected Users breaks NTLM-dependent services`
+const CODE_CYBERSECURITYADSECURITY_3 = `# Check for Kerberoastable accounts
+$kerberoastable = Get-ADUser -Filter {ServicePrincipalName -like '*'} \`\`
+  -Properties ServicePrincipalName, PasswordNeverExpires
+
+Write-Host "Kerberoastable accounts: $($kerberoastable.Count)"
+$kerberoastable | Select-Object Name, PasswordNeverExpires | Format-Table
+
+# Check Domain Admins
+Write-Host "\`n=== Domain Admins ==="
+Get-ADGroupMember 'Domain Admins' -Recursive |
+  Get-ADUser -Properties LastLogonDate |
+  Select-Object Name, SamAccountName, LastLogonDate | Format-Table
+
+# Check for stale admin accounts (no logon in 90 days)
+$cutoff = (Get-Date).AddDays(-90)
+Get-ADGroupMember 'Domain Admins' |
+  Get-ADUser -Properties LastLogonDate |
+  Where-Object { $_.LastLogonDate -lt $cutoff -or -not $_.LastLogonDate } |
+  Select-Object Name, LastLogonDate`
+const CODE_CYBERSECURITYADSECURITY_4 = `Kerberoastable accounts: 0  <- good, no SPNs on user accounts
+
+=== Domain Admins ===
+Name           SamAccountName  LastLogonDate
+Administrator  Administrator   01/15/2025`
+
+
 const QUIZ_QUESTIONS = [
   { id:'q1', question:'What is Kerberoasting?', options:['A brute-force attack against the Kerberos KDC','An offline attack that requests Kerberos service tickets for SPNs, then cracks the ticket hash offline to recover the service account password — no special privileges needed to request tickets','A real-time attack that intercepts Kerberos traffic','An attack that forges Kerberos tickets using a compromised KDC key'], correct:1, explanation:'Kerberoasting: any authenticated domain user can request a TGS (Ticket Granting Service) ticket for any SPN (Service Principal Name). The ticket is encrypted with the service account\'s NTLM hash. The attacker requests the ticket, saves it, and cracks it offline with Hashcat/John. Service accounts with weak passwords are vulnerable. Mitigations: use long (25+ char) random passwords for service accounts, use gMSAs (automatic rotation), monitor for unusual TGS requests (Event ID 4769).' },
   { id:'q2', question:'What is a Pass-the-Hash (PtH) attack?', options:['Passing a password through a hash function before storing it','Using a captured NTLM hash directly to authenticate without knowing the plaintext password — if you have the hash, you can authenticate as that user to any system accepting NTLM','Cracking a password hash to recover the plaintext','Replacing a legitimate hash in the SAM database'], correct:1, explanation:'NTLM authentication uses the password hash directly — not a derived token. If an attacker extracts NTLM hashes from LSASS memory (using Mimikatz) or the SAM database, they can use those hashes to authenticate as those users without ever cracking the passwords. Mitigations: Credential Guard (isolates hashes from LSASS), Protected Users security group (disables NTLM for members), restrict lateral movement with firewall rules between workstations.' },
@@ -39,12 +98,12 @@ export default function CybersecurityADSecurity() {
       <section>
         <h2>Kerberoasting Detection & Prevention</h2>
         <CodeBlock title="Find Kerberoastable service accounts" language="powershell"
-          code={["# Find accounts with SPNs (potential Kerberoasting targets)","Get-ADUser -Filter {ServicePrincipalName -like '*'} ``","  -Properties ServicePrincipalName, PasswordLastSet, PasswordNeverExpires |","  Select-Object Name, SamAccountName, PasswordLastSet, PasswordNeverExpires,","    ServicePrincipalName |","  Format-Table -AutoSize","","# HIGH RISK: SPNs on accounts with PasswordNeverExpires=True","# These are the weakest Kerberoasting targets","Get-ADUser -Filter {ServicePrincipalName -like '*' -and PasswordNeverExpires -eq $true} ``","  -Properties ServicePrincipalName, PasswordLastSet","","# Monitor for Kerberoasting: Event ID 4769 with ticket encryption type 0x17 (RC4)","Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4769} -MaxEvents 50 |","  Where-Object { $_.Properties[8].Value -eq '0x17' } |","  Select-Object TimeCreated,","    @{N='Account'; E={$_.Properties[0].Value}},","    @{N='Service'; E={$_.Properties[2].Value}}"].join('\n')} />
+          code={CODE_CYBERSECURITYADSECURITY_1} />
       </section>
       <section>
         <h2>Protected Users Security Group</h2>
         <CodeBlock title="Add privileged accounts to Protected Users" language="powershell"
-          code={["# Protected Users group prevents:","# - NTLM authentication (forces Kerberos)","# - DES/RC4 Kerberos encryption (forces AES)","# - Credential caching on workstations","# - Kerberos delegation","","# Add a user to Protected Users","Add-ADGroupMember -Identity 'Protected Users' -Members 'Administrator'","","# See current members","Get-ADGroupMember -Identity 'Protected Users' | Select-Object Name","",'# WARNING: Test before applying to service accounts', "# Protected Users breaks NTLM-dependent services"].join('\n')} />
+          code={CODE_CYBERSECURITYADSECURITY_2} />
       </section>
       <section>
         <h2>VMware Lab Exercise</h2>
@@ -52,8 +111,8 @@ export default function CybersecurityADSecurity() {
           <div className="lab-header"><span className="lab-badge">LAB SEC-10</span><span className="text-sm font-semibold text-white">AD Security Audit on DC01</span><span className="ml-auto text-xs text-slate-500 font-mono">~20 min</span></div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Run a comprehensive AD security audit."
-              command={["# Check for Kerberoastable accounts","$kerberoastable = Get-ADUser -Filter {ServicePrincipalName -like '*'} ``","  -Properties ServicePrincipalName, PasswordNeverExpires","","Write-Host \"Kerberoastable accounts: $($kerberoastable.Count)\"","$kerberoastable | Select-Object Name, PasswordNeverExpires | Format-Table","","# Check Domain Admins","Write-Host \"`n=== Domain Admins ===\"","Get-ADGroupMember 'Domain Admins' -Recursive |","  Get-ADUser -Properties LastLogonDate |","  Select-Object Name, SamAccountName, LastLogonDate | Format-Table","","# Check for stale admin accounts (no logon in 90 days)","$cutoff = (Get-Date).AddDays(-90)","Get-ADGroupMember 'Domain Admins' |","  Get-ADUser -Properties LastLogonDate |","  Where-Object { $_.LastLogonDate -lt $cutoff -or -not $_.LastLogonDate } |","  Select-Object Name, LastLogonDate"].join('\n')}
-              output={["Kerberoastable accounts: 0  <- good, no SPNs on user accounts","","=== Domain Admins ===","Name           SamAccountName  LastLogonDate","Administrator  Administrator   01/15/2025"].join('\n')} />
+              command={CODE_CYBERSECURITYADSECURITY_3}
+              output={CODE_CYBERSECURITYADSECURITY_4} />
           </div>
         </div>
       </section>

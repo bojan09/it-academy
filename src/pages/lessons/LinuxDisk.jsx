@@ -3,6 +3,214 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXDISK_1 = `# ── Block device tree ───────────────────────────────────────
+lsblk                         # Tree view of all block devices
+lsblk -f                      # Include filesystem type and UUID
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,UUID   # Custom columns
+
+# ── Partition tables ─────────────────────────────────────────
+sudo fdisk -l                 # List all partition tables (MBR/GPT)
+sudo fdisk -l /dev/sdb        # Specific disk
+sudo parted /dev/sdb print    # parted output (better for GPT)
+
+# ── Filesystem usage ─────────────────────────────────────────
+df -h                         # Filesystem space usage (human-readable)
+df -hT                        # Include filesystem type
+df -ih                        # Inode usage (critical for /tmp issues)
+
+# ── Disk I/O performance ─────────────────────────────────────
+iostat -x 2 5                 # Extended I/O stats, 2s intervals, 5 times
+iotop                         # Real-time I/O usage by process (like top)
+sudo hdparm -tT /dev/sda      # Read speed test
+
+# ── Disk health (SMART) ──────────────────────────────────────
+sudo apt install smartmontools
+sudo smartctl -a /dev/sda     # Full SMART health report
+sudo smartctl -H /dev/sda     # Quick health check`
+const CODE_LINUXDISK_2 = `# ═══ STEP 1: Create partition ════════════════════════════════
+sudo fdisk /dev/sdb   # Interactive partitioner
+# Key fdisk commands:
+#   n  → new partition
+#   p  → primary (vs extended)
+#   1  → partition number
+#   (enter) → accept default first sector
+#   +10G → size (or enter for rest of disk)
+#   t  → change type (82=swap, 83=Linux, 8e=LVM)
+#   w  → write changes and exit
+
+# Inform kernel of partition table change
+sudo partprobe /dev/sdb
+lsblk /dev/sdb     # Verify partition appears
+
+
+# ═══ STEP 2: Create filesystem ════════════════════════════════
+sudo mkfs.ext4 -L "datastore" /dev/sdb1    # ext4 with label
+sudo mkfs.xfs  -L "faststore" /dev/sdb2    # XFS (preferred for large files)
+
+# Get UUID for fstab (UUIDs survive device renames)
+sudo blkid /dev/sdb1
+
+
+# ═══ STEP 3: Mount temporarily ════════════════════════════════
+sudo mkdir -p /mnt/datastore
+sudo mount /dev/sdb1 /mnt/datastore
+df -h /mnt/datastore     # Verify mounted
+
+
+# ═══ STEP 4: Make mount permanent (add to /etc/fstab) ═════════
+# Get UUID
+UUID=$(sudo blkid -s UUID -o value /dev/sdb1)
+echo "UUID=$UUID /mnt/datastore ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+
+# Test fstab BEFORE rebooting (critical step!)
+sudo umount /mnt/datastore
+sudo mount -a             # Mounts everything in fstab
+df -h /mnt/datastore      # Confirm still works`
+const CODE_LINUXDISK_3 = `# ═══ STEP 1: Initialise physical volumes ═════════════════════
+sudo pvcreate /dev/sdb /dev/sdc    # Initialise two disks as PVs
+sudo pvs                            # List PVs with sizes
+sudo pvdisplay /dev/sdb             # Detailed PV info
+
+
+# ═══ STEP 2: Create volume group ═════════════════════════════
+sudo vgcreate vgdata /dev/sdb /dev/sdc    # Create VG spanning two disks
+sudo vgs                                    # List VGs
+sudo vgdisplay vgdata                       # Detailed VG info (free extents)
+
+
+# ═══ STEP 3: Create logical volumes ══════════════════════════
+sudo lvcreate -L 20G -n lvapp  vgdata    # Fixed size: 20GB volume
+sudo lvcreate -L 10G -n lvlogs vgdata    # Another 10GB volume
+sudo lvcreate -l 100%FREE -n lvbackup vgdata  # Use ALL remaining space
+
+sudo lvs                              # List all LVs
+sudo lvdisplay /dev/vgdata/lvapp      # Detailed info
+
+
+# ═══ STEP 4: Format and mount ════════════════════════════════
+sudo mkfs.ext4 /dev/vgdata/lvapp
+sudo mkfs.xfs  /dev/vgdata/lvlogs
+
+sudo mkdir -p /app /var/log/app
+sudo mount /dev/vgdata/lvapp  /app
+sudo mount /dev/vgdata/lvlogs /var/log/app
+
+
+# ═══ STEP 5: Add to fstab for persistence ════════════════════
+echo "/dev/vgdata/lvapp  /app         ext4  defaults  0 2" | sudo tee -a /etc/fstab
+echo "/dev/vgdata/lvlogs /var/log/app xfs   defaults  0 2" | sudo tee -a /etc/fstab`
+const CODE_LINUXDISK_4 = `# Add a new physical disk to an existing VG
+sudo pvcreate /dev/sdd
+sudo vgextend vgdata /dev/sdd     # VG now has more free space
+sudo vgs                           # Confirm new free space
+
+# Extend the LV + filesystem in one command (-r = resize filesystem too)
+sudo lvextend -r -L +20G /dev/vgdata/lvapp      # Add exactly 20GB
+sudo lvextend -r -l +100%FREE /dev/vgdata/lvapp  # Use ALL remaining free space
+
+# Verify
+df -h /app          # Filesystem should show increased size immediately
+sudo lvs            # LV should show new size`
+const CODE_LINUXDISK_5 = `lsblk
+sudo fdisk -l /dev/sdb
+sudo fdisk -l /dev/sdc`
+const CODE_LINUXDISK_6 = `NAME   MAJ:MIN  SIZE  TYPE  MOUNTPOINT
+sda      8:0     40G   disk
+├─sda1   8:1      1G   part  /boot
+└─sda2   8:2     39G   part
+  └─ubuntu--vg-ubuntu--lv  253:0  20G lvm  /
+sdb      8:16    10G   disk             ← new disk 1
+sdc      8:32    10G   disk             ← new disk 2`
+const CODE_LINUXDISK_7 = `sudo apt install lvm2 -y
+
+# Initialise PVs (no partitioning needed — use whole disk)
+sudo pvcreate /dev/sdb /dev/sdc
+
+# Verify
+sudo pvs`
+const CODE_LINUXDISK_8 = `  PV         VG     Fmt  Attr PSize  PFree
+  /dev/sdb          lvm2 ---  10.00g 10.00g
+  /dev/sdc          lvm2 ---  10.00g 10.00g`
+const CODE_LINUXDISK_9 = `# Create VG
+sudo vgcreate vglab /dev/sdb /dev/sdc
+sudo vgs   # Should show 20GB total
+
+# Create two LVs: 8GB for data, 5GB for logs
+sudo lvcreate -L 8G  -n lvdata vglab
+sudo lvcreate -L 5G  -n lvlogs vglab
+sudo lvs`
+const CODE_LINUXDISK_10 = `  VG    #PV #LV #SN Attr  VSize   VFree
+  vglab   2   2   0 wz--n- 19.99g 6.99g
+
+  LV     VG    Attr       LSize
+  lvdata vglab -wi-a----- 8.00g
+  lvlogs vglab -wi-a----- 5.00g`
+const CODE_LINUXDISK_11 = `sudo mkfs.ext4 -L "labdata" /dev/vglab/lvdata
+sudo mkfs.xfs  -L "lablogs" /dev/vglab/lvlogs
+
+sudo mkdir -p /mnt/labdata /mnt/lablogs
+sudo mount /dev/vglab/lvdata /mnt/labdata
+sudo mount /dev/vglab/lvlogs /mnt/lablogs
+
+# Add to fstab
+echo "/dev/vglab/lvdata /mnt/labdata ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+echo "/dev/vglab/lvlogs /mnt/lablogs xfs  defaults,nofail 0 2" | sudo tee -a /etc/fstab
+
+# Test fstab
+sudo umount /mnt/labdata /mnt/lablogs
+sudo mount -a
+df -h /mnt/labdata /mnt/lablogs`
+const CODE_LINUXDISK_12 = `Filesystem                  Size  Used Avail Use% Mounted on
+/dev/mapper/vglab-lvdata    7.9G   24M  7.4G   1% /mnt/labdata
+/dev/mapper/vglab-lvlogs    5.0G   68M  5.0G   2% /mnt/lablogs`
+const CODE_LINUXDISK_13 = `# Extend LV + filesystem in one step (-r flag)
+sudo lvextend -r -L +3G /dev/vglab/lvdata
+
+# Verify — filesystem should immediately show new size
+df -h /mnt/labdata
+sudo lvs`
+const CODE_LINUXDISK_14 = `Filesystem                  Size  Used Avail Use% Mounted on
+/dev/mapper/vglab-lvdata     11G   24M   10G   1% /mnt/labdata  ← now 11GB!
+
+  LV     VG    Attr       LSize
+  lvdata vglab -wi-ao---- 11.00g  ← extended successfully`
+const CODE_LINUXDISK_15 = `# ── Inspection ──────────────────────────────────────────────
+lsblk -f                          # Block device tree + filesystems
+sudo fdisk -l                     # All partition tables
+df -hT                            # Filesystem usage + type
+sudo blkid                        # UUIDs + filesystem types
+sudo pvs && sudo vgs && sudo lvs  # LVM summary
+
+# ── Partition + Format ───────────────────────────────────────
+sudo fdisk /dev/sdb               # Interactive MBR partitioner
+sudo parted /dev/sdb              # parted (better for GPT/large disks)
+sudo mkfs.ext4 -L "label" /dev/sdb1
+sudo mkfs.xfs  -L "label" /dev/sdb1
+sudo mkswap /dev/sdb2 && sudo swapon /dev/sdb2
+
+# ── Mount ────────────────────────────────────────────────────
+sudo mount /dev/sdb1 /mnt/data
+sudo mount -a                     # Mount everything in fstab
+sudo umount /mnt/data
+sudo blkid -s UUID -o value /dev/sdb1   # Get UUID for fstab
+
+# ── LVM Lifecycle ────────────────────────────────────────────
+sudo pvcreate /dev/sdb
+sudo vgcreate myvg /dev/sdb
+sudo lvcreate -L 10G -n mylv myvg
+sudo lvextend -r -L +5G /dev/myvg/mylv  # Extend + resize fs
+sudo lvreduce -r -L 5G  /dev/myvg/mylv  # Shrink (careful!)
+sudo lvremove /dev/myvg/mylv
+sudo vgremove myvg
+sudo pvremove /dev/sdb
+
+# ── Snapshots ────────────────────────────────────────────────
+sudo lvcreate -L 2G -s -n mysnap /dev/myvg/mylv   # Create snapshot
+sudo mount /dev/myvg/mysnap /mnt/snapshot          # Mount snapshot
+sudo lvconvert --merge /dev/myvg/mysnap            # Revert to snapshot`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -138,32 +346,7 @@ export default function LinuxDisk() {
       {/* ── DISK INSPECTION ── */}
       <section>
         <h2>Inspecting Block Devices</h2>
-        <CodeBlock title="Disk inspection commands" language="bash" code={[
-    "# ── Block device tree ───────────────────────────────────────",
-    "lsblk                         # Tree view of all block devices",
-    "lsblk -f                      # Include filesystem type and UUID",
-    "lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,UUID   # Custom columns",
-    "",
-    "# ── Partition tables ─────────────────────────────────────────",
-    "sudo fdisk -l                 # List all partition tables (MBR/GPT)",
-    "sudo fdisk -l /dev/sdb        # Specific disk",
-    "sudo parted /dev/sdb print    # parted output (better for GPT)",
-    "",
-    "# ── Filesystem usage ─────────────────────────────────────────",
-    "df -h                         # Filesystem space usage (human-readable)",
-    "df -hT                        # Include filesystem type",
-    "df -ih                        # Inode usage (critical for /tmp issues)",
-    "",
-    "# ── Disk I/O performance ─────────────────────────────────────",
-    "iostat -x 2 5                 # Extended I/O stats, 2s intervals, 5 times",
-    "iotop                         # Real-time I/O usage by process (like top)",
-    "sudo hdparm -tT /dev/sda      # Read speed test",
-    "",
-    "# ── Disk health (SMART) ──────────────────────────────────────",
-    "sudo apt install smartmontools",
-    "sudo smartctl -a /dev/sda     # Full SMART health report",
-    "sudo smartctl -H /dev/sda     # Quick health check"
-  ].join('\n')} />
+        <CodeBlock title="Disk inspection commands" language="bash" code={CODE_LINUXDISK_1} />
 
         <div className="info-card mt-5">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">
@@ -187,47 +370,7 @@ sdb           8:16    20G   disk             ← Unpartitioned new disk`}</pre>
       {/* ── PARTITION + FORMAT + MOUNT ── */}
       <section>
         <h2>Partitioning, Formatting & Mounting</h2>
-        <CodeBlock title="Full workflow: new disk → mounted filesystem" language="bash" code={[
-    "# ═══ STEP 1: Create partition ════════════════════════════════",
-    "sudo fdisk /dev/sdb   # Interactive partitioner",
-    "# Key fdisk commands:",
-    "#   n  → new partition",
-    "#   p  → primary (vs extended)",
-    "#   1  → partition number",
-    "#   (enter) → accept default first sector",
-    "#   +10G → size (or enter for rest of disk)",
-    "#   t  → change type (82=swap, 83=Linux, 8e=LVM)",
-    "#   w  → write changes and exit",
-    "",
-    "# Inform kernel of partition table change",
-    "sudo partprobe /dev/sdb",
-    "lsblk /dev/sdb     # Verify partition appears",
-    "",
-    "",
-    "# ═══ STEP 2: Create filesystem ════════════════════════════════",
-    "sudo mkfs.ext4 -L \"datastore\" /dev/sdb1    # ext4 with label",
-    "sudo mkfs.xfs  -L \"faststore\" /dev/sdb2    # XFS (preferred for large files)",
-    "",
-    "# Get UUID for fstab (UUIDs survive device renames)",
-    "sudo blkid /dev/sdb1",
-    "",
-    "",
-    "# ═══ STEP 3: Mount temporarily ════════════════════════════════",
-    "sudo mkdir -p /mnt/datastore",
-    "sudo mount /dev/sdb1 /mnt/datastore",
-    "df -h /mnt/datastore     # Verify mounted",
-    "",
-    "",
-    "# ═══ STEP 4: Make mount permanent (add to /etc/fstab) ═════════",
-    "# Get UUID",
-    "UUID=$(sudo blkid -s UUID -o value /dev/sdb1)",
-    "echo \"UUID=$UUID /mnt/datastore ext4 defaults,nofail 0 2\" | sudo tee -a /etc/fstab",
-    "",
-    "# Test fstab BEFORE rebooting (critical step!)",
-    "sudo umount /mnt/datastore",
-    "sudo mount -a             # Mounts everything in fstab",
-    "df -h /mnt/datastore      # Confirm still works"
-  ].join('\n')} />
+        <CodeBlock title="Full workflow: new disk → mounted filesystem" language="bash" code={CODE_LINUXDISK_2} />
       </section>
 
       {/* ── LVM ── */}
@@ -258,61 +401,14 @@ sdb           8:16    20G   disk             ← Unpartitioned new disk`}</pre>
           </div>
         </div>
 
-        <CodeBlock className="mt-5" title="LVM setup — full workflow" language="bash" code={[
-    "# ═══ STEP 1: Initialise physical volumes ═════════════════════",
-    "sudo pvcreate /dev/sdb /dev/sdc    # Initialise two disks as PVs",
-    "sudo pvs                            # List PVs with sizes",
-    "sudo pvdisplay /dev/sdb             # Detailed PV info",
-    "",
-    "",
-    "# ═══ STEP 2: Create volume group ═════════════════════════════",
-    "sudo vgcreate vgdata /dev/sdb /dev/sdc    # Create VG spanning two disks",
-    "sudo vgs                                    # List VGs",
-    "sudo vgdisplay vgdata                       # Detailed VG info (free extents)",
-    "",
-    "",
-    "# ═══ STEP 3: Create logical volumes ══════════════════════════",
-    "sudo lvcreate -L 20G -n lvapp  vgdata    # Fixed size: 20GB volume",
-    "sudo lvcreate -L 10G -n lvlogs vgdata    # Another 10GB volume",
-    "sudo lvcreate -l 100%FREE -n lvbackup vgdata  # Use ALL remaining space",
-    "",
-    "sudo lvs                              # List all LVs",
-    "sudo lvdisplay /dev/vgdata/lvapp      # Detailed info",
-    "",
-    "",
-    "# ═══ STEP 4: Format and mount ════════════════════════════════",
-    "sudo mkfs.ext4 /dev/vgdata/lvapp",
-    "sudo mkfs.xfs  /dev/vgdata/lvlogs",
-    "",
-    "sudo mkdir -p /app /var/log/app",
-    "sudo mount /dev/vgdata/lvapp  /app",
-    "sudo mount /dev/vgdata/lvlogs /var/log/app",
-    "",
-    "",
-    "# ═══ STEP 5: Add to fstab for persistence ════════════════════",
-    "echo \"/dev/vgdata/lvapp  /app         ext4  defaults  0 2\" | sudo tee -a /etc/fstab",
-    "echo \"/dev/vgdata/lvlogs /var/log/app xfs   defaults  0 2\" | sudo tee -a /etc/fstab"
-  ].join('\n')} />
+        <CodeBlock className="mt-5" title="LVM setup — full workflow" language="bash" code={CODE_LINUXDISK_3} />
 
         <h3>Extending a Logical Volume Live</h3>
         <Callout type="info" icon="⚡" title="No downtime required">
           This is one of LVM's superpowers — resize a volume and its filesystem while
           it's mounted and in use. Databases, web servers, all running — no interruption.
         </Callout>
-        <CodeBlock language="bash" code={[
-    "# Add a new physical disk to an existing VG",
-    "sudo pvcreate /dev/sdd",
-    "sudo vgextend vgdata /dev/sdd     # VG now has more free space",
-    "sudo vgs                           # Confirm new free space",
-    "",
-    "# Extend the LV + filesystem in one command (-r = resize filesystem too)",
-    "sudo lvextend -r -L +20G /dev/vgdata/lvapp      # Add exactly 20GB",
-    "sudo lvextend -r -l +100%FREE /dev/vgdata/lvapp  # Use ALL remaining free space",
-    "",
-    "# Verify",
-    "df -h /app          # Filesystem should show increased size immediately",
-    "sudo lvs            # LV should show new size"
-  ].join('\n')} />
+        <CodeBlock language="bash" code={CODE_LINUXDISK_4} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -331,101 +427,28 @@ sdb           8:16    20G   disk             ← Unpartitioned new disk`}</pre>
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Verify the new disks are visible and check the current disk layout."
-              command={[
-    "lsblk",
-    "sudo fdisk -l /dev/sdb",
-    "sudo fdisk -l /dev/sdc"
-  ].join('\n')}
-              output={[
-    "NAME   MAJ:MIN  SIZE  TYPE  MOUNTPOINT",
-    "sda      8:0     40G   disk",
-    "├─sda1   8:1      1G   part  /boot",
-    "└─sda2   8:2     39G   part",
-    "  └─ubuntu--vg-ubuntu--lv  253:0  20G lvm  /",
-    "sdb      8:16    10G   disk             ← new disk 1",
-    "sdc      8:32    10G   disk             ← new disk 2"
-  ].join('\n')}
+              command={CODE_LINUXDISK_5}
+              output={CODE_LINUXDISK_6}
             />
             <LabStep number={2}
               description="Install LVM tools, then initialise both disks as Physical Volumes."
-              command={[
-    "sudo apt install lvm2 -y",
-    "",
-    "# Initialise PVs (no partitioning needed — use whole disk)",
-    "sudo pvcreate /dev/sdb /dev/sdc",
-    "",
-    "# Verify",
-    "sudo pvs"
-  ].join('\n')}
-              output={[
-    "  PV         VG     Fmt  Attr PSize  PFree",
-    "  /dev/sdb          lvm2 ---  10.00g 10.00g",
-    "  /dev/sdc          lvm2 ---  10.00g 10.00g"
-  ].join('\n')}
+              command={CODE_LINUXDISK_7}
+              output={CODE_LINUXDISK_8}
             />
             <LabStep number={3}
               description="Create a Volume Group pooling both disks, then carve out two Logical Volumes."
-              command={[
-    "# Create VG",
-    "sudo vgcreate vglab /dev/sdb /dev/sdc",
-    "sudo vgs   # Should show 20GB total",
-    "",
-    "# Create two LVs: 8GB for data, 5GB for logs",
-    "sudo lvcreate -L 8G  -n lvdata vglab",
-    "sudo lvcreate -L 5G  -n lvlogs vglab",
-    "sudo lvs"
-  ].join('\n')}
-              output={[
-    "  VG    #PV #LV #SN Attr  VSize   VFree",
-    "  vglab   2   2   0 wz--n- 19.99g 6.99g",
-    "",
-    "  LV     VG    Attr       LSize",
-    "  lvdata vglab -wi-a----- 8.00g",
-    "  lvlogs vglab -wi-a----- 5.00g"
-  ].join('\n')}
+              command={CODE_LINUXDISK_9}
+              output={CODE_LINUXDISK_10}
             />
             <LabStep number={4}
               description="Format, mount, and add to fstab for persistence."
-              command={[
-    "sudo mkfs.ext4 -L \"labdata\" /dev/vglab/lvdata",
-    "sudo mkfs.xfs  -L \"lablogs\" /dev/vglab/lvlogs",
-    "",
-    "sudo mkdir -p /mnt/labdata /mnt/lablogs",
-    "sudo mount /dev/vglab/lvdata /mnt/labdata",
-    "sudo mount /dev/vglab/lvlogs /mnt/lablogs",
-    "",
-    "# Add to fstab",
-    "echo \"/dev/vglab/lvdata /mnt/labdata ext4 defaults,nofail 0 2\" | sudo tee -a /etc/fstab",
-    "echo \"/dev/vglab/lvlogs /mnt/lablogs xfs  defaults,nofail 0 2\" | sudo tee -a /etc/fstab",
-    "",
-    "# Test fstab",
-    "sudo umount /mnt/labdata /mnt/lablogs",
-    "sudo mount -a",
-    "df -h /mnt/labdata /mnt/lablogs"
-  ].join('\n')}
-              output={[
-    "Filesystem                  Size  Used Avail Use% Mounted on",
-    "/dev/mapper/vglab-lvdata    7.9G   24M  7.4G   1% /mnt/labdata",
-    "/dev/mapper/vglab-lvlogs    5.0G   68M  5.0G   2% /mnt/lablogs"
-  ].join('\n')}
+              command={CODE_LINUXDISK_11}
+              output={CODE_LINUXDISK_12}
             />
             <LabStep number={5}
               description="Extend lvdata by 3GB while it's mounted — no downtime required."
-              command={[
-    "# Extend LV + filesystem in one step (-r flag)",
-    "sudo lvextend -r -L +3G /dev/vglab/lvdata",
-    "",
-    "# Verify — filesystem should immediately show new size",
-    "df -h /mnt/labdata",
-    "sudo lvs"
-  ].join('\n')}
-              output={[
-    "Filesystem                  Size  Used Avail Use% Mounted on",
-    "/dev/mapper/vglab-lvdata     11G   24M   10G   1% /mnt/labdata  ← now 11GB!",
-    "",
-    "  LV     VG    Attr       LSize",
-    "  lvdata vglab -wi-ao---- 11.00g  ← extended successfully"
-  ].join('\n')}
+              command={CODE_LINUXDISK_13}
+              output={CODE_LINUXDISK_14}
             />
             <Callout type="success" icon="✅" title="Lab Complete">
               Two disks are pooled into an LVM volume group, two logical volumes are formatted
@@ -439,42 +462,7 @@ sdb           8:16    20G   disk             ← Unpartitioned new disk`}</pre>
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="Disk & LVM command cheat sheet" language="bash" code={[
-    "# ── Inspection ──────────────────────────────────────────────",
-    "lsblk -f                          # Block device tree + filesystems",
-    "sudo fdisk -l                     # All partition tables",
-    "df -hT                            # Filesystem usage + type",
-    "sudo blkid                        # UUIDs + filesystem types",
-    "sudo pvs && sudo vgs && sudo lvs  # LVM summary",
-    "",
-    "# ── Partition + Format ───────────────────────────────────────",
-    "sudo fdisk /dev/sdb               # Interactive MBR partitioner",
-    "sudo parted /dev/sdb              # parted (better for GPT/large disks)",
-    "sudo mkfs.ext4 -L \"label\" /dev/sdb1",
-    "sudo mkfs.xfs  -L \"label\" /dev/sdb1",
-    "sudo mkswap /dev/sdb2 && sudo swapon /dev/sdb2",
-    "",
-    "# ── Mount ────────────────────────────────────────────────────",
-    "sudo mount /dev/sdb1 /mnt/data",
-    "sudo mount -a                     # Mount everything in fstab",
-    "sudo umount /mnt/data",
-    "sudo blkid -s UUID -o value /dev/sdb1   # Get UUID for fstab",
-    "",
-    "# ── LVM Lifecycle ────────────────────────────────────────────",
-    "sudo pvcreate /dev/sdb",
-    "sudo vgcreate myvg /dev/sdb",
-    "sudo lvcreate -L 10G -n mylv myvg",
-    "sudo lvextend -r -L +5G /dev/myvg/mylv  # Extend + resize fs",
-    "sudo lvreduce -r -L 5G  /dev/myvg/mylv  # Shrink (careful!)",
-    "sudo lvremove /dev/myvg/mylv",
-    "sudo vgremove myvg",
-    "sudo pvremove /dev/sdb",
-    "",
-    "# ── Snapshots ────────────────────────────────────────────────",
-    "sudo lvcreate -L 2G -s -n mysnap /dev/myvg/mylv   # Create snapshot",
-    "sudo mount /dev/myvg/mysnap /mnt/snapshot          # Mount snapshot",
-    "sudo lvconvert --merge /dev/myvg/mysnap            # Revert to snapshot"
-  ].join('\n')} />
+        <CodeBlock title="Disk & LVM command cheat sheet" language="bash" code={CODE_LINUXDISK_15} />
       </section>
 
       <section>

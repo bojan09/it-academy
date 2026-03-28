@@ -3,6 +3,187 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_PYTHONSUBPROCESS_1 = `import subprocess
+
+# ── Basic execution ──────────────────────────────────────────
+# Run and wait — capture output as strings
+result = subprocess.run(
+    ['systemctl', 'status', 'nginx'],
+    capture_output=True,   # capture stdout + stderr
+    text=True,             # decode bytes to str
+    check=False            # don't raise on non-zero exit
+)
+print(result.stdout)
+print(result.returncode)   # 0 = running, 3 = stopped
+
+# ── Raise on failure ─────────────────────────────────────────
+try:
+    result = subprocess.run(
+        ['systemctl', 'restart', 'nginx'],
+        capture_output=True, text=True, check=True
+    )
+    print('nginx restarted successfully')
+except subprocess.CalledProcessError as e:
+    print(f'Failed (exit {e.returncode}): {e.stderr}')
+
+# ── Timeout ──────────────────────────────────────────────────
+try:
+    result = subprocess.run(
+        ['ping', '-c', '1', '-W', '2', '192.168.100.10'],
+        capture_output=True, text=True, timeout=5
+    )
+    online = result.returncode == 0
+except subprocess.TimeoutExpired:
+    online = False
+
+# ── Write to stdin ────────────────────────────────────────────
+result = subprocess.run(
+    ['grep', '-i', 'error'],
+    input='line 1\\
+ERROR: something failed\\
+line 3\\
+',
+    capture_output=True, text=True
+)
+print(result.stdout)   # 'ERROR: something failed\\
+'`
+const CODE_PYTHONSUBPROCESS_2 = `import subprocess, re
+
+def get_disk_usage():
+    """Parse df output into structured data."""
+    result = subprocess.run(
+        ['df', '-h', '--output=source,size,used,avail,pcent,target'],
+        capture_output=True, text=True, check=True
+    )
+    filesystems = []
+    lines = result.stdout.strip().split('\\
+')[1:]  # skip header
+    for line in lines:
+        parts = line.split()
+        if len(parts) == 6:
+            filesystems.append({
+                'device':  parts[0],
+                'size':    parts[1],
+                'used':    parts[2],
+                'avail':   parts[3],
+                'percent': int(parts[4].rstrip('%')),
+                'mount':   parts[5],
+            })
+    return filesystems
+
+def get_failed_services():
+    """List failed systemd services."""
+    result = subprocess.run(
+        ['systemctl', 'list-units', '--state=failed', '--no-legend', '--no-pager'],
+        capture_output=True, text=True
+    )
+    failed = []
+    for line in result.stdout.strip().split('\\
+'):
+        if line.strip():
+            parts = line.split()
+            if parts:
+                failed.append(parts[0])
+    return failed
+
+# Use them
+for fs in get_disk_usage():
+    if fs['percent'] > 80:
+        print(f"WARNING: {fs['mount']} is {fs['percent']}% full")
+
+failed = get_failed_services()
+if failed:
+    print(f"Failed services: {', '.join(failed)}")`
+const CODE_PYTHONSUBPROCESS_3 = `import subprocess, sys
+
+def run_with_live_output(cmd, desc=''):
+    """Run a command and print output as it arrives."""
+    if desc:
+        print(f'>>> {desc}')
+    
+    with subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,  # merge stderr into stdout
+        text=True,
+        bufsize=1                   # line-buffered
+    ) as proc:
+        for line in proc.stdout:
+            print(line, end='', flush=True)
+        proc.wait()
+        return proc.returncode
+
+# Example: stream apt upgrade output
+rc = run_with_live_output(
+    ['apt', 'upgrade', '-y'],
+    desc='Running system upgrade'
+)
+print(f'Exit code: {rc}')
+
+# Example: stream a long backup operation
+rc = run_with_live_output(
+    ['tar', '-czv', '-f', '/backup/home.tar.gz', '/home/'],
+    desc='Creating backup'
+)`
+const CODE_PYTHONSUBPROCESS_4 = `cat > ~/server-health.py << 'EOF'
+#!/usr/bin/env python3
+"""server-health.py — Check health of lab servers using subprocess."""
+import subprocess, json
+from datetime import datetime
+
+SERVERS = ['192.168.100.10', '192.168.100.20']
+
+def ping(host, count=1):
+    result = subprocess.run(
+        ['ping', '-c', str(count), '-W', '2', host],
+        capture_output=True, timeout=10
+    )
+    return result.returncode == 0
+
+def get_local_disk():
+    result = subprocess.run(
+        ['df', '-h', '/'],
+        capture_output=True, text=True
+    )
+    lines = result.stdout.strip().split('\\
+')
+    if len(lines) >= 2:
+        parts = lines[1].split()
+        return {'total': parts[1], 'used': parts[2], 'pct': parts[4]}
+    return {}
+
+def check_service(name):
+    result = subprocess.run(
+        ['systemctl', 'is-active', name],
+        capture_output=True, text=True
+    )
+    return result.stdout.strip() == 'active'
+
+report = {'timestamp': datetime.now().isoformat(), 'results': []}
+
+for server in SERVERS:
+    entry = {'server': server, 'reachable': ping(server)}
+    report['results'].append(entry)
+    status = 'ONLINE' if entry['reachable'] else 'OFFLINE'
+    print(f'  {server}: {status}')
+
+disk = get_local_disk()
+print(f'  Disk: {disk.get("pct", "?")}')
+
+for svc in ['ssh', 'nginx', 'cron']:
+    active = check_service(svc)
+    print(f'  {svc}: {"active" if active else "STOPPED"}')
+EOF
+python3 ~/server-health.py`
+const CODE_PYTHONSUBPROCESS_5 = `  192.168.100.10: ONLINE
+  192.168.100.20: ONLINE
+  Disk: 15%
+  ssh: active
+  nginx: STOPPED
+  cron: active`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -142,138 +323,19 @@ export default function PythonSubprocess() {
       <section>
         <h2>subprocess.run() — The Right Way</h2>
         <CodeBlock title="subprocess.run() — complete reference" language="bash"
-          code={[
-            "import subprocess",
-            "",
-            "# ── Basic execution ──────────────────────────────────────────",
-            "# Run and wait — capture output as strings",
-            "result = subprocess.run(",
-            "    ['systemctl', 'status', 'nginx'],",
-            "    capture_output=True,   # capture stdout + stderr",
-            "    text=True,             # decode bytes to str",
-            "    check=False            # don't raise on non-zero exit",
-            ")",
-            "print(result.stdout)",
-            "print(result.returncode)   # 0 = running, 3 = stopped",
-            "",
-            "# ── Raise on failure ─────────────────────────────────────────",
-            "try:",
-            "    result = subprocess.run(",
-            "        ['systemctl', 'restart', 'nginx'],",
-            "        capture_output=True, text=True, check=True",
-            "    )",
-            "    print('nginx restarted successfully')",
-            "except subprocess.CalledProcessError as e:",
-            "    print(f'Failed (exit {e.returncode}): {e.stderr}')",
-            "",
-            "# ── Timeout ──────────────────────────────────────────────────",
-            "try:",
-            "    result = subprocess.run(",
-            "        ['ping', '-c', '1', '-W', '2', '192.168.100.10'],",
-            "        capture_output=True, text=True, timeout=5",
-            "    )",
-            "    online = result.returncode == 0",
-            "except subprocess.TimeoutExpired:",
-            "    online = False",
-            "",
-            "# ── Write to stdin ────────────────────────────────────────────",
-            "result = subprocess.run(",
-            "    ['grep', '-i', 'error'],",
-            "    input='line 1\\nERROR: something failed\\nline 3\\n',",
-            "    capture_output=True, text=True",
-            ")",
-            "print(result.stdout)   # 'ERROR: something failed\\n'"
-          ].join('\n')} />
+          code={CODE_PYTHONSUBPROCESS_1} />
       </section>
 
       <section>
         <h2>Parsing Command Output</h2>
         <CodeBlock title="Extract structured data from CLI output" language="bash"
-          code={[
-            "import subprocess, re",
-            "",
-            "def get_disk_usage():",
-            "    \"\"\"Parse df output into structured data.\"\"\"",
-            "    result = subprocess.run(",
-            "        ['df', '-h', '--output=source,size,used,avail,pcent,target'],",
-            "        capture_output=True, text=True, check=True",
-            "    )",
-            "    filesystems = []",
-            "    lines = result.stdout.strip().split('\\n')[1:]  # skip header",
-            "    for line in lines:",
-            "        parts = line.split()",
-            "        if len(parts) == 6:",
-            "            filesystems.append({",
-            "                'device':  parts[0],",
-            "                'size':    parts[1],",
-            "                'used':    parts[2],",
-            "                'avail':   parts[3],",
-            "                'percent': int(parts[4].rstrip('%')),",
-            "                'mount':   parts[5],",
-            "            })",
-            "    return filesystems",
-            "",
-            "def get_failed_services():",
-            "    \"\"\"List failed systemd services.\"\"\"",
-            "    result = subprocess.run(",
-            "        ['systemctl', 'list-units', '--state=failed', '--no-legend', '--no-pager'],",
-            "        capture_output=True, text=True",
-            "    )",
-            "    failed = []",
-            "    for line in result.stdout.strip().split('\\n'):",
-            "        if line.strip():",
-            "            parts = line.split()",
-            "            if parts:",
-            "                failed.append(parts[0])",
-            "    return failed",
-            "",
-            "# Use them",
-            "for fs in get_disk_usage():",
-            "    if fs['percent'] > 80:",
-            "        print(f\"WARNING: {fs['mount']} is {fs['percent']}% full\")",
-            "",
-            "failed = get_failed_services()",
-            "if failed:",
-            "    print(f\"Failed services: {', '.join(failed)}\")"
-          ].join('\n')} />
+          code={CODE_PYTHONSUBPROCESS_2} />
       </section>
 
       <section>
         <h2>Streaming Output with Popen</h2>
         <CodeBlock title="Real-time output processing" language="bash"
-          code={[
-            "import subprocess, sys",
-            "",
-            "def run_with_live_output(cmd, desc=''):",
-            "    \"\"\"Run a command and print output as it arrives.\"\"\"",
-            "    if desc:",
-            "        print(f'>>> {desc}')",
-            "    ",
-            "    with subprocess.Popen(",
-            "        cmd,",
-            "        stdout=subprocess.PIPE,",
-            "        stderr=subprocess.STDOUT,  # merge stderr into stdout",
-            "        text=True,",
-            "        bufsize=1                   # line-buffered",
-            "    ) as proc:",
-            "        for line in proc.stdout:",
-            "            print(line, end='', flush=True)",
-            "        proc.wait()",
-            "        return proc.returncode",
-            "",
-            "# Example: stream apt upgrade output",
-            "rc = run_with_live_output(",
-            "    ['apt', 'upgrade', '-y'],",
-            "    desc='Running system upgrade'",
-            ")",
-            "print(f'Exit code: {rc}')",
-            "",
-            "# Example: stream a long backup operation",
-            "rc = run_with_live_output(",
-            "    ['tar', '-czv', '-f', '/backup/home.tar.gz', '/home/'],",
-            "    desc='Creating backup'",
-            ")"
-          ].join('\n')} />
+          code={CODE_PYTHONSUBPROCESS_3} />
       </section>
 
       <section>
@@ -287,66 +349,9 @@ export default function PythonSubprocess() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Write a comprehensive server health script using subprocess."
-              command={[
-                "cat > ~/server-health.py << 'EOF'",
-                "#!/usr/bin/env python3",
-                "\"\"\"server-health.py — Check health of lab servers using subprocess.\"\"\"",
-                "import subprocess, json",
-                "from datetime import datetime",
-                "",
-                "SERVERS = ['192.168.100.10', '192.168.100.20']",
-                "",
-                "def ping(host, count=1):",
-                "    result = subprocess.run(",
-                "        ['ping', '-c', str(count), '-W', '2', host],",
-                "        capture_output=True, timeout=10",
-                "    )",
-                "    return result.returncode == 0",
-                "",
-                "def get_local_disk():",
-                "    result = subprocess.run(",
-                "        ['df', '-h', '/'],",
-                "        capture_output=True, text=True",
-                "    )",
-                "    lines = result.stdout.strip().split('\\n')",
-                "    if len(lines) >= 2:",
-                "        parts = lines[1].split()",
-                "        return {'total': parts[1], 'used': parts[2], 'pct': parts[4]}",
-                "    return {}",
-                "",
-                "def check_service(name):",
-                "    result = subprocess.run(",
-                "        ['systemctl', 'is-active', name],",
-                "        capture_output=True, text=True",
-                "    )",
-                "    return result.stdout.strip() == 'active'",
-                "",
-                "report = {'timestamp': datetime.now().isoformat(), 'results': []}",
-                "",
-                "for server in SERVERS:",
-                "    entry = {'server': server, 'reachable': ping(server)}",
-                "    report['results'].append(entry)",
-                "    status = 'ONLINE' if entry['reachable'] else 'OFFLINE'",
-                "    print(f'  {server}: {status}')",
-                "",
-                "disk = get_local_disk()",
-                "print(f'  Disk: {disk.get(\"pct\", \"?\")}')",
-                "",
-                "for svc in ['ssh', 'nginx', 'cron']:",
-                "    active = check_service(svc)",
-                "    print(f'  {svc}: {\"active\" if active else \"STOPPED\"}')",
-                "EOF",
-                "python3 ~/server-health.py"
-              ].join('\n')}
+              command={CODE_PYTHONSUBPROCESS_4}
               language="bash"
-              output={[
-                "  192.168.100.10: ONLINE",
-                "  192.168.100.20: ONLINE",
-                "  Disk: 15%",
-                "  ssh: active",
-                "  nginx: STOPPED",
-                "  cron: active"
-              ].join('\n')}
+              output={CODE_PYTHONSUBPROCESS_5}
             />
           </div>
         </div>

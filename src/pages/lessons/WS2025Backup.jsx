@@ -3,6 +3,90 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WS2025BACKUP_1 = `# Install Windows Server Backup feature
+Install-WindowsFeature Windows-Server-Backup -IncludeManagementTools
+
+# ── Schedule a daily backup ───────────────────────────────────
+$policy = New-WBPolicy
+
+# Add volumes to back up
+$vol = Get-WBVolume -AllVolumes | Where-Object { $_.MountPath -eq 'C:\\' }
+Add-WBVolume -Policy $policy -Volume $vol
+
+# Add System State (critical for domain controllers)
+Add-WBSystemState -Policy $policy
+
+# Set backup target (external drive or network share)
+$target = New-WBBackupTarget -NetworkPath '\\\\NAS01\\Backups\\DC01' \`\`
+  -Credential (Get-Credential 'BACKUP\\svc-backup')
+Add-WBBackupTarget -Policy $policy -Target $target
+
+# Schedule: daily at 23:00
+Set-WBSchedule -Policy $policy -Schedule 23:00
+
+# Apply policy
+Set-WBPolicy -Policy $policy -Force
+
+# Verify
+Get-WBPolicy | Select-Object -ExpandProperty Schedule
+Get-WBSummary`
+const CODE_WS2025BACKUP_2 = `# Manual System State backup (run on DC01)
+wbadmin start systemstatebackup -backupTarget:E: -quiet
+
+# Verify backup completed
+wbadmin get versions -backupTarget:E:
+
+# ── AD Object restore (without full DC restore) ───────────────
+# For deleted AD objects: use AD Recycle Bin (if enabled)
+Get-ADObject -Filter { isDeleted -eq $true } \`\`
+  -IncludeDeletedObjects -SearchBase 'CN=Deleted Objects,DC=lab,DC=local' |
+  Select-Object Name, WhenDeleted
+
+# Restore a deleted user from Recycle Bin
+Restore-ADObject -Identity (Get-ADObject \`\`
+  -Filter {Name -eq 'jsmith'} -IncludeDeletedObjects -SearchBase \`\`
+  'CN=Deleted Objects,DC=lab,DC=local')
+
+# ── Enable AD Recycle Bin (if not enabled) ────────────────────
+Enable-ADOptionalFeature -Identity 'Recycle Bin Feature' \`\`
+  -Scope ForestOrConfigurationSet \`\`
+  -Target 'lab.local' -Confirm:$false`
+const CODE_WS2025BACKUP_3 = `# Install the feature
+Install-WindowsFeature Windows-Server-Backup -IncludeManagementTools
+
+# Check existing backup status
+Get-WBSummary`
+const CODE_WS2025BACKUP_4 = `LastSuccessfulBackupTime   :
+LastSuccessfulBackupTarget :
+LastBackupResultHR         : 0
+NumberOfVersions           : 0
+
+← No backups yet — this is a fresh server`
+const CODE_WS2025BACKUP_5 = `# Check if Recycle Bin is already enabled
+Get-ADOptionalFeature -Filter 'name -eq "Recycle Bin Feature"' |
+  Select-Object Name, EnabledScopes
+
+# Enable if not already enabled
+Enable-ADOptionalFeature -Identity 'Recycle Bin Feature' \`\`
+  -Scope ForestOrConfigurationSet \`\`
+  -Target 'lab.local' -Confirm:$false
+
+# Test: delete a user and restore them
+New-ADUser -Name 'Test Recovery' -SamAccountName 'testrecovery' -Enabled $true
+Remove-ADUser -Identity 'testrecovery' -Confirm:$false
+
+# Find in Recycle Bin
+Get-ADObject -Filter {Name -eq 'Test Recovery'} \`\`
+  -IncludeDeletedObjects |
+  Restore-ADObject
+
+Get-ADUser -Identity 'testrecovery' | Select-Object Name, Enabled`
+const CODE_WS2025BACKUP_6 = `Name            Enabled
+----            -------
+Test Recovery   False    ← restored, re-enable manually`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -171,63 +255,13 @@ export default function WS2025Backup() {
       <section>
         <h2>Windows Server Backup with PowerShell</h2>
         <CodeBlock title="Configure scheduled backup via PowerShell" language="powershell"
-          code={[
-            "# Install Windows Server Backup feature",
-            "Install-WindowsFeature Windows-Server-Backup -IncludeManagementTools",
-            "",
-            "# ── Schedule a daily backup ───────────────────────────────────",
-            "$policy = New-WBPolicy",
-            "",
-            "# Add volumes to back up",
-            "$vol = Get-WBVolume -AllVolumes | Where-Object { $_.MountPath -eq 'C:\\' }",
-            "Add-WBVolume -Policy $policy -Volume $vol",
-            "",
-            "# Add System State (critical for domain controllers)",
-            "Add-WBSystemState -Policy $policy",
-            "",
-            "# Set backup target (external drive or network share)",
-            "$target = New-WBBackupTarget -NetworkPath '\\\\NAS01\\Backups\\DC01' ``",
-            "  -Credential (Get-Credential 'BACKUP\\svc-backup')",
-            "Add-WBBackupTarget -Policy $policy -Target $target",
-            "",
-            "# Schedule: daily at 23:00",
-            "Set-WBSchedule -Policy $policy -Schedule 23:00",
-            "",
-            "# Apply policy",
-            "Set-WBPolicy -Policy $policy -Force",
-            "",
-            "# Verify",
-            "Get-WBPolicy | Select-Object -ExpandProperty Schedule",
-            "Get-WBSummary"
-          ].join('\n')} />
+          code={CODE_WS2025BACKUP_1} />
       </section>
 
       <section>
         <h2>Active Directory System State Backup</h2>
         <CodeBlock title="Back up and restore AD System State" language="powershell"
-          code={[
-            "# Manual System State backup (run on DC01)",
-            "wbadmin start systemstatebackup -backupTarget:E: -quiet",
-            "",
-            "# Verify backup completed",
-            "wbadmin get versions -backupTarget:E:",
-            "",
-            "# ── AD Object restore (without full DC restore) ───────────────",
-            "# For deleted AD objects: use AD Recycle Bin (if enabled)",
-            "Get-ADObject -Filter { isDeleted -eq $true } ``",
-            "  -IncludeDeletedObjects -SearchBase 'CN=Deleted Objects,DC=lab,DC=local' |",
-            "  Select-Object Name, WhenDeleted",
-            "",
-            "# Restore a deleted user from Recycle Bin",
-            "Restore-ADObject -Identity (Get-ADObject ``",
-            "  -Filter {Name -eq 'jsmith'} -IncludeDeletedObjects -SearchBase ``",
-            "  'CN=Deleted Objects,DC=lab,DC=local')",
-            "",
-            "# ── Enable AD Recycle Bin (if not enabled) ────────────────────",
-            "Enable-ADOptionalFeature -Identity 'Recycle Bin Feature' ``",
-            "  -Scope ForestOrConfigurationSet ``",
-            "  -Target 'lab.local' -Confirm:$false"
-          ].join('\n')} />
+          code={CODE_WS2025BACKUP_2} />
       </section>
 
       <section>
@@ -241,50 +275,13 @@ export default function WS2025Backup() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install Windows Server Backup and check backup history."
-              command={[
-                "# Install the feature",
-                "Install-WindowsFeature Windows-Server-Backup -IncludeManagementTools",
-                "",
-                "# Check existing backup status",
-                "Get-WBSummary"
-              ].join('\n')}
-              output={[
-                "LastSuccessfulBackupTime   :",
-                "LastSuccessfulBackupTarget :",
-                "LastBackupResultHR         : 0",
-                "NumberOfVersions           : 0",
-                "",
-                "← No backups yet — this is a fresh server"
-              ].join('\n')}
+              command={CODE_WS2025BACKUP_3}
+              output={CODE_WS2025BACKUP_4}
             />
             <LabStep number={2}
               description="Enable the AD Recycle Bin for easy object recovery."
-              command={[
-                "# Check if Recycle Bin is already enabled",
-                "Get-ADOptionalFeature -Filter 'name -eq \"Recycle Bin Feature\"' |",
-                "  Select-Object Name, EnabledScopes",
-                "",
-                "# Enable if not already enabled",
-                "Enable-ADOptionalFeature -Identity 'Recycle Bin Feature' ``",
-                "  -Scope ForestOrConfigurationSet ``",
-                "  -Target 'lab.local' -Confirm:$false",
-                "",
-                "# Test: delete a user and restore them",
-                "New-ADUser -Name 'Test Recovery' -SamAccountName 'testrecovery' -Enabled $true",
-                "Remove-ADUser -Identity 'testrecovery' -Confirm:$false",
-                "",
-                "# Find in Recycle Bin",
-                "Get-ADObject -Filter {Name -eq 'Test Recovery'} ``",
-                "  -IncludeDeletedObjects |",
-                "  Restore-ADObject",
-                "",
-                "Get-ADUser -Identity 'testrecovery' | Select-Object Name, Enabled"
-              ].join('\n')}
-              output={[
-                "Name            Enabled",
-                "----            -------",
-                "Test Recovery   False    ← restored, re-enable manually"
-              ].join('\n')}
+              command={CODE_WS2025BACKUP_5}
+              output={CODE_WS2025BACKUP_6}
             />
           </div>
         </div>

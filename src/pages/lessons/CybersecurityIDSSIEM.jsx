@@ -3,6 +3,96 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYIDSSIEM_1 = `# ── On the LOG SERVER (collector) ────────────────────────────
+# Enable UDP/TCP syslog reception
+sudo tee /etc/rsyslog.d/10-listen.conf << 'EOF'
+# Listen on UDP 514
+module(load="imudp")
+input(type="imudp" port="514")
+
+# Listen on TCP 514 (more reliable, supports larger messages)
+module(load="imtcp")
+input(type="imtcp" port="514")
+
+# Store logs per host
+$template RemoteLogs,"/var/log/remote/%HOSTNAME%/%PROGRAMNAME%.log"
+*.* ?RemoteLogs
+& stop
+EOF
+sudo systemctl restart rsyslog
+
+# ── On each CLIENT server ─────────────────────────────────────
+sudo tee /etc/rsyslog.d/50-forward.conf << 'EOF'
+# Forward all logs to central server via TCP
+*.* @@192.168.100.10:514
+# @@ = TCP (reliable), @ = UDP (faster but may lose messages)
+EOF
+sudo systemctl restart rsyslog
+
+# ── Verify forwarding ─────────────────────────────────────────
+logger -t test 'This is a test from client'
+# Check on log server:
+# cat /var/log/remote/srv01/test.log`
+const CODE_CYBERSECURITYIDSSIEM_2 = `# Wazuh components:
+# - wazuh-manager: central server (correlation, alerting, API)
+# - wazuh-agent: lightweight agent on each monitored system
+# - OpenSearch/Kibana: visualisation dashboard (Wazuh dashboard)
+
+# Key capabilities of the Wazuh agent:
+
+# 1. File Integrity Monitoring (FIM)
+# Monitors files for unauthorised changes:
+# /etc/passwd, /etc/shadow, /etc/sudoers, /bin/, /sbin/
+
+# 2. Rootkit detection
+# Checks for hidden processes, files, and ports
+
+# 3. Vulnerability assessment
+# Compares installed packages against NVD/CVE database
+
+# 4. Log analysis
+# Parses auth.log, syslog, audit.log for suspicious patterns
+
+# 5. Active response
+# Automatically block IPs with firewall after N failed logins
+
+# Example active response rule (wazuh ossec.conf):
+# <active-response>
+#   <command>firewall-drop</command>
+#   <location>local</location>
+#   <rules_id>5710</rules_id>  <!-- SSH brute force rule -->
+#   <timeout>3600</timeout>     <!-- Block for 1 hour -->
+# </active-response>`
+const CODE_CYBERSECURITYIDSSIEM_3 = `# Watch auth.log for failed SSH logins in real time
+sudo tail -f /var/log/auth.log | grep 'Failed password'
+
+# Count failures per IP (run after some activity)
+sudo grep 'Failed password' /var/log/auth.log |
+  awk '{print $11}' | sort | uniq -c | sort -rn | head -10`
+const CODE_CYBERSECURITYIDSSIEM_4 = `Jan 15 11:00:00 srv01 sshd[1234]: Failed password for root from 10.0.0.5 port 54321 ssh2
+
+   3 10.0.0.5
+   1 192.168.100.50`
+const CODE_CYBERSECURITYIDSSIEM_5 = `# Enable UFW logging
+sudo ufw logging on
+
+# Watch for blocked connection attempts
+sudo tail -f /var/log/ufw.log | grep 'BLOCK'
+
+# Summarise blocked source IPs
+sudo grep 'UFW BLOCK' /var/log/ufw.log |
+  awk '{for(i=1;i<=NF;i++) if($i~/^SRC=/) print substr($i,5)}' |
+  sort | uniq -c | sort -rn | head -10
+
+# Detect port scan: many different DPT values from same SRC
+sudo grep 'UFW BLOCK' /var/log/ufw.log |
+  awk '{src=""; dpt=""; for(i=1;i<=NF;i++){
+    if($i~/^SRC=/) src=substr($i,5);
+    if($i~/^DPT=/) dpt=substr($i,5)}
+    print src, dpt}' | sort | head -10`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -166,75 +256,13 @@ export default function CybersecurityIDSSIEM() {
       <section>
         <h2>Centralised Log Collection with rsyslog</h2>
         <CodeBlock title="Configure rsyslog to forward to a central server" language="bash"
-          code={[
-            "# ── On the LOG SERVER (collector) ────────────────────────────",
-            "# Enable UDP/TCP syslog reception",
-            "sudo tee /etc/rsyslog.d/10-listen.conf << 'EOF'",
-            "# Listen on UDP 514",
-            "module(load=\"imudp\")",
-            "input(type=\"imudp\" port=\"514\")",
-            "",
-            "# Listen on TCP 514 (more reliable, supports larger messages)",
-            "module(load=\"imtcp\")",
-            "input(type=\"imtcp\" port=\"514\")",
-            "",
-            "# Store logs per host",
-            '$template RemoteLogs,"/var/log/remote/%HOSTNAME%/%PROGRAMNAME%.log"',
-            "*.* ?RemoteLogs",
-            "& stop",
-            "EOF",
-            "sudo systemctl restart rsyslog",
-            "",
-            "# ── On each CLIENT server ─────────────────────────────────────",
-            "sudo tee /etc/rsyslog.d/50-forward.conf << 'EOF'",
-            "# Forward all logs to central server via TCP",
-            "*.* @@192.168.100.10:514",
-            "# @@ = TCP (reliable), @ = UDP (faster but may lose messages)",
-            "EOF",
-            "sudo systemctl restart rsyslog",
-            "",
-            "# ── Verify forwarding ─────────────────────────────────────────",
-            "logger -t test 'This is a test from client'",
-            "# Check on log server:",
-            "# cat /var/log/remote/srv01/test.log"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYIDSSIEM_1} />
       </section>
 
       <section>
         <h2>Wazuh — Open-Source SIEM/XDR</h2>
         <CodeBlock title="Wazuh architecture and key features" language="bash"
-          code={[
-            "# Wazuh components:",
-            "# - wazuh-manager: central server (correlation, alerting, API)",
-            "# - wazuh-agent: lightweight agent on each monitored system",
-            "# - OpenSearch/Kibana: visualisation dashboard (Wazuh dashboard)",
-            "",
-            "# Key capabilities of the Wazuh agent:",
-            "",
-            "# 1. File Integrity Monitoring (FIM)",
-            "# Monitors files for unauthorised changes:",
-            "# /etc/passwd, /etc/shadow, /etc/sudoers, /bin/, /sbin/",
-            "",
-            "# 2. Rootkit detection",
-            "# Checks for hidden processes, files, and ports",
-            "",
-            "# 3. Vulnerability assessment",
-            "# Compares installed packages against NVD/CVE database",
-            "",
-            "# 4. Log analysis",
-            "# Parses auth.log, syslog, audit.log for suspicious patterns",
-            "",
-            "# 5. Active response",
-            "# Automatically block IPs with firewall after N failed logins",
-            "",
-            "# Example active response rule (wazuh ossec.conf):",
-            "# <active-response>",
-            "#   <command>firewall-drop</command>",
-            "#   <location>local</location>",
-            "#   <rules_id>5710</rules_id>  <!-- SSH brute force rule -->",
-            "#   <timeout>3600</timeout>     <!-- Block for 1 hour -->",
-            "# </active-response>"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYIDSSIEM_2} />
       </section>
 
       <section>
@@ -248,42 +276,12 @@ export default function CybersecurityIDSSIEM() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Configure the Ubuntu VM to detect SSH brute-force attempts using built-in logs."
-              command={[
-                "# Watch auth.log for failed SSH logins in real time",
-                "sudo tail -f /var/log/auth.log | grep 'Failed password'",
-                "",
-                "# Count failures per IP (run after some activity)",
-                "sudo grep 'Failed password' /var/log/auth.log |",
-                "  awk '{print $11}' | sort | uniq -c | sort -rn | head -10"
-              ].join('\n')}
-              output={[
-                "Jan 15 11:00:00 srv01 sshd[1234]: Failed password for root from 10.0.0.5 port 54321 ssh2",
-                "",
-                "   3 10.0.0.5",
-                "   1 192.168.100.50"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYIDSSIEM_3}
+              output={CODE_CYBERSECURITYIDSSIEM_4}
             />
             <LabStep number={2}
               description="Use the UFW log to detect port scanning activity."
-              command={[
-                "# Enable UFW logging",
-                "sudo ufw logging on",
-                "",
-                "# Watch for blocked connection attempts",
-                "sudo tail -f /var/log/ufw.log | grep 'BLOCK'",
-                "",
-                "# Summarise blocked source IPs",
-                "sudo grep 'UFW BLOCK' /var/log/ufw.log |",
-                "  awk '{for(i=1;i<=NF;i++) if($i~/^SRC=/) print substr($i,5)}' |",
-                "  sort | uniq -c | sort -rn | head -10",
-                "",
-                "# Detect port scan: many different DPT values from same SRC",
-                "sudo grep 'UFW BLOCK' /var/log/ufw.log |",
-                "  awk '{src=\"\"; dpt=\"\"; for(i=1;i<=NF;i++){",
-                "    if($i~/^SRC=/) src=substr($i,5);",
-                "    if($i~/^DPT=/) dpt=substr($i,5)}",
-                "    print src, dpt}' | sort | head -10"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYIDSSIEM_5}
             />
           </div>
         </div>

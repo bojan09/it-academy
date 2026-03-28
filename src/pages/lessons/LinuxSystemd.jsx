@@ -3,6 +3,180 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXSYSTEMD_1 = `# ── Service lifecycle ────────────────────────────────────────
+sudo systemctl start nginx       # Start now
+sudo systemctl stop nginx        # Stop now
+sudo systemctl restart nginx     # Stop then start
+sudo systemctl reload nginx      # Reload config (no downtime)
+sudo systemctl status nginx      # Show status, recent logs
+
+# ── Boot persistence ─────────────────────────────────────────
+sudo systemctl enable nginx      # Start at boot
+sudo systemctl disable nginx     # Don't start at boot
+sudo systemctl enable --now nginx  # Enable AND start immediately
+sudo systemctl disable --now nginx # Disable AND stop immediately
+
+# ── Inspect ──────────────────────────────────────────────────
+systemctl is-active nginx        # Returns 'active' or 'inactive'
+systemctl is-enabled nginx       # Returns 'enabled' or 'disabled'
+systemctl is-failed nginx        # Returns 'failed' or 'active'
+systemctl list-units --type=service --state=running
+systemctl list-units --type=service --state=failed
+systemctl list-unit-files --type=service | grep enabled
+
+# ── System-wide ──────────────────────────────────────────────
+sudo systemctl daemon-reload     # Re-read unit files after changes
+sudo systemctl reset-failed      # Clear 'failed' state on all units
+sudo systemctl reset-failed nginx  # Clear failed state for nginx
+
+# ── Power management ─────────────────────────────────────────
+sudo systemctl reboot
+sudo systemctl poweroff
+sudo systemctl halt`
+const CODE_LINUXSYSTEMD_2 = `[Unit]
+Description=My Application Server
+Documentation=https://docs.myapp.com
+After=network.target postgresql.service   # Start AFTER these
+Requires=postgresql.service               # FAIL if postgres not running
+Wants=redis.service                       # Start redis if possible, but don't fail
+
+[Service]
+Type=simple                   # simple|forking|oneshot|notify|idle
+User=appuser                  # Run as this user (NOT root)
+Group=appuser
+WorkingDirectory=/opt/myapp
+EnvironmentFile=/etc/myapp/env  # Load env vars from file
+ExecStart=/opt/myapp/bin/server --port 8080
+ExecReload=/bin/kill -HUP $MAINPID  # Signal for config reload
+ExecStop=/bin/kill -TERM $MAINPID
+
+# Restart policy
+Restart=on-failure            # Restart if process exits non-zero
+RestartSec=5                  # Wait 5s before restarting
+StartLimitIntervalSec=60      # Reset restart counter every 60s
+StartLimitBurst=3             # Max 3 restarts in the interval
+
+# Security hardening
+NoNewPrivileges=yes           # Prevent privilege escalation
+ProtectSystem=strict          # Mount /usr, /boot read-only
+PrivateTmp=yes                # Isolated /tmp directory
+
+[Install]
+WantedBy=multi-user.target    # Enable for normal multi-user boot`
+const CODE_LINUXSYSTEMD_3 = `# ── Basic queries ────────────────────────────────────────────
+journalctl -u nginx                # All logs for nginx
+journalctl -u nginx -f             # Follow in real time
+journalctl -u nginx -n 50          # Last 50 lines
+journalctl -u nginx --since '1 hour ago'
+journalctl -u nginx --since '2025-01-15 09:00' --until '2025-01-15 10:00'
+
+# ── Filter by priority ───────────────────────────────────────
+journalctl -p err                  # Errors and above
+journalctl -p warning -u nginx     # Warnings for nginx
+# Priorities: emerg alert crit err warning notice info debug
+
+# ── Boot logs ────────────────────────────────────────────────
+journalctl -b                      # Current boot
+journalctl -b -1                   # Previous boot
+journalctl --list-boots            # List all boots
+
+# ── System-wide ──────────────────────────────────────────────
+journalctl --disk-usage            # How much disk logs use
+sudo journalctl --vacuum-size=500M # Keep only last 500MB
+sudo journalctl --vacuum-time=30d  # Keep only last 30 days`
+const CODE_LINUXSYSTEMD_4 = `# Two files needed: a .service and a .timer
+
+# 1. Create the service unit (what to run)
+sudo tee /etc/systemd/system/disk-check.service << 'EOF'
+[Unit]
+Description=Disk Space Check
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/scripts/disk-monitor.py
+StandardOutput=journal
+EOF
+
+# 2. Create the timer unit (when to run)
+sudo tee /etc/systemd/system/disk-check.timer << 'EOF'
+[Unit]
+Description=Run disk check every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15        # Every 15 minutes (cron: */15 * * * *)
+# OnBootSec=5min         # 5 minutes after boot
+# OnUnitActiveSec=1h     # Every hour after last run
+Persistent=true          # Run missed jobs after downtime
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# 3. Enable and start the timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now disk-check.timer
+
+# 4. Verify
+systemctl list-timers disk-check.timer`
+const CODE_LINUXSYSTEMD_5 = `# How long has the system been running?
+systemctl status --no-pager | head -5
+
+# Which services are failed?
+systemctl list-units --state=failed
+
+# Check nginx is running
+systemctl is-active nginx && echo 'nginx: OK' || echo 'nginx: not running'`
+const CODE_LINUXSYSTEMD_6 = `State: running
+Jobs: 0 queued
+Failed: 0 units
+
+nginx: OK`
+const CODE_LINUXSYSTEMD_7 = `# Create the script
+sudo mkdir -p /opt/healthcheck
+sudo tee /opt/healthcheck/run.sh << 'SCRIPT'
+#!/bin/bash
+echo "[$(date)] Disk: $(df -h / | tail -1 | awk '{print $5}') used"
+echo "[$(date)] RAM:  $(free -h | grep Mem | awk '{print $3}') used"
+SCRIPT
+sudo chmod +x /opt/healthcheck/run.sh
+
+# Create the unit file
+sudo tee /etc/systemd/system/healthcheck.service << 'EOF'
+[Unit]
+Description=System Health Check
+
+[Service]
+Type=oneshot
+ExecStart=/opt/healthcheck/run.sh
+StandardOutput=journal
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl start healthcheck
+journalctl -u healthcheck -n 5 --no-pager`
+const CODE_LINUXSYSTEMD_8 = `Jan 15 11:00:00 srv01 run.sh[1234]: [2025-01-15 11:00:00] Disk: 15% used
+Jan 15 11:00:00 srv01 run.sh[1234]: [2025-01-15 11:00:00] RAM:  1.2G used`
+const CODE_LINUXSYSTEMD_9 = `sudo tee /etc/systemd/system/healthcheck.timer << 'EOF'
+[Unit]
+Description=Health Check Timer
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now healthcheck.timer
+systemctl list-timers healthcheck.timer`
+const CODE_LINUXSYSTEMD_10 = `NEXT                         LEFT     LAST  PASSED  UNIT
+Thu 2025-01-15 11:05:00 UTC  4min 59s  n/a    n/a   healthcheck.timer`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -142,38 +316,7 @@ export default function LinuxSystemd() {
       <section>
         <h2>systemctl — Service Control</h2>
         <CodeBlock title="systemctl — complete daily reference" language="bash"
-          code={[
-            "# ── Service lifecycle ────────────────────────────────────────",
-            "sudo systemctl start nginx       # Start now",
-            "sudo systemctl stop nginx        # Stop now",
-            "sudo systemctl restart nginx     # Stop then start",
-            "sudo systemctl reload nginx      # Reload config (no downtime)",
-            "sudo systemctl status nginx      # Show status, recent logs",
-            "",
-            "# ── Boot persistence ─────────────────────────────────────────",
-            "sudo systemctl enable nginx      # Start at boot",
-            "sudo systemctl disable nginx     # Don't start at boot",
-            "sudo systemctl enable --now nginx  # Enable AND start immediately",
-            "sudo systemctl disable --now nginx # Disable AND stop immediately",
-            "",
-            "# ── Inspect ──────────────────────────────────────────────────",
-            "systemctl is-active nginx        # Returns 'active' or 'inactive'",
-            "systemctl is-enabled nginx       # Returns 'enabled' or 'disabled'",
-            "systemctl is-failed nginx        # Returns 'failed' or 'active'",
-            "systemctl list-units --type=service --state=running",
-            "systemctl list-units --type=service --state=failed",
-            "systemctl list-unit-files --type=service | grep enabled",
-            "",
-            "# ── System-wide ──────────────────────────────────────────────",
-            "sudo systemctl daemon-reload     # Re-read unit files after changes",
-            "sudo systemctl reset-failed      # Clear 'failed' state on all units",
-            "sudo systemctl reset-failed nginx  # Clear failed state for nginx",
-            "",
-            "# ── Power management ─────────────────────────────────────────",
-            "sudo systemctl reboot",
-            "sudo systemctl poweroff",
-            "sudo systemctl halt"
-          ].join('\n')} />
+          code={CODE_LINUXSYSTEMD_1} />
       </section>
 
       <section>
@@ -181,108 +324,19 @@ export default function LinuxSystemd() {
         <p>Every service is defined by a unit file. Understanding the structure lets you
           create custom services for your own scripts.</p>
         <CodeBlock title="/etc/systemd/system/myapp.service — annotated" language="bash"
-          code={[
-            "[Unit]",
-            "Description=My Application Server",
-            "Documentation=https://docs.myapp.com",
-            "After=network.target postgresql.service   # Start AFTER these",
-            "Requires=postgresql.service               # FAIL if postgres not running",
-            "Wants=redis.service                       # Start redis if possible, but don't fail",
-            "",
-            "[Service]",
-            "Type=simple                   # simple|forking|oneshot|notify|idle",
-            "User=appuser                  # Run as this user (NOT root)",
-            "Group=appuser",
-            "WorkingDirectory=/opt/myapp",
-            "EnvironmentFile=/etc/myapp/env  # Load env vars from file",
-            "ExecStart=/opt/myapp/bin/server --port 8080",
-            "ExecReload=/bin/kill -HUP $MAINPID  # Signal for config reload",
-            "ExecStop=/bin/kill -TERM $MAINPID",
-            "",
-            "# Restart policy",
-            "Restart=on-failure            # Restart if process exits non-zero",
-            "RestartSec=5                  # Wait 5s before restarting",
-            "StartLimitIntervalSec=60      # Reset restart counter every 60s",
-            "StartLimitBurst=3             # Max 3 restarts in the interval",
-            "",
-            "# Security hardening",
-            "NoNewPrivileges=yes           # Prevent privilege escalation",
-            "ProtectSystem=strict          # Mount /usr, /boot read-only",
-            "PrivateTmp=yes                # Isolated /tmp directory",
-            "",
-            "[Install]",
-            "WantedBy=multi-user.target    # Enable for normal multi-user boot"
-          ].join('\n')} />
+          code={CODE_LINUXSYSTEMD_2} />
       </section>
 
       <section>
         <h2>journalctl — Log Querying</h2>
         <CodeBlock title="journalctl — log query reference" language="bash"
-          code={[
-            "# ── Basic queries ────────────────────────────────────────────",
-            "journalctl -u nginx                # All logs for nginx",
-            "journalctl -u nginx -f             # Follow in real time",
-            "journalctl -u nginx -n 50          # Last 50 lines",
-            "journalctl -u nginx --since '1 hour ago'",
-            "journalctl -u nginx --since '2025-01-15 09:00' --until '2025-01-15 10:00'",
-            "",
-            "# ── Filter by priority ───────────────────────────────────────",
-            "journalctl -p err                  # Errors and above",
-            "journalctl -p warning -u nginx     # Warnings for nginx",
-            "# Priorities: emerg alert crit err warning notice info debug",
-            "",
-            "# ── Boot logs ────────────────────────────────────────────────",
-            "journalctl -b                      # Current boot",
-            "journalctl -b -1                   # Previous boot",
-            "journalctl --list-boots            # List all boots",
-            "",
-            "# ── System-wide ──────────────────────────────────────────────",
-            "journalctl --disk-usage            # How much disk logs use",
-            "sudo journalctl --vacuum-size=500M # Keep only last 500MB",
-            "sudo journalctl --vacuum-time=30d  # Keep only last 30 days"
-          ].join('\n')} />
+          code={CODE_LINUXSYSTEMD_3} />
       </section>
 
       <section>
         <h2>systemd Timers — Modern Cron</h2>
         <CodeBlock title="Create a systemd timer for scheduled tasks" language="bash"
-          code={[
-            "# Two files needed: a .service and a .timer",
-            "",
-            "# 1. Create the service unit (what to run)",
-            "sudo tee /etc/systemd/system/disk-check.service << 'EOF'",
-            "[Unit]",
-            "Description=Disk Space Check",
-            "",
-            "[Service]",
-            "Type=oneshot",
-            "User=root",
-            "ExecStart=/opt/scripts/disk-monitor.py",
-            "StandardOutput=journal",
-            "EOF",
-            "",
-            "# 2. Create the timer unit (when to run)",
-            "sudo tee /etc/systemd/system/disk-check.timer << 'EOF'",
-            "[Unit]",
-            "Description=Run disk check every 15 minutes",
-            "",
-            "[Timer]",
-            "OnCalendar=*:0/15        # Every 15 minutes (cron: */15 * * * *)",
-            "# OnBootSec=5min         # 5 minutes after boot",
-            "# OnUnitActiveSec=1h     # Every hour after last run",
-            "Persistent=true          # Run missed jobs after downtime",
-            "",
-            "[Install]",
-            "WantedBy=timers.target",
-            "EOF",
-            "",
-            "# 3. Enable and start the timer",
-            "sudo systemctl daemon-reload",
-            "sudo systemctl enable --now disk-check.timer",
-            "",
-            "# 4. Verify",
-            "systemctl list-timers disk-check.timer"
-          ].join('\n')} />
+          code={CODE_LINUXSYSTEMD_4} />
       </section>
 
       <section>
@@ -296,79 +350,18 @@ export default function LinuxSystemd() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Explore current service state on the Ubuntu Server VM."
-              command={[
-                "# How long has the system been running?",
-                "systemctl status --no-pager | head -5",
-                "",
-                "# Which services are failed?",
-                "systemctl list-units --state=failed",
-                "",
-                "# Check nginx is running",
-                "systemctl is-active nginx && echo 'nginx: OK' || echo 'nginx: not running'"
-              ].join('\n')}
-              output={[
-                "State: running",
-                "Jobs: 0 queued",
-                "Failed: 0 units",
-                "",
-                "nginx: OK"
-              ].join('\n')}
+              command={CODE_LINUXSYSTEMD_5}
+              output={CODE_LINUXSYSTEMD_6}
             />
             <LabStep number={2}
               description="Create a simple health-check service that runs a Python script."
-              command={[
-                "# Create the script",
-                "sudo mkdir -p /opt/healthcheck",
-                "sudo tee /opt/healthcheck/run.sh << 'SCRIPT'",
-                "#!/bin/bash",
-                "echo \"[$(date)] Disk: $(df -h / | tail -1 | awk '{print $5}') used\"",
-                "echo \"[$(date)] RAM:  $(free -h | grep Mem | awk '{print $3}') used\"",
-                "SCRIPT",
-                "sudo chmod +x /opt/healthcheck/run.sh",
-                "",
-                "# Create the unit file",
-                "sudo tee /etc/systemd/system/healthcheck.service << 'EOF'",
-                "[Unit]",
-                "Description=System Health Check",
-                "",
-                "[Service]",
-                "Type=oneshot",
-                "ExecStart=/opt/healthcheck/run.sh",
-                "StandardOutput=journal",
-                "EOF",
-                "",
-                "sudo systemctl daemon-reload",
-                "sudo systemctl start healthcheck",
-                "journalctl -u healthcheck -n 5 --no-pager"
-              ].join('\n')}
-              output={[
-                "Jan 15 11:00:00 srv01 run.sh[1234]: [2025-01-15 11:00:00] Disk: 15% used",
-                "Jan 15 11:00:00 srv01 run.sh[1234]: [2025-01-15 11:00:00] RAM:  1.2G used"
-              ].join('\n')}
+              command={CODE_LINUXSYSTEMD_7}
+              output={CODE_LINUXSYSTEMD_8}
             />
             <LabStep number={3}
               description="Create a timer to run the health check every 5 minutes."
-              command={[
-                "sudo tee /etc/systemd/system/healthcheck.timer << 'EOF'",
-                "[Unit]",
-                "Description=Health Check Timer",
-                "",
-                "[Timer]",
-                "OnCalendar=*:0/5",
-                "Persistent=true",
-                "",
-                "[Install]",
-                "WantedBy=timers.target",
-                "EOF",
-                "",
-                "sudo systemctl daemon-reload",
-                "sudo systemctl enable --now healthcheck.timer",
-                "systemctl list-timers healthcheck.timer"
-              ].join('\n')}
-              output={[
-                "NEXT                         LEFT     LAST  PASSED  UNIT",
-                "Thu 2025-01-15 11:05:00 UTC  4min 59s  n/a    n/a   healthcheck.timer"
-              ].join('\n')}
+              command={CODE_LINUXSYSTEMD_9}
+              output={CODE_LINUXSYSTEMD_10}
             />
           </div>
         </div>

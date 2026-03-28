@@ -3,6 +3,40 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WS2025RDS_1 = `# Quick deployment — all roles on one server (lab/small environments)
+Install-WindowsFeature RDS-RD-Server, RDS-Connection-Broker, RDS-Web-Access, RDS-Licensing -IncludeManagementTools
+
+# Verify installation
+Get-WindowsFeature | Where-Object {$_.Name -like 'RDS-*' -and $_.InstallState -eq 'Installed'} |
+  Select-Object Name, DisplayName | Format-Table -AutoSize`
+const CODE_WS2025RDS_2 = `# List all active RDS sessions
+Get-RDUserSession -ConnectionBroker DC01.lab.local |
+  Select-Object UserName, HostServer, SessionState, IdleTime |
+  Format-Table -AutoSize
+
+# Disconnect a specific session
+$session = Get-RDUserSession | Where-Object UserName -eq 'jsmith'
+Disconnect-RDUser -HostServer $session.HostServer -UnifiedSessionID $session.UnifiedSessionId -Force
+
+# Get server load
+Get-RDServer -ConnectionBroker DC01.lab.local -Role RDS-RD-SERVER |
+  ForEach-Object {
+    $load = (Get-RDSessionHost -SessionHost $_.Server -ConnectionBroker DC01.lab.local).RDSessionHostCurrentSessions
+    [PSCustomObject]@{Server=$_.Server; ActiveSessions=$load}
+  }`
+const CODE_WS2025RDS_3 = `# Check RDP enabled state
+(Get-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server').fDenyTSConnections
+# 0 = enabled, 1 = disabled
+
+# Enable if needed
+Set-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' fDenyTSConnections -Value 0
+Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+
+# Who is connected right now?
+query session /server:DC01`
+
+
 const QUIZ_QUESTIONS = [
   {
     id:'q1', question:'What is the difference between Remote Desktop Services (RDS) and a plain RDP connection?',
@@ -67,12 +101,12 @@ export default function WS2025RDS() {
       <section>
         <h2>RDS Role Installation</h2>
         <CodeBlock title="Install RDS roles" language="powershell"
-          code={["# Quick deployment — all roles on one server (lab/small environments)","Install-WindowsFeature RDS-RD-Server, RDS-Connection-Broker, RDS-Web-Access, RDS-Licensing -IncludeManagementTools","","# Verify installation","Get-WindowsFeature | Where-Object {$_.Name -like 'RDS-*' -and $_.InstallState -eq 'Installed'} |","  Select-Object Name, DisplayName | Format-Table -AutoSize"].join('\n')} />
+          code={CODE_WS2025RDS_1} />
       </section>
       <section>
         <h2>Managing Sessions with PowerShell</h2>
         <CodeBlock title="RDS session management" language="powershell"
-          code={["# List all active RDS sessions","Get-RDUserSession -ConnectionBroker DC01.lab.local |","  Select-Object UserName, HostServer, SessionState, IdleTime |","  Format-Table -AutoSize","","# Disconnect a specific session","$session = Get-RDUserSession | Where-Object UserName -eq 'jsmith'","Disconnect-RDUser -HostServer $session.HostServer -UnifiedSessionID $session.UnifiedSessionId -Force","","# Get server load","Get-RDServer -ConnectionBroker DC01.lab.local -Role RDS-RD-SERVER |","  ForEach-Object {","    $load = (Get-RDSessionHost -SessionHost $_.Server -ConnectionBroker DC01.lab.local).RDSessionHostCurrentSessions","    [PSCustomObject]@{Server=$_.Server; ActiveSessions=$load}","  }"].join('\n')} />
+          code={CODE_WS2025RDS_2} />
       </section>
       <section>
         <h2>VMware Lab Exercise</h2>
@@ -84,7 +118,7 @@ export default function WS2025RDS() {
           </div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Verify RDP is enabled and check current sessions."
-              command={["# Check RDP enabled state","(Get-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server').fDenyTSConnections","# 0 = enabled, 1 = disabled","","# Enable if needed","Set-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' fDenyTSConnections -Value 0","Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'","","# Who is connected right now?","query session /server:DC01"].join('\n')}
+              command={CODE_WS2025RDS_3}
               output={["0","","SESSIONNAME  USERNAME       ID  STATE   TYPE","console      Administrator   1  Active"]} />
           </div>
         </div>

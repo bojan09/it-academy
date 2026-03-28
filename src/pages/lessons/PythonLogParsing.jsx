@@ -3,6 +3,141 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_PYTHONLOGPARSING_1 = `import re
+from collections import Counter, defaultdict
+from datetime import datetime
+
+# ── nginx access log parser ────────────────────────────────
+# Format: 192.168.1.1 - - [15/Jan/2025:10:00:00 +0000] "GET /api HTTP/1.1" 200 1234
+NGINX_PATTERN = re.compile(
+    r'(?P<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+'
+    r'\\S+\\s+\\S+\\s+'
+    r'\\[(?P<timestamp>[^\\]]+)\\]\\s+'
+    r'"(?P<method>\\w+)\\s+(?P<path>[^\\s]+)\\s+HTTP/[\\d.]+"\\s+'
+    r'(?P<status>\\d{3})\\s+'
+    r'(?P<size>\\d+)'
+)
+
+def parse_nginx_log(filepath):
+    """Generator — yields parsed log entry dicts one at a time."""
+    with open(filepath) as f:
+        for line_num, line in enumerate(f, 1):
+            match = NGINX_PATTERN.search(line)
+            if match:
+                entry = match.groupdict()
+                entry['status'] = int(entry['status'])
+                entry['size']   = int(entry['size'])
+                entry['line']   = line_num
+                yield entry
+
+# ── SSH auth log parser ────────────────────────────────────
+SSH_FAILED = re.compile(
+    r'Failed (?P<method>\\S+) for (?:invalid user )?(?P<user>\\S+)'
+    r' from (?P<ip>[\\d.]+)'
+)
+
+SSH_SUCCESS = re.compile(
+    r'Accepted (?P<method>\\S+) for (?P<user>\\S+)'
+    r' from (?P<ip>[\\d.]+)'
+)
+
+# ── syslog parser ──────────────────────────────────────────
+SYSLOG_PATTERN = re.compile(
+    r'(?P<month>\\w{3})\\s+(?P<day>\\d+)\\s+(?P<time>[\\d:]+)\\s+'
+    r'(?P<host>\\S+)\\s+(?P<process>[^:]+):\\s+(?P<message>.+)'
+)`
+const CODE_PYTHONLOGPARSING_2 = `from collections import Counter
+from pathlib import Path
+
+def analyse_nginx(logfile):
+    ip_counter     = Counter()
+    status_counter = Counter()
+    path_counter   = Counter()
+    errors_4xx     = []
+    errors_5xx     = []
+    total_bytes    = 0
+    total_lines    = 0
+
+    for entry in parse_nginx_log(logfile):
+        total_lines += 1
+        total_bytes += entry['size']
+        ip_counter[entry['ip']] += 1
+        status_counter[entry['status']] += 1
+        path_counter[entry['path']] += 1
+
+        if 400 <= entry['status'] < 500:
+            errors_4xx.append(entry)
+        elif entry['status'] >= 500:
+            errors_5xx.append(entry)
+
+    print(f'\\
+=== nginx Log Analysis ===')
+    print(f'Total requests : {total_lines:,}')
+    print(f'Total bytes    : {total_bytes/1_000_000:.1f} MB')
+    print(f'5xx errors     : {len(errors_5xx)}')
+
+    print('\\
+Top 5 IP addresses:')
+    for ip, count in ip_counter.most_common(5):
+        print(f'  {ip:20s}  {count:6,} requests')
+
+    print('\\
+Status code distribution:')
+    for status, count in sorted(status_counter.items()):
+        bar = '#' * min(count // 10, 40)
+        print(f'  {status}  {count:6,}  {bar}')
+
+    print('\\
+Top 5 endpoints:')
+    for path, count in path_counter.most_common(5):
+        print(f'  {count:6,}  {path[:60]}')
+
+    return {'total': total_lines, '5xx': len(errors_5xx)}`
+const CODE_PYTHONLOGPARSING_3 = `cat > ~/ssh-analyzer.py << 'EOF'
+#!/usr/bin/env python3
+import re
+from collections import Counter
+
+FAILED = re.compile(r'Failed .* from ([\\d.]+)')
+ACCEPTED = re.compile(r'Accepted .* for (\\S+) from ([\\d.]+)')
+
+failed_ips   = Counter()
+success_users = Counter()
+logfile = '/var/log/auth.log'
+
+try:
+    with open(logfile) as f:
+        for line in f:
+            m = FAILED.search(line)
+            if m:
+                failed_ips[m.group(1)] += 1
+            m = ACCEPTED.search(line)
+            if m:
+                success_users[m.group(1)] += 1
+
+    print('=== Top 10 SSH failure sources ===')
+    for ip, count in failed_ips.most_common(10):
+        flag = ' *** HIGH ***' if count > 10 else ''
+        print(f'  {ip:20s}  {count:4d} failures{flag}')
+
+    print('\\
+=== Successful logins ===')
+    for user, count in success_users.most_common():
+        print(f'  {user:20s}  {count} login(s)')
+
+except FileNotFoundError:
+    print(f'Log not found: {logfile}')
+EOF
+python3 ~/ssh-analyzer.py`
+const CODE_PYTHONLOGPARSING_4 = `=== Top 10 SSH failure sources ===
+  192.168.100.10         2 failures
+  127.0.0.1              1 failures
+
+=== Successful logins ===
+  user                   3 login(s)`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -141,101 +276,13 @@ export default function PythonLogParsing() {
       <section>
         <h2>Regex for Log Parsing</h2>
         <CodeBlock title="Named groups — the right way to parse logs" language="bash"
-          code={[
-            "import re",
-            "from collections import Counter, defaultdict",
-            "from datetime import datetime",
-            "",
-            "# ── nginx access log parser ────────────────────────────────",
-            "# Format: 192.168.1.1 - - [15/Jan/2025:10:00:00 +0000] \"GET /api HTTP/1.1\" 200 1234",
-            "NGINX_PATTERN = re.compile(",
-            "    r'(?P<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+'",
-            "    r'\\S+\\s+\\S+\\s+'",
-            "    r'\\[(?P<timestamp>[^\\]]+)\\]\\s+'",
-            "    r'\"(?P<method>\\w+)\\s+(?P<path>[^\\s]+)\\s+HTTP/[\\d.]+\"\\s+'",
-            "    r'(?P<status>\\d{3})\\s+'",
-            "    r'(?P<size>\\d+)'",
-            ")",
-            "",
-            "def parse_nginx_log(filepath):",
-            "    \"\"\"Generator — yields parsed log entry dicts one at a time.\"\"\"",
-            "    with open(filepath) as f:",
-            "        for line_num, line in enumerate(f, 1):",
-            "            match = NGINX_PATTERN.search(line)",
-            "            if match:",
-            "                entry = match.groupdict()",
-            "                entry['status'] = int(entry['status'])",
-            "                entry['size']   = int(entry['size'])",
-            "                entry['line']   = line_num",
-            "                yield entry",
-            "",
-            "# ── SSH auth log parser ────────────────────────────────────",
-            "SSH_FAILED = re.compile(",
-            "    r'Failed (?P<method>\\S+) for (?:invalid user )?(?P<user>\\S+)'",
-            "    r' from (?P<ip>[\\d.]+)'",
-            ")",
-            "",
-            "SSH_SUCCESS = re.compile(",
-            "    r'Accepted (?P<method>\\S+) for (?P<user>\\S+)'",
-            "    r' from (?P<ip>[\\d.]+)'",
-            ")",
-            "",
-            "# ── syslog parser ──────────────────────────────────────────",
-            "SYSLOG_PATTERN = re.compile(",
-            "    r'(?P<month>\\w{3})\\s+(?P<day>\\d+)\\s+(?P<time>[\\d:]+)\\s+'",
-            "    r'(?P<host>\\S+)\\s+(?P<process>[^:]+):\\s+(?P<message>.+)'",
-            ")"
-          ].join('\n')} />
+          code={CODE_PYTHONLOGPARSING_1} />
       </section>
 
       <section>
         <h2>Analysis & Reporting</h2>
         <CodeBlock title="nginx log analysis — top IPs, status codes, slow endpoints" language="bash"
-          code={[
-            "from collections import Counter",
-            "from pathlib import Path",
-            "",
-            "def analyse_nginx(logfile):",
-            "    ip_counter     = Counter()",
-            "    status_counter = Counter()",
-            "    path_counter   = Counter()",
-            "    errors_4xx     = []",
-            "    errors_5xx     = []",
-            "    total_bytes    = 0",
-            "    total_lines    = 0",
-            "",
-            "    for entry in parse_nginx_log(logfile):",
-            "        total_lines += 1",
-            "        total_bytes += entry['size']",
-            "        ip_counter[entry['ip']] += 1",
-            "        status_counter[entry['status']] += 1",
-            "        path_counter[entry['path']] += 1",
-            "",
-            "        if 400 <= entry['status'] < 500:",
-            "            errors_4xx.append(entry)",
-            "        elif entry['status'] >= 500:",
-            "            errors_5xx.append(entry)",
-            "",
-            "    print(f'\\n=== nginx Log Analysis ===')",
-            "    print(f'Total requests : {total_lines:,}')",
-            "    print(f'Total bytes    : {total_bytes/1_000_000:.1f} MB')",
-            "    print(f'5xx errors     : {len(errors_5xx)}')",
-            "",
-            "    print('\\nTop 5 IP addresses:')",
-            "    for ip, count in ip_counter.most_common(5):",
-            "        print(f'  {ip:20s}  {count:6,} requests')",
-            "",
-            "    print('\\nStatus code distribution:')",
-            "    for status, count in sorted(status_counter.items()):",
-            "        bar = '#' * min(count // 10, 40)",
-            "        print(f'  {status}  {count:6,}  {bar}')",
-            "",
-            "    print('\\nTop 5 endpoints:')",
-            "    for path, count in path_counter.most_common(5):",
-            "        print(f'  {count:6,}  {path[:60]}')",
-            "",
-            "    return {'total': total_lines, '5xx': len(errors_5xx)}"
-          ].join('\n')} />
+          code={CODE_PYTHONLOGPARSING_2} />
       </section>
 
       <section>
@@ -249,52 +296,9 @@ export default function PythonLogParsing() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Write a script to find the top SSH brute-force sources in auth.log."
-              command={[
-                "cat > ~/ssh-analyzer.py << 'EOF'",
-                "#!/usr/bin/env python3",
-                "import re",
-                "from collections import Counter",
-                "",
-                "FAILED = re.compile(r'Failed .* from ([\\d.]+)')",
-                "ACCEPTED = re.compile(r'Accepted .* for (\\S+) from ([\\d.]+)')",
-                "",
-                "failed_ips   = Counter()",
-                "success_users = Counter()",
-                "logfile = '/var/log/auth.log'",
-                "",
-                "try:",
-                "    with open(logfile) as f:",
-                "        for line in f:",
-                "            m = FAILED.search(line)",
-                "            if m:",
-                "                failed_ips[m.group(1)] += 1",
-                "            m = ACCEPTED.search(line)",
-                "            if m:",
-                "                success_users[m.group(1)] += 1",
-                "",
-                "    print('=== Top 10 SSH failure sources ===')",
-                "    for ip, count in failed_ips.most_common(10):",
-                "        flag = ' *** HIGH ***' if count > 10 else ''",
-                "        print(f'  {ip:20s}  {count:4d} failures{flag}')",
-                "",
-                "    print('\\n=== Successful logins ===')",
-                "    for user, count in success_users.most_common():",
-                "        print(f'  {user:20s}  {count} login(s)')",
-                "",
-                "except FileNotFoundError:",
-                "    print(f'Log not found: {logfile}')",
-                "EOF",
-                "python3 ~/ssh-analyzer.py"
-              ].join('\n')}
+              command={CODE_PYTHONLOGPARSING_3}
               language="bash"
-              output={[
-                "=== Top 10 SSH failure sources ===",
-                "  192.168.100.10         2 failures",
-                "  127.0.0.1              1 failures",
-                "",
-                "=== Successful logins ===",
-                "  user                   3 login(s)"
-              ].join('\n')}
+              output={CODE_PYTHONLOGPARSING_4}
             />
           </div>
         </div>

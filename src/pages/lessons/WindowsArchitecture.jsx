@@ -3,6 +3,72 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WINDOWSARCHITECTURE_1 = `# OS and kernel version
+Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsArchitecture, OsBuildNumber
+
+# Verify we're running NT kernel
+[System.Environment]::OSVersion
+
+# Boot time and uptime
+$boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+"Boot time : $boot"
+"Uptime    : $([math]::Round(((Get-Date) - $boot).TotalHours, 1)) hours"`
+const CODE_WINDOWSARCHITECTURE_2 = `WindowsProductName : Windows 10 Pro
+WindowsVersion     : 22H2
+OsArchitecture     : 64-bit
+OsBuildNumber      : 19045
+
+Platform ServicePack  Version  VersionString
+Win32NT             6.2.9200.0 Microsoft Windows NT 6.2.9200.0
+
+Boot time : 01/15/2025 08:00:00
+Uptime    : 3.2 hours`
+const CODE_WINDOWSARCHITECTURE_3 = `# Check the critical system processes
+$critical = 'System','smss','csrss','wininit','services','lsass','explorer'
+
+foreach ($name in $critical) {
+    $procs = Get-Process -Name $name -ErrorAction SilentlyContinue
+    if ($procs) {
+        foreach ($p in $procs) {
+            $path = try { $p.MainModule.FileName } catch { 'N/A (kernel)' }
+            [PSCustomObject]@{
+                Name  = $p.Name
+                PID   = $p.Id
+                Count = $procs.Count
+                Path  = $path
+            }
+        }
+    }
+} | Format-Table -AutoSize`
+const CODE_WINDOWSARCHITECTURE_4 = `Name      PID   Count  Path
+----      ---   -----  ----
+System    4     1      N/A (kernel)
+smss      404   1      C:\\Windows\\System32\\smss.exe
+csrss     520   2      C:\\Windows\\System32\\csrss.exe
+wininit   612   1      C:\\Windows\\System32\\wininit.exe
+services  672   1      C:\\Windows\\System32\\services.exe
+lsass     680   1      C:\\Windows\\System32\\lsass.exe
+explorer  4512  1      C:\\Windows\\explorer.exe`
+const CODE_WINDOWSARCHITECTURE_5 = `# View Windows version from Registry
+Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' |
+  Select-Object ProductName, DisplayVersion, CurrentBuild
+
+# View Run key — programs that start with Windows
+Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run' |
+  Select-Object * -ExcludeProperty PS*
+
+# Count total Registry keys under HKLM (shows scale of Registry)
+(Get-ChildItem HKLM:\\ -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count`
+const CODE_WINDOWSARCHITECTURE_6 = `ProductName    : Windows 10 Pro
+DisplayVersion : 22H2
+CurrentBuild   : 19045
+
+SecurityHealth : C:\\Windows\\System32\\SecurityHealthSystray.exe
+
+2847`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -263,87 +329,18 @@ export default function WindowsArchitecture() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Inspect the system version, kernel, and architecture."
-              command={[
-                "# OS and kernel version",
-                "Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsArchitecture, OsBuildNumber",
-                "",
-                "# Verify we're running NT kernel",
-                "[System.Environment]::OSVersion",
-                "",
-                "# Boot time and uptime",
-                "$boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime",
-                "\"Boot time : $boot\"",
-                "\"Uptime    : $([math]::Round(((Get-Date) - $boot).TotalHours, 1)) hours\""
-              ].join('\n')}
-              output={[
-                "WindowsProductName : Windows 10 Pro",
-                "WindowsVersion     : 22H2",
-                "OsArchitecture     : 64-bit",
-                "OsBuildNumber      : 19045",
-                "",
-                "Platform ServicePack  Version  VersionString",
-                "Win32NT             6.2.9200.0 Microsoft Windows NT 6.2.9200.0",
-                "",
-                "Boot time : 01/15/2025 08:00:00",
-                "Uptime    : 3.2 hours"
-              ].join('\n')}
+              command={CODE_WINDOWSARCHITECTURE_1}
+              output={CODE_WINDOWSARCHITECTURE_2}
             />
             <LabStep number={2}
               description="Audit core system processes — verify they match the expected counts and paths."
-              command={[
-                "# Check the critical system processes",
-                "$critical = 'System','smss','csrss','wininit','services','lsass','explorer'",
-                "",
-                "foreach ($name in $critical) {",
-                "    $procs = Get-Process -Name $name -ErrorAction SilentlyContinue",
-                "    if ($procs) {",
-                "        foreach ($p in $procs) {",
-                "            $path = try { $p.MainModule.FileName } catch { 'N/A (kernel)' }",
-                "            [PSCustomObject]@{",
-                "                Name  = $p.Name",
-                "                PID   = $p.Id",
-                "                Count = $procs.Count",
-                "                Path  = $path",
-                "            }",
-                "        }",
-                "    }",
-                "} | Format-Table -AutoSize"
-              ].join('\n')}
-              output={[
-                "Name      PID   Count  Path",
-                "----      ---   -----  ----",
-                "System    4     1      N/A (kernel)",
-                "smss      404   1      C:\\Windows\\System32\\smss.exe",
-                "csrss     520   2      C:\\Windows\\System32\\csrss.exe",
-                "wininit   612   1      C:\\Windows\\System32\\wininit.exe",
-                "services  672   1      C:\\Windows\\System32\\services.exe",
-                "lsass     680   1      C:\\Windows\\System32\\lsass.exe",
-                "explorer  4512  1      C:\\Windows\\explorer.exe"
-              ].join('\n')}
+              command={CODE_WINDOWSARCHITECTURE_3}
+              output={CODE_WINDOWSARCHITECTURE_4}
             />
             <LabStep number={3}
               description="Explore the Registry — read a key and view startup entries."
-              command={[
-                "# View Windows version from Registry",
-                "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' |",
-                "  Select-Object ProductName, DisplayVersion, CurrentBuild",
-                "",
-                "# View Run key — programs that start with Windows",
-                "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run' |",
-                "  Select-Object * -ExcludeProperty PS*",
-                "",
-                "# Count total Registry keys under HKLM (shows scale of Registry)",
-                "(Get-ChildItem HKLM:\\ -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count"
-              ].join('\n')}
-              output={[
-                "ProductName    : Windows 10 Pro",
-                "DisplayVersion : 22H2",
-                "CurrentBuild   : 19045",
-                "",
-                "SecurityHealth : C:\\Windows\\System32\\SecurityHealthSystray.exe",
-                "",
-                "2847"
-              ].join('\n')}
+              command={CODE_WINDOWSARCHITECTURE_5}
+              output={CODE_WINDOWSARCHITECTURE_6}
             />
           </div>
         </div>

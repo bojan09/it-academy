@@ -3,6 +3,101 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WS2025INTRO_1 = `# Launch Server Configuration tool (or it opens automatically on Core)
+sconfig
+
+# Alternatively, set computer name directly with PowerShell:
+Rename-Computer -NewName "DC01" -Restart`
+const CODE_WS2025INTRO_2 = `===============================================================================
+                         Server Configuration
+===============================================================================
+1) Domain/Workgroup:        Workgroup: WORKGROUP
+2) Computer Name:           WIN-XXXXXXXX  ← Change this to DC01
+3) Add Local Administrator
+4) Configure Remote Management:   Enabled
+...`
+const CODE_WS2025INTRO_3 = `# Find the network adapter name
+Get-NetAdapter
+
+# Set static IP (replace 'Ethernet0' with your adapter name)
+New-NetIPAddress -InterfaceAlias "Ethernet0" -IPAddress 192.168.100.10 -PrefixLength 24 -DefaultGateway 192.168.100.1
+
+# Set DNS to itself (will be populated after DNS role is installed)
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet0" -ServerAddresses 192.168.100.10
+
+# Verify
+ipconfig /all`
+const CODE_WS2025INTRO_4 = `Ethernet adapter Ethernet0:
+   IPv4 Address.........: 192.168.100.10
+   Subnet Mask..........: 255.255.255.0
+   Default Gateway......: 192.168.100.1
+   DNS Servers..........: 192.168.100.10`
+const CODE_WS2025INTRO_5 = `# In the guest OS — after mounting VMware Tools ISO via VM menu
+# Navigate to the mounted DVD drive
+$dvd = (Get-WmiObject Win32_CDROMDrive).Drive
+Start-Process "$dvd\\setup64.exe" -ArgumentList "/S /v/qn" -Wait
+Write-Host "VMware Tools installed — rebooting..."
+Restart-Computer`
+const CODE_WS2025INTRO_6 = `# Enable PowerShell Remoting (needed for remote management)
+Enable-PSRemoting -Force
+
+# Set Windows Update to download but not auto-install
+$wuSettings = (New-Object -ComObject "Microsoft.Update.AutoUpdate").Settings
+$wuSettings.NotificationLevel = 3   # 3 = Download + notify
+$wuSettings.Save()
+
+# Check all services are healthy
+Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |
+  Select-Object Name, Status`
+const CODE_WS2025INTRO_7 = `# System overview
+Get-ComputerInfo | Select-Object CsName, OsName, OsVersion, CsTotalPhysicalMemory,
+  @{N='RAM(GB)'; E={[math]::Round($_.CsTotalPhysicalMemory/1GB,1)}}
+
+# Check disk space
+Get-PSDrive C | Select-Object @{N='FreeDisk(GB)'; E={[math]::Round($_.Free/1GB,1)}},
+                               @{N='UsedDisk(GB)'; E={[math]::Round($_.Used/1GB,1)}}
+
+# Confirm static IP
+Test-NetConnection -ComputerName 192.168.100.1 -InformationLevel Quiet`
+const CODE_WS2025INTRO_8 = `CsName        : DC01
+OsName        : Microsoft Windows Server 2025 Standard Evaluation
+OsVersion     : 10.0.26100
+RAM(GB)       : 4
+
+FreeDisk(GB)  UsedDisk(GB)
+-----------   ------------
+47.2          12.8
+
+True  ← Gateway reachable`
+const CODE_WS2025INTRO_9 = `# View all available roles and features
+Get-WindowsFeature | Where-Object { $_.InstallState -eq 'Available' } |
+  Select-Object Name, DisplayName | Format-Table -AutoSize
+
+# View installed roles/features
+Get-WindowsFeature | Where-Object { $_.InstallState -eq 'Installed' } |
+  Select-Object Name, DisplayName
+
+# Install a role (example: AD DS)
+Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
+
+# Install multiple features
+Install-WindowsFeature DNS, DHCP -IncludeManagementTools
+
+# Uninstall a feature
+Uninstall-WindowsFeature -Name Telnet-Client
+
+# Common role names
+# AD-Domain-Services    → Active Directory Domain Services
+# DNS                   → DNS Server
+# DHCP                  → DHCP Server
+# Hyper-V               → Hyper-V
+# FileAndStorage-Services → File and Storage Services
+# Web-Server            → IIS Web Server
+# RDS-RD-Server         → Remote Desktop Session Host
+# GPMC                  → Group Policy Management Console`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -274,100 +369,26 @@ export default function WS2025Intro() {
             <LabStep number={1}
               description="After installation completes and you've logged in, run sconfig to set the computer name and enable remote management."
               language="powershell"
-              command={[
-    "# Launch Server Configuration tool (or it opens automatically on Core)",
-    "sconfig",
-    "",
-    "# Alternatively, set computer name directly with PowerShell:",
-    "Rename-Computer -NewName \"DC01\" -Restart"
-  ].join('\n')}
-              output={[
-    "===============================================================================",
-    "                         Server Configuration",
-    "===============================================================================",
-    "1) Domain/Workgroup:        Workgroup: WORKGROUP",
-    "2) Computer Name:           WIN-XXXXXXXX  ← Change this to DC01",
-    "3) Add Local Administrator",
-    "4) Configure Remote Management:   Enabled",
-    "..."
-  ].join('\n')}
+              command={CODE_WS2025INTRO_1}
+              output={CODE_WS2025INTRO_2}
             />
             <LabStep number={2}
               description="After restart, configure a static IP address on the server."
-              command={[
-    "# Find the network adapter name",
-    "Get-NetAdapter",
-    "",
-    "# Set static IP (replace 'Ethernet0' with your adapter name)",
-    "New-NetIPAddress -InterfaceAlias \"Ethernet0\" -IPAddress 192.168.100.10 -PrefixLength 24 -DefaultGateway 192.168.100.1",
-    "",
-    "# Set DNS to itself (will be populated after DNS role is installed)",
-    "Set-DnsClientServerAddress -InterfaceAlias \"Ethernet0\" -ServerAddresses 192.168.100.10",
-    "",
-    "# Verify",
-    "ipconfig /all"
-  ].join('\n')}
-              output={[
-    "Ethernet adapter Ethernet0:",
-    "   IPv4 Address.........: 192.168.100.10",
-    "   Subnet Mask..........: 255.255.255.0",
-    "   Default Gateway......: 192.168.100.1",
-    "   DNS Servers..........: 192.168.100.10"
-  ].join('\n')}
+              command={CODE_WS2025INTRO_3}
+              output={CODE_WS2025INTRO_4}
             />
             <LabStep number={3}
               description="Install VMware Tools for optimal performance. In VMware: VM menu → Install VMware Tools, then run inside the guest."
-              command={[
-    "# In the guest OS — after mounting VMware Tools ISO via VM menu",
-    "# Navigate to the mounted DVD drive",
-    "$dvd = (Get-WmiObject Win32_CDROMDrive).Drive",
-    "Start-Process \"$dvd\\setup64.exe\" -ArgumentList \"/S /v/qn\" -Wait",
-    "Write-Host \"VMware Tools installed — rebooting...\"",
-    "Restart-Computer"
-  ].join('\n')}
+              command={CODE_WS2025INTRO_5}
             />
             <LabStep number={4}
               description="Enable PowerShell remoting and configure Windows Update settings."
-              command={[
-    "# Enable PowerShell Remoting (needed for remote management)",
-    "Enable-PSRemoting -Force",
-    "",
-    "# Set Windows Update to download but not auto-install",
-    "$wuSettings = (New-Object -ComObject \"Microsoft.Update.AutoUpdate\").Settings",
-    "$wuSettings.NotificationLevel = 3   # 3 = Download + notify",
-    "$wuSettings.Save()",
-    "",
-    "# Check all services are healthy",
-    "Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |",
-    "  Select-Object Name, Status"
-  ].join('\n')}
+              command={CODE_WS2025INTRO_6}
             />
             <LabStep number={5}
               description="Verify the installation and check system information."
-              command={[
-    "# System overview",
-    "Get-ComputerInfo | Select-Object CsName, OsName, OsVersion, CsTotalPhysicalMemory,",
-    "  @{N='RAM(GB)'; E={[math]::Round($_.CsTotalPhysicalMemory/1GB,1)}}",
-    "",
-    "# Check disk space",
-    "Get-PSDrive C | Select-Object @{N='FreeDisk(GB)'; E={[math]::Round($_.Free/1GB,1)}},",
-    "                               @{N='UsedDisk(GB)'; E={[math]::Round($_.Used/1GB,1)}}",
-    "",
-    "# Confirm static IP",
-    "Test-NetConnection -ComputerName 192.168.100.1 -InformationLevel Quiet"
-  ].join('\n')}
-              output={[
-    "CsName        : DC01",
-    "OsName        : Microsoft Windows Server 2025 Standard Evaluation",
-    "OsVersion     : 10.0.26100",
-    "RAM(GB)       : 4",
-    "",
-    "FreeDisk(GB)  UsedDisk(GB)",
-    "-----------   ------------",
-    "47.2          12.8",
-    "",
-    "True  ← Gateway reachable"
-  ].join('\n')}
+              command={CODE_WS2025INTRO_7}
+              output={CODE_WS2025INTRO_8}
             />
             <Callout type="success" icon="✅" title="Lab Complete">
               DC01 is installed, named, has a static IP of 192.168.100.10, VMware Tools
@@ -381,34 +402,7 @@ export default function WS2025Intro() {
       {/* ── ROLES AND FEATURES ── */}
       <section>
         <h2>Roles & Features Quick Reference</h2>
-        <CodeBlock title="Managing roles and features with PowerShell" language="powershell" code={[
-    "# View all available roles and features",
-    "Get-WindowsFeature | Where-Object { $_.InstallState -eq 'Available' } |",
-    "  Select-Object Name, DisplayName | Format-Table -AutoSize",
-    "",
-    "# View installed roles/features",
-    "Get-WindowsFeature | Where-Object { $_.InstallState -eq 'Installed' } |",
-    "  Select-Object Name, DisplayName",
-    "",
-    "# Install a role (example: AD DS)",
-    "Install-WindowsFeature AD-Domain-Services -IncludeManagementTools",
-    "",
-    "# Install multiple features",
-    "Install-WindowsFeature DNS, DHCP -IncludeManagementTools",
-    "",
-    "# Uninstall a feature",
-    "Uninstall-WindowsFeature -Name Telnet-Client",
-    "",
-    "# Common role names",
-    "# AD-Domain-Services    → Active Directory Domain Services",
-    "# DNS                   → DNS Server",
-    "# DHCP                  → DHCP Server",
-    "# Hyper-V               → Hyper-V",
-    "# FileAndStorage-Services → File and Storage Services",
-    "# Web-Server            → IIS Web Server",
-    "# RDS-RD-Server         → Remote Desktop Session Host",
-    "# GPMC                  → Group Policy Management Console"
-  ].join('\n')} />
+        <CodeBlock title="Managing roles and features with PowerShell" language="powershell" code={CODE_WS2025INTRO_9} />
       </section>
 
       <section>

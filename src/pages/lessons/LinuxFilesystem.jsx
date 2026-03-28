@@ -4,6 +4,74 @@ import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 import GlossaryTooltip from '../../components/GlossaryTooltip.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXFILESYSTEM_1 = `ssh user@192.168.100.20
+ls -lah /          # List root with sizes
+man hier           # Read the filesystem hierarchy manual`
+const CODE_LINUXFILESYSTEM_2 = `total 76K
+drwxr-xr-x  20 root root 4.0K Jan 15 09:00 .
+drwxr-xr-x  20 root root 4.0K Jan 15 09:00 ..
+lrwxrwxrwx   1 root root    7 Jan 15 09:00 bin -> usr/bin
+drwxr-xr-x   4 root root 4.0K Jan 15 09:00 boot
+drwxr-xr-x  18 root root 3.8K Jan 15 09:00 dev
+drwxr-xr-x 135 root root  12K Jan 15 09:00 etc
+...`
+const CODE_LINUXFILESYSTEM_3 = `df -h                   # Filesystem-level space usage
+du -sh /var/log/*      # Per-log-file sizes
+du -sh /home/*         # Per-user home directory sizes
+ncdu /                 # Interactive disk usage (install: apt install ncdu)`
+const CODE_LINUXFILESYSTEM_4 = `Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        30G  4.2G   24G  15% /
+tmpfs           994M     0  994M   0% /dev/shm`
+const CODE_LINUXFILESYSTEM_5 = `cat /proc/cpuinfo | grep "model name" | head -1
+cat /proc/meminfo | grep MemTotal
+cat /proc/uptime             # Seconds since boot
+ls /proc/1/                  # systemd process (PID 1) info
+cat /proc/net/tcp            # Active TCP connections (raw)`
+const CODE_LINUXFILESYSTEM_6 = `mkdir -p ~/lab/configs ~/lab/logs
+touch ~/lab/configs/app.conf
+
+# Create a symbolic link
+ln -s ~/lab/configs/app.conf ~/lab/app-link
+
+# Verify
+ls -lah ~/lab/
+# Notice: app-link -> /home/user/lab/configs/app.conf
+
+# Hard link
+ln ~/lab/configs/app.conf ~/lab/app-hardlink
+ls -lai ~/lab/configs/app.conf ~/lab/app-hardlink
+# Same inode number = same file`
+const CODE_LINUXFILESYSTEM_7 = `# Navigation
+pwd                   # Print working directory
+ls -lah               # List all files with permissions and sizes
+cd /path              # Change directory
+cd ~                  # Go to home directory
+cd -                  # Go to previous directory
+
+# File info
+file /bin/ls          # Determine file type
+stat /etc/passwd      # Detailed metadata
+which python3         # Full path to a command
+whereis bash          # Binary, source, and man page locations
+
+# Disk usage
+df -h                 # Filesystem-level free/used space
+du -sh /var/log       # Directory size summary
+du -sh /var/log/*     # All items in directory
+ncdu /                # Interactive disk usage browser
+
+# Finding files
+find / -name "*.conf" -type f 2>/dev/null
+find /etc -name "*.conf" -newer /etc/passwd
+locate nginx.conf     # Fast search using updatedb index
+
+# Links
+ln source target      # Hard link
+ln -s source target   # Symbolic link
+readlink -f symlink   # Resolve symlink to real path`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -235,62 +303,19 @@ export default function LinuxFilesystem() {
           </div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="SSH into your Ubuntu Server VM and explore the top-level directory structure."
-              command={[
-    "ssh user@192.168.100.20",
-    "ls -lah /          # List root with sizes",
-    "man hier           # Read the filesystem hierarchy manual"
-  ].join('\n')}
-              output={[
-    "total 76K",
-    "drwxr-xr-x  20 root root 4.0K Jan 15 09:00 .",
-    "drwxr-xr-x  20 root root 4.0K Jan 15 09:00 ..",
-    "lrwxrwxrwx   1 root root    7 Jan 15 09:00 bin -> usr/bin",
-    "drwxr-xr-x   4 root root 4.0K Jan 15 09:00 boot",
-    "drwxr-xr-x  18 root root 3.8K Jan 15 09:00 dev",
-    "drwxr-xr-x 135 root root  12K Jan 15 09:00 etc",
-    "..."
-  ].join('\n')} />
+              command={CODE_LINUXFILESYSTEM_1}
+              output={CODE_LINUXFILESYSTEM_2} />
 
             <LabStep number={2} description="Inspect disk usage — see which directories are consuming space."
-              command={[
-    "df -h                   # Filesystem-level space usage",
-    "du -sh /var/log/*      # Per-log-file sizes",
-    "du -sh /home/*         # Per-user home directory sizes",
-    "ncdu /                 # Interactive disk usage (install: apt install ncdu)"
-  ].join('\n')}
-              output={[
-    "Filesystem      Size  Used Avail Use% Mounted on",
-    "/dev/sda1        30G  4.2G   24G  15% /",
-    "tmpfs           994M     0  994M   0% /dev/shm"
-  ].join('\n')} />
+              command={CODE_LINUXFILESYSTEM_3}
+              output={CODE_LINUXFILESYSTEM_4} />
 
             <LabStep number={3} description="Explore the /proc virtual filesystem — read live kernel data."
-              command={[
-    "cat /proc/cpuinfo | grep \"model name\" | head -1",
-    "cat /proc/meminfo | grep MemTotal",
-    "cat /proc/uptime             # Seconds since boot",
-    "ls /proc/1/                  # systemd process (PID 1) info",
-    "cat /proc/net/tcp            # Active TCP connections (raw)"
-  ].join('\n')}
+              command={CODE_LINUXFILESYSTEM_5}
             />
 
             <LabStep number={4} description="Create a directory structure and practice links."
-              command={[
-    "mkdir -p ~/lab/configs ~/lab/logs",
-    "touch ~/lab/configs/app.conf",
-    "",
-    "# Create a symbolic link",
-    "ln -s ~/lab/configs/app.conf ~/lab/app-link",
-    "",
-    "# Verify",
-    "ls -lah ~/lab/",
-    "# Notice: app-link -> /home/user/lab/configs/app.conf",
-    "",
-    "# Hard link",
-    "ln ~/lab/configs/app.conf ~/lab/app-hardlink",
-    "ls -lai ~/lab/configs/app.conf ~/lab/app-hardlink",
-    "# Same inode number = same file"
-  ].join('\n')}
+              command={CODE_LINUXFILESYSTEM_6}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -304,36 +329,7 @@ export default function LinuxFilesystem() {
       {/* ── QUICK REF ── */}
       <section>
         <h2>Quick Reference</h2>
-        <CodeBlock title="Filesystem Navigation Commands" language="bash" code={[
-    "# Navigation",
-    "pwd                   # Print working directory",
-    "ls -lah               # List all files with permissions and sizes",
-    "cd /path              # Change directory",
-    "cd ~                  # Go to home directory",
-    "cd -                  # Go to previous directory",
-    "",
-    "# File info",
-    "file /bin/ls          # Determine file type",
-    "stat /etc/passwd      # Detailed metadata",
-    "which python3         # Full path to a command",
-    "whereis bash          # Binary, source, and man page locations",
-    "",
-    "# Disk usage",
-    "df -h                 # Filesystem-level free/used space",
-    "du -sh /var/log       # Directory size summary",
-    "du -sh /var/log/*     # All items in directory",
-    "ncdu /                # Interactive disk usage browser",
-    "",
-    "# Finding files",
-    "find / -name \"*.conf\" -type f 2>/dev/null",
-    "find /etc -name \"*.conf\" -newer /etc/passwd",
-    "locate nginx.conf     # Fast search using updatedb index",
-    "",
-    "# Links",
-    "ln source target      # Hard link",
-    "ln -s source target   # Symbolic link",
-    "readlink -f symlink   # Resolve symlink to real path"
-  ].join('\n')} />
+        <CodeBlock title="Filesystem Navigation Commands" language="bash" code={CODE_LINUXFILESYSTEM_7} />
       </section>
 
       {/* ── QUIZ ── */}

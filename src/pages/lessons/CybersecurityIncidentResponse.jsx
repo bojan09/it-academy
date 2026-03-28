@@ -3,6 +3,98 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYINCIDENTRESPONSE_1 = `# Run as Administrator. Save output to an external drive or network share.
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$outdir = "C:\\IR-Evidence-$timestamp"
+New-Item -Path $outdir -ItemType Directory | Out-Null
+
+# Snapshot running processes
+Get-Process | Select-Object Id, Name, Path, CPU, StartTime |
+  Export-Csv "$outdir\\processes.csv" -NoTypeInformation
+
+# Network connections (who is the system talking to?)
+Get-NetTCPConnection | Select-Object State, LocalAddress, LocalPort,
+  RemoteAddress, RemotePort,
+  @{N='Process';E={(Get-Process -Id $_.OwningProcess -EA SilentlyContinue).Name}} |
+  Export-Csv "$outdir\\
+etwork-connections.csv" -NoTypeInformation
+
+# Logged-in users
+query user 2>&1 | Out-File "$outdir\\logged-in-users.txt"
+
+# Recent Security events (last 2 hours)
+Get-WinEvent -FilterHashtable @{LogName='Security'; StartTime=(Get-Date).AddHours(-2)} |
+  Select-Object TimeCreated, Id, Message |
+  Export-Csv "$outdir\\security-events.csv" -NoTypeInformation
+
+# Scheduled tasks (persistence mechanism)
+Get-ScheduledTask | Where-Object State -ne Disabled |
+  Select-Object TaskName, TaskPath, State |
+  Export-Csv "$outdir\\scheduled-tasks.csv" -NoTypeInformation
+
+# Startup items
+Get-CimInstance Win32_StartupCommand |
+  Export-Csv "$outdir\\startup-items.csv" -NoTypeInformation
+
+Write-Host "Evidence collected to: $outdir" -ForegroundColor Green
+Write-Host "Hash the directory for chain of custody:"
+Get-ChildItem $outdir -Recurse -File | ForEach-Object {
+    $hash = Get-FileHash $_.FullName -Algorithm SHA256
+    "$($hash.Hash)  $($_.Name)"
+} | Out-File "$outdir\\HASHES.txt"`
+const CODE_CYBERSECURITYINCIDENTRESPONSE_2 = `# Simulate: Start-Sleep acts as a 'long-running suspicious process'
+Start-Process powershell -ArgumentList '-Command', 'Start-Sleep 300' -WindowStyle Hidden
+
+# INCIDENT RESPONSE: collect evidence immediately
+$out = 'C:\\IR-Lab'
+New-Item $out -ItemType Directory -Force | Out-Null
+
+# Processes
+Get-Process | Select-Object Id, Name, CPU |
+  Sort-Object CPU -Descending | Select-Object -First 10 |
+  Export-Csv "$out\\processes.csv" -NoTypeInformation
+
+# Network connections
+Get-NetTCPConnection | Where-Object State -eq 'Established' |
+  Select-Object LocalAddress, LocalPort, RemoteAddress, RemotePort,
+    @{N='Process';E={(Get-Process -Id $_.OwningProcess -EA 0).Name}} |
+  Export-Csv "$out\\connections.csv" -NoTypeInformation
+
+Write-Host 'Evidence collected.' -ForegroundColor Green
+Get-ChildItem $out`
+const CODE_CYBERSECURITYINCIDENTRESPONSE_3 = `Evidence collected.
+
+    Directory: C:\\IR-Lab
+
+Mode  Name
+----  ----
+-a-   connections.csv
+-a-   processes.csv`
+const CODE_CYBERSECURITYINCIDENTRESPONSE_4 = `# Find hidden PowerShell processes
+Get-Process powershell | Select-Object Id, Name, StartTime, CPU
+
+# Containment: block outbound with firewall (don't kill yet — preserve state)
+New-NetFirewallRule -DisplayName 'CONTAIN-SUSPICIOUS' \`\`
+  -Direction Outbound -Action Block \`\`
+  -Profile Any -Enabled True
+
+Write-Host 'System contained — outbound traffic blocked'
+
+# Eradication: now we can kill the process
+Get-Process powershell | Where-Object Id -ne $PID | Stop-Process -Force
+Remove-NetFirewallRule -DisplayName 'CONTAIN-SUSPICIOUS'
+
+Write-Host 'Eradication complete' -ForegroundColor Green`
+const CODE_CYBERSECURITYINCIDENTRESPONSE_5 = `Id     Name        StartTime              CPU
+--     ----        ---------              ---
+4512   powershell  01/15/2025 11:00:00    0.1
+4488   powershell  01/15/2025 10:55:00    0.0  <- suspicious hidden process
+
+System contained — outbound traffic blocked
+Eradication complete`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -166,46 +258,7 @@ export default function CybersecurityIncidentResponse() {
       <section>
         <h2>Evidence Collection Runbook</h2>
         <CodeBlock title="Windows — volatile evidence collection (run FIRST on suspected compromise)" language="powershell"
-          code={[
-            "# Run as Administrator. Save output to an external drive or network share.",
-            "$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'",
-            "$outdir = \"C:\\IR-Evidence-$timestamp\"",
-            "New-Item -Path $outdir -ItemType Directory | Out-Null",
-            "",
-            "# Snapshot running processes",
-            "Get-Process | Select-Object Id, Name, Path, CPU, StartTime |",
-            "  Export-Csv \"$outdir\\processes.csv\" -NoTypeInformation",
-            "",
-            "# Network connections (who is the system talking to?)",
-            "Get-NetTCPConnection | Select-Object State, LocalAddress, LocalPort,",
-            "  RemoteAddress, RemotePort,",
-            "  @{N='Process';E={(Get-Process -Id $_.OwningProcess -EA SilentlyContinue).Name}} |",
-            "  Export-Csv \"$outdir\\network-connections.csv\" -NoTypeInformation",
-            "",
-            "# Logged-in users",
-            "query user 2>&1 | Out-File \"$outdir\\logged-in-users.txt\"",
-            "",
-            "# Recent Security events (last 2 hours)",
-            "Get-WinEvent -FilterHashtable @{LogName='Security'; StartTime=(Get-Date).AddHours(-2)} |",
-            "  Select-Object TimeCreated, Id, Message |",
-            "  Export-Csv \"$outdir\\security-events.csv\" -NoTypeInformation",
-            "",
-            "# Scheduled tasks (persistence mechanism)",
-            "Get-ScheduledTask | Where-Object State -ne Disabled |",
-            "  Select-Object TaskName, TaskPath, State |",
-            "  Export-Csv \"$outdir\\scheduled-tasks.csv\" -NoTypeInformation",
-            "",
-            "# Startup items",
-            "Get-CimInstance Win32_StartupCommand |",
-            "  Export-Csv \"$outdir\\startup-items.csv\" -NoTypeInformation",
-            "",
-            "Write-Host \"Evidence collected to: $outdir\" -ForegroundColor Green",
-            "Write-Host \"Hash the directory for chain of custody:\"",
-            "Get-ChildItem $outdir -Recurse -File | ForEach-Object {",
-            "    $hash = Get-FileHash $_.FullName -Algorithm SHA256",
-            "    \"$($hash.Hash)  $($_.Name)\"",
-            "} | Out-File \"$outdir\\HASHES.txt\""
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYINCIDENTRESPONSE_1} />
       </section>
 
       <section>
@@ -219,67 +272,13 @@ export default function CybersecurityIncidentResponse() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Simulate a suspicious outbound connection and collect volatile evidence."
-              command={[
-                "# Simulate: Start-Sleep acts as a 'long-running suspicious process'",
-                "Start-Process powershell -ArgumentList '-Command', 'Start-Sleep 300' -WindowStyle Hidden",
-                "",
-                "# INCIDENT RESPONSE: collect evidence immediately",
-                "$out = 'C:\\IR-Lab'",
-                "New-Item $out -ItemType Directory -Force | Out-Null",
-                "",
-                "# Processes",
-                "Get-Process | Select-Object Id, Name, CPU |",
-                "  Sort-Object CPU -Descending | Select-Object -First 10 |",
-                "  Export-Csv \"$out\\processes.csv\" -NoTypeInformation",
-                "",
-                "# Network connections",
-                "Get-NetTCPConnection | Where-Object State -eq 'Established' |",
-                "  Select-Object LocalAddress, LocalPort, RemoteAddress, RemotePort,",
-                "    @{N='Process';E={(Get-Process -Id $_.OwningProcess -EA 0).Name}} |",
-                "  Export-Csv \"$out\\connections.csv\" -NoTypeInformation",
-                "",
-                "Write-Host 'Evidence collected.' -ForegroundColor Green",
-                "Get-ChildItem $out"
-              ].join('\n')}
-              output={[
-                "Evidence collected.",
-                "",
-                "    Directory: C:\\IR-Lab",
-                "",
-                "Mode  Name",
-                "----  ----",
-                "-a-   connections.csv",
-                "-a-   processes.csv"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYINCIDENTRESPONSE_2}
+              output={CODE_CYBERSECURITYINCIDENTRESPONSE_3}
             />
             <LabStep number={2}
               description="Identify and contain the suspicious process, then eradicate."
-              command={[
-                "# Find hidden PowerShell processes",
-                "Get-Process powershell | Select-Object Id, Name, StartTime, CPU",
-                "",
-                "# Containment: block outbound with firewall (don't kill yet — preserve state)",
-                "New-NetFirewallRule -DisplayName 'CONTAIN-SUSPICIOUS' ``",
-                "  -Direction Outbound -Action Block ``",
-                "  -Profile Any -Enabled True",
-                "",
-                "Write-Host 'System contained — outbound traffic blocked'",
-                "",
-                "# Eradication: now we can kill the process",
-                "Get-Process powershell | Where-Object Id -ne $PID | Stop-Process -Force",
-                "Remove-NetFirewallRule -DisplayName 'CONTAIN-SUSPICIOUS'",
-                "",
-                "Write-Host 'Eradication complete' -ForegroundColor Green"
-              ].join('\n')}
-              output={[
-                "Id     Name        StartTime              CPU",
-                "--     ----        ---------              ---",
-                "4512   powershell  01/15/2025 11:00:00    0.1",
-                "4488   powershell  01/15/2025 10:55:00    0.0  <- suspicious hidden process",
-                "",
-                "System contained — outbound traffic blocked",
-                "Eradication complete"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYINCIDENTRESPONSE_4}
+              output={CODE_CYBERSECURITYINCIDENTRESPONSE_5}
             />
           </div>
         </div>

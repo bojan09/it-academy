@@ -3,6 +3,86 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYPKI_1 = `# ── Inspect a certificate ────────────────────────────────────
+# From a file
+openssl x509 -in cert.pem -text -noout | grep -E 'Subject:|Issuer:|Not After|DNS:'
+
+# From a live server
+echo | openssl s_client -connect google.com:443 -servername google.com 2>/dev/null |
+  openssl x509 -text -noout | grep -E 'Subject:|Not After|DNS:'
+
+# Check days until expiry
+echo | openssl s_client -connect example.com:443 2>/dev/null |
+  openssl x509 -noout -enddate
+
+# ── Create a self-signed certificate ─────────────────────────
+openssl req -x509 -newkey rsa:4096 -sha256 -days 365 \\
+  -keyout server.key -out server.crt \\
+  -subj '/CN=lab.local' \\
+  -addext 'subjectAltName=DNS:lab.local,DNS:*.lab.local,IP:192.168.100.10'
+
+# ── Create an internal CA and sign a cert ────────────────────
+# 1. Generate CA key and self-signed root cert
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \\
+  -subj '/CN=Lab Internal CA/O=Lab/C=US'
+
+# 2. Generate server key and CSR
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \\
+  -subj '/CN=dc01.lab.local'
+
+# 3. Sign the CSR with your CA
+openssl x509 -req -days 365 -in server.csr \\
+  -CA ca.crt -CAkey ca.key -CAcreateserial \\
+  -out server.crt \\
+  -extfile <(echo 'subjectAltName=DNS:dc01.lab.local,IP:192.168.100.10')
+
+# 4. Verify the chain
+openssl verify -CAfile ca.crt server.crt`
+const CODE_CYBERSECURITYPKI_2 = `mkdir -p ~/lab-ca && cd ~/lab-ca
+
+# Generate CA key and root certificate
+openssl genrsa -out lab-ca.key 4096
+openssl req -new -x509 -days 3650 -key lab-ca.key -out lab-ca.crt \\
+  -subj '/CN=Lab Internal CA/O=SysAdminPro Lab/C=US'
+
+# Verify the CA cert
+openssl x509 -in lab-ca.crt -noout -text | grep -E 'Subject:|Not After'
+echo 'Lab CA created successfully'`
+const CODE_CYBERSECURITYPKI_3 = `Generating RSA private key, 4096 bit long modulus
+....
+Subject: CN=Lab Internal CA, O=SysAdminPro Lab, C=US
+Not After : Jan 14 11:00:00 2035 GMT
+Lab CA created successfully`
+const CODE_CYBERSECURITYPKI_4 = `cd ~/lab-ca
+
+# Generate DC01 server key and CSR
+openssl genrsa -out dc01.key 2048
+openssl req -new -key dc01.key -out dc01.csr \\
+  -subj '/CN=dc01.lab.local/O=Lab'
+
+# Sign the CSR with the lab CA
+openssl x509 -req -days 365 -in dc01.csr \\
+  -CA lab-ca.crt -CAkey lab-ca.key -CAcreateserial \\
+  -out dc01.crt \\
+  -extfile <(printf 'subjectAltName=DNS:dc01.lab.local,DNS:dc01,IP:192.168.100.10')
+
+# Verify the chain
+openssl verify -CAfile lab-ca.crt dc01.crt
+
+# Inspect the issued cert
+openssl x509 -in dc01.crt -noout -text |
+  grep -E 'Subject:|Issuer:|Not After|DNS:|IP:'`
+const CODE_CYBERSECURITYPKI_5 = `dc01.crt: OK  <- chain verified successfully
+
+Subject: CN=dc01.lab.local, O=Lab
+Issuer: CN=Lab Internal CA, O=SysAdminPro Lab, C=US
+Not After : Jan 15 11:00:00 2026 GMT
+DNS:dc01.lab.local, DNS:dc01, IP Address:192.168.100.10`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -165,45 +245,7 @@ export default function CybersecurityPKI() {
       <section>
         <h2>openssl — Certificate Operations</h2>
         <CodeBlock title="Essential openssl commands for sysadmins" language="bash"
-          code={[
-            "# ── Inspect a certificate ────────────────────────────────────",
-            "# From a file",
-            "openssl x509 -in cert.pem -text -noout | grep -E 'Subject:|Issuer:|Not After|DNS:'",
-            "",
-            "# From a live server",
-            "echo | openssl s_client -connect google.com:443 -servername google.com 2>/dev/null |",
-            "  openssl x509 -text -noout | grep -E 'Subject:|Not After|DNS:'",
-            "",
-            "# Check days until expiry",
-            "echo | openssl s_client -connect example.com:443 2>/dev/null |",
-            "  openssl x509 -noout -enddate",
-            "",
-            "# ── Create a self-signed certificate ─────────────────────────",
-            "openssl req -x509 -newkey rsa:4096 -sha256 -days 365 \\",
-            "  -keyout server.key -out server.crt \\",
-            "  -subj '/CN=lab.local' \\",
-            "  -addext 'subjectAltName=DNS:lab.local,DNS:*.lab.local,IP:192.168.100.10'",
-            "",
-            "# ── Create an internal CA and sign a cert ────────────────────",
-            "# 1. Generate CA key and self-signed root cert",
-            "openssl genrsa -out ca.key 4096",
-            "openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \\",
-            "  -subj '/CN=Lab Internal CA/O=Lab/C=US'",
-            "",
-            "# 2. Generate server key and CSR",
-            "openssl genrsa -out server.key 2048",
-            "openssl req -new -key server.key -out server.csr \\",
-            "  -subj '/CN=dc01.lab.local'",
-            "",
-            "# 3. Sign the CSR with your CA",
-            "openssl x509 -req -days 365 -in server.csr \\",
-            "  -CA ca.crt -CAkey ca.key -CAcreateserial \\",
-            "  -out server.crt \\",
-            "  -extfile <(echo 'subjectAltName=DNS:dc01.lab.local,IP:192.168.100.10')",
-            "",
-            "# 4. Verify the chain",
-            "openssl verify -CAfile ca.crt server.crt"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYPKI_1} />
       </section>
 
       <section>
@@ -217,57 +259,13 @@ export default function CybersecurityPKI() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Create a lab internal CA on the Ubuntu VM."
-              command={[
-                "mkdir -p ~/lab-ca && cd ~/lab-ca",
-                "",
-                "# Generate CA key and root certificate",
-                "openssl genrsa -out lab-ca.key 4096",
-                "openssl req -new -x509 -days 3650 -key lab-ca.key -out lab-ca.crt \\",
-                "  -subj '/CN=Lab Internal CA/O=SysAdminPro Lab/C=US'",
-                "",
-                "# Verify the CA cert",
-                "openssl x509 -in lab-ca.crt -noout -text | grep -E 'Subject:|Not After'",
-                "echo 'Lab CA created successfully'"
-              ].join('\n')}
-              output={[
-                "Generating RSA private key, 4096 bit long modulus",
-                "....",
-                "Subject: CN=Lab Internal CA, O=SysAdminPro Lab, C=US",
-                "Not After : Jan 14 11:00:00 2035 GMT",
-                "Lab CA created successfully"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYPKI_2}
+              output={CODE_CYBERSECURITYPKI_3}
             />
             <LabStep number={2}
               description="Issue a certificate for DC01 signed by the lab CA."
-              command={[
-                "cd ~/lab-ca",
-                "",
-                "# Generate DC01 server key and CSR",
-                "openssl genrsa -out dc01.key 2048",
-                "openssl req -new -key dc01.key -out dc01.csr \\",
-                "  -subj '/CN=dc01.lab.local/O=Lab'",
-                "",
-                "# Sign the CSR with the lab CA",
-                "openssl x509 -req -days 365 -in dc01.csr \\",
-                "  -CA lab-ca.crt -CAkey lab-ca.key -CAcreateserial \\",
-                "  -out dc01.crt \\",
-                "  -extfile <(printf 'subjectAltName=DNS:dc01.lab.local,DNS:dc01,IP:192.168.100.10')",
-                "",
-                "# Verify the chain",
-                "openssl verify -CAfile lab-ca.crt dc01.crt",
-                "",
-                "# Inspect the issued cert",
-                "openssl x509 -in dc01.crt -noout -text |",
-                "  grep -E 'Subject:|Issuer:|Not After|DNS:|IP:'"
-              ].join('\n')}
-              output={[
-                "dc01.crt: OK  <- chain verified successfully",
-                "",
-                "Subject: CN=dc01.lab.local, O=Lab",
-                "Issuer: CN=Lab Internal CA, O=SysAdminPro Lab, C=US",
-                "Not After : Jan 15 11:00:00 2026 GMT",
-                "DNS:dc01.lab.local, DNS:dc01, IP Address:192.168.100.10"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYPKI_4}
+              output={CODE_CYBERSECURITYPKI_5}
             />
           </div>
         </div>

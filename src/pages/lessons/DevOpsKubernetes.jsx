@@ -3,6 +3,124 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_DEVOPSKUBERNETES_1 = `# ── Deployment ───────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: production
+  labels:
+    app: web-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    metadata:
+      labels:
+        app: web-api
+    spec:
+      containers:
+        - name: web-api
+          image: myregistry/web-api:v1.2.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+# ── Service ──────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-api
+  namespace: production
+spec:
+  selector:
+    app: web-api      # Routes to pods with this label
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP    # Internal only; use LoadBalancer for external`
+const CODE_DEVOPSKUBERNETES_2 = `# ── Deploy & update ──────────────────────────────────────────
+kubectl apply -f deployment.yaml
+kubectl apply -f ./k8s/                    # Apply whole directory
+kubectl set image deployment/web-api web-api=myregistry/web-api:v1.3.0
+
+# ── Inspect ──────────────────────────────────────────────────
+kubectl get pods -n production
+kubectl get deployments -A                  # All namespaces
+kubectl describe pod web-api-abc123-xyz -n production
+kubectl logs web-api-abc123-xyz -f         # Follow logs
+kubectl logs -l app=web-api --all-containers=true
+
+# ── Rollouts ─────────────────────────────────────────────────
+kubectl rollout status deployment/web-api
+kubectl rollout history deployment/web-api
+kubectl rollout undo deployment/web-api    # Rollback
+kubectl rollout undo deployment/web-api --to-revision=2
+
+# ── Debug ────────────────────────────────────────────────────
+kubectl exec -it pod-name -n production -- bash
+kubectl port-forward deployment/web-api 8080:8080
+kubectl top pods -n production             # Resource usage
+
+# ── Namespaces ────────────────────────────────────────────────
+kubectl get namespaces
+kubectl create namespace staging
+kubectl config set-context --current --namespace=production`
+const CODE_DEVOPSKUBERNETES_3 = `# Install k3s — production-grade K8s that runs on a single VM
+curl -sfL https://get.k3s.io | sh -
+
+# Set up kubectl config
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $USER ~/.kube/config
+
+# Verify
+kubectl get nodes
+kubectl get pods -A`
+const CODE_DEVOPSKUBERNETES_4 = `NAME     STATUS   ROLES                  AGE   VERSION
+srv01    Ready    control-plane,master   30s   v1.28.4+k3s1`
+const CODE_DEVOPSKUBERNETES_5 = `# Create namespace
+kubectl create namespace lab
+
+# Deploy nginx
+kubectl create deployment nginx --image=nginx:alpine -n lab --replicas=2
+kubectl expose deployment nginx --port=80 --type=NodePort -n lab
+
+# Check status
+kubectl get pods,svc -n lab
+
+# Get the NodePort
+kubectl get svc nginx -n lab -o jsonpath='{.spec.ports[0].nodePort}'
+# Visit: http://localhost:<nodeport>`
+const CODE_DEVOPSKUBERNETES_6 = `NAME                         READY   STATUS    RESTARTS
+pod/nginx-7c79c4bf97-abc12   1/1     Running   0
+pod/nginx-7c79c4bf97-def34   1/1     Running   0
+
+NAME    TYPE       CLUSTER-IP     PORT(S)        AGE
+nginx   NodePort   10.43.200.50   80:32456/TCP   5s`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -179,98 +297,13 @@ export default function DevOpsKubernetes() {
       <section>
         <h2>Writing Kubernetes Manifests</h2>
         <CodeBlock title="deployment.yaml + service.yaml — production pattern" language="yaml"
-          code={[
-            "# ── Deployment ───────────────────────────────────────────────",
-            "apiVersion: apps/v1",
-            "kind: Deployment",
-            "metadata:",
-            "  name: web-api",
-            "  namespace: production",
-            "  labels:",
-            "    app: web-api",
-            "spec:",
-            "  replicas: 3",
-            "  selector:",
-            "    matchLabels:",
-            "      app: web-api",
-            "  template:",
-            "    metadata:",
-            "      labels:",
-            "        app: web-api",
-            "    spec:",
-            "      containers:",
-            "        - name: web-api",
-            "          image: myregistry/web-api:v1.2.0",
-            "          ports:",
-            "            - containerPort: 8080",
-            "          resources:",
-            "            requests:",
-            "              cpu: 100m",
-            "              memory: 128Mi",
-            "            limits:",
-            "              cpu: 500m",
-            "              memory: 256Mi",
-            "          readinessProbe:",
-            "            httpGet:",
-            "              path: /health",
-            "              port: 8080",
-            "            initialDelaySeconds: 10",
-            "            periodSeconds: 5",
-            "          livenessProbe:",
-            "            httpGet:",
-            "              path: /health",
-            "              port: 8080",
-            "            initialDelaySeconds: 30",
-            "            periodSeconds: 10",
-            "---",
-            "# ── Service ──────────────────────────────────────────────────",
-            "apiVersion: v1",
-            "kind: Service",
-            "metadata:",
-            "  name: web-api",
-            "  namespace: production",
-            "spec:",
-            "  selector:",
-            "    app: web-api      # Routes to pods with this label",
-            "  ports:",
-            "    - port: 80",
-            "      targetPort: 8080",
-            "  type: ClusterIP    # Internal only; use LoadBalancer for external"
-          ].join('\n')} />
+          code={CODE_DEVOPSKUBERNETES_1} />
       </section>
 
       <section>
         <h2>kubectl Reference</h2>
         <CodeBlock title="Essential kubectl commands" language="bash"
-          code={[
-            "# ── Deploy & update ──────────────────────────────────────────",
-            "kubectl apply -f deployment.yaml",
-            "kubectl apply -f ./k8s/                    # Apply whole directory",
-            "kubectl set image deployment/web-api web-api=myregistry/web-api:v1.3.0",
-            "",
-            "# ── Inspect ──────────────────────────────────────────────────",
-            "kubectl get pods -n production",
-            "kubectl get deployments -A                  # All namespaces",
-            "kubectl describe pod web-api-abc123-xyz -n production",
-            "kubectl logs web-api-abc123-xyz -f         # Follow logs",
-            "kubectl logs -l app=web-api --all-containers=true",
-            "",
-            "# ── Rollouts ─────────────────────────────────────────────────",
-            "kubectl rollout status deployment/web-api",
-            "kubectl rollout history deployment/web-api",
-            "kubectl rollout undo deployment/web-api    # Rollback",
-            "kubectl rollout undo deployment/web-api --to-revision=2",
-            "",
-            "# ── Debug ────────────────────────────────────────────────────",
-            "kubectl exec -it pod-name -n production -- bash",
-            "kubectl port-forward deployment/web-api 8080:8080",
-            "kubectl top pods -n production             # Resource usage",
-            "",
-            "# ── Namespaces ────────────────────────────────────────────────",
-            "kubectl get namespaces",
-            "kubectl create namespace staging",
-            "kubectl config set-context --current --namespace=production"
-          ].join('\n')} />
+          code={CODE_DEVOPSKUBERNETES_2} />
       </section>
 
       <section>
@@ -284,49 +317,13 @@ export default function DevOpsKubernetes() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install k3s (lightweight K8s) on the Ubuntu VM for local practice."
-              command={[
-                "# Install k3s — production-grade K8s that runs on a single VM",
-                "curl -sfL https://get.k3s.io | sh -",
-                "",
-                "# Set up kubectl config",
-                "mkdir -p ~/.kube",
-                "sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config",
-                "sudo chown $USER ~/.kube/config",
-                "",
-                "# Verify",
-                "kubectl get nodes",
-                "kubectl get pods -A"
-              ].join('\n')}
-              output={[
-                "NAME     STATUS   ROLES                  AGE   VERSION",
-                "srv01    Ready    control-plane,master   30s   v1.28.4+k3s1"
-              ].join('\n')}
+              command={CODE_DEVOPSKUBERNETES_3}
+              output={CODE_DEVOPSKUBERNETES_4}
             />
             <LabStep number={2}
               description="Deploy nginx and expose it via a Service."
-              command={[
-                "# Create namespace",
-                "kubectl create namespace lab",
-                "",
-                "# Deploy nginx",
-                "kubectl create deployment nginx --image=nginx:alpine -n lab --replicas=2",
-                "kubectl expose deployment nginx --port=80 --type=NodePort -n lab",
-                "",
-                "# Check status",
-                "kubectl get pods,svc -n lab",
-                "",
-                "# Get the NodePort",
-                "kubectl get svc nginx -n lab -o jsonpath='{.spec.ports[0].nodePort}'",
-                "# Visit: http://localhost:<nodeport>"
-              ].join('\n')}
-              output={[
-                "NAME                         READY   STATUS    RESTARTS",
-                "pod/nginx-7c79c4bf97-abc12   1/1     Running   0",
-                "pod/nginx-7c79c4bf97-def34   1/1     Running   0",
-                "",
-                "NAME    TYPE       CLUSTER-IP     PORT(S)        AGE",
-                "nginx   NodePort   10.43.200.50   80:32456/TCP   5s"
-              ].join('\n')}
+              command={CODE_DEVOPSKUBERNETES_5}
+              output={CODE_DEVOPSKUBERNETES_6}
             />
           </div>
         </div>

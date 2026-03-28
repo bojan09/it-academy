@@ -3,6 +3,131 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_PYTHONSCHEDULING_1 = `# Edit with: crontab -e
+# View with: crontab -l
+
+# Disable email output (use log files instead)
+MAILTO=''
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Daily disk health check at 06:00 — log output, capture errors
+0 6 * * * /opt/scripts/disk-monitor.py >> /var/log/disk-monitor.log 2>&1
+
+# Hourly server health snapshot
+0 * * * * /opt/scripts/health-snapshot.py >> /var/log/health.log 2>&1
+
+# Weekly log cleanup (Sundays at 02:00)
+0 2 * * 0 /opt/scripts/log-cleanup.py >> /var/log/cleanup.log 2>&1
+
+# Run as a specific user with sudo:
+# Add to /etc/cron.d/myjob:
+# 0 6 * * * sysadmin /opt/scripts/job.py >> /var/log/job.log 2>&1`
+const CODE_PYTHONSCHEDULING_2 = `#!/usr/bin/env python3
+"""scheduled-task.py — Template for cron-deployed Python scripts."""
+import sys, logging, fcntl, time
+from pathlib import Path
+from datetime import datetime
+
+# ── Configuration ────────────────────────────────────────────
+SCRIPT_NAME = Path(__file__).stem
+LOG_FILE    = Path(f'/var/log/{SCRIPT_NAME}.log')
+LOCK_FILE   = Path(f'/tmp/{SCRIPT_NAME}.lock')
+
+# ── Logging setup ─────────────────────────────────────────────
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+log = logging.getLogger(SCRIPT_NAME)
+
+# ── Lock file — prevent concurrent runs ───────────────────────
+class SingleInstance:
+    def __enter__(self):
+        self._fp = open(LOCK_FILE, 'w')
+        try:
+            fcntl.flock(self._fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            log.warning('Another instance is running — exiting')
+            sys.exit(0)
+        return self
+
+    def __exit__(self, *args):
+        fcntl.flock(self._fp, fcntl.LOCK_UN)
+        self._fp.close()
+        LOCK_FILE.unlink(missing_ok=True)
+
+# ── Main logic ────────────────────────────────────────────────
+def main():
+    log.info('Starting run')
+    start = time.time()
+
+    try:
+        # --- Your work goes here ---
+        import psutil
+        disk_pct = psutil.disk_usage('/').percent
+        log.info(f'Disk usage: {disk_pct}%')
+
+        if disk_pct > 85:
+            log.warning(f'HIGH DISK: {disk_pct}% — alerting')
+            # send_alert(f'Disk at {disk_pct}%')
+        # ---------------------------
+
+    except Exception as e:
+        log.error(f'Unhandled error: {e}', exc_info=True)
+        sys.exit(1)
+    finally:
+        elapsed = round(time.time() - start, 2)
+        log.info(f'Run complete in {elapsed}s')
+
+if __name__ == '__main__':
+    with SingleInstance():
+        main()`
+const CODE_PYTHONSCHEDULING_3 = `# Create the script
+sudo mkdir -p /opt/scripts
+cat > /opt/scripts/health-check.py << 'EOF'
+#!/usr/bin/env python3
+import logging, psutil
+from pathlib import Path
+from datetime import datetime
+
+logging.basicConfig(
+    filename='/var/log/health-check.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s'
+)
+log = logging.getLogger('health')
+
+cpu = psutil.cpu_percent(interval=1)
+mem = psutil.virtual_memory().percent
+disk = psutil.disk_usage('/').percent
+
+log.info(f'cpu={cpu}% mem={mem}% disk={disk}%')
+if any([cpu > 90, mem > 90, disk > 85]):
+    log.warning(f'THRESHOLD EXCEEDED: cpu={cpu} mem={mem} disk={disk}')
+EOF
+chmod +x /opt/scripts/health-check.py
+
+# Test it
+python3 /opt/scripts/health-check.py
+cat /var/log/health-check.log`
+const CODE_PYTHONSCHEDULING_4 = `# Add to crontab
+(crontab -l 2>/dev/null; echo "*/5 * * * * python3 /opt/scripts/health-check.py >> /var/log/health-check.log 2>&1") | crontab -
+
+# Verify it was added
+crontab -l
+
+# Check cron is running
+sudo systemctl status cron`
+const CODE_PYTHONSCHEDULING_5 = `*/5 * * * * python3 /opt/scripts/health-check.py >> /var/log/health-check.log 2>&1
+
+cron.service - Regular background program processing daemon
+   Active: active (running)`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -174,97 +299,13 @@ export default function PythonScheduling() {
           </div>
         </div>
         <CodeBlock className="mt-4" title="Production crontab setup" language="bash"
-          code={[
-            "# Edit with: crontab -e",
-            "# View with: crontab -l",
-            "",
-            "# Disable email output (use log files instead)",
-            "MAILTO=''",
-            "SHELL=/bin/bash",
-            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "",
-            "# Daily disk health check at 06:00 — log output, capture errors",
-            "0 6 * * * /opt/scripts/disk-monitor.py >> /var/log/disk-monitor.log 2>&1",
-            "",
-            "# Hourly server health snapshot",
-            "0 * * * * /opt/scripts/health-snapshot.py >> /var/log/health.log 2>&1",
-            "",
-            "# Weekly log cleanup (Sundays at 02:00)",
-            "0 2 * * 0 /opt/scripts/log-cleanup.py >> /var/log/cleanup.log 2>&1",
-            "",
-            "# Run as a specific user with sudo:",
-            "# Add to /etc/cron.d/myjob:",
-            "# 0 6 * * * sysadmin /opt/scripts/job.py >> /var/log/job.log 2>&1"
-          ].join('\n')} />
+          code={CODE_PYTHONSCHEDULING_1} />
       </section>
 
       <section>
         <h2>Production Script Template</h2>
         <CodeBlock title="scheduled-task.py — production-ready template" language="bash"
-          code={[
-            "#!/usr/bin/env python3",
-            "\"\"\"scheduled-task.py — Template for cron-deployed Python scripts.\"\"\"",
-            "import sys, logging, fcntl, time",
-            "from pathlib import Path",
-            "from datetime import datetime",
-            "",
-            "# ── Configuration ────────────────────────────────────────────",
-            "SCRIPT_NAME = Path(__file__).stem",
-            "LOG_FILE    = Path(f'/var/log/{SCRIPT_NAME}.log')",
-            "LOCK_FILE   = Path(f'/tmp/{SCRIPT_NAME}.lock')",
-            "",
-            "# ── Logging setup ─────────────────────────────────────────────",
-            "logging.basicConfig(",
-            "    filename=LOG_FILE,",
-            "    level=logging.INFO,",
-            "    format='%(asctime)s %(levelname)s %(message)s',",
-            "    datefmt='%Y-%m-%d %H:%M:%S'",
-            ")",
-            "log = logging.getLogger(SCRIPT_NAME)",
-            "",
-            "# ── Lock file — prevent concurrent runs ───────────────────────",
-            "class SingleInstance:",
-            "    def __enter__(self):",
-            "        self._fp = open(LOCK_FILE, 'w')",
-            "        try:",
-            "            fcntl.flock(self._fp, fcntl.LOCK_EX | fcntl.LOCK_NB)",
-            "        except OSError:",
-            "            log.warning('Another instance is running — exiting')",
-            "            sys.exit(0)",
-            "        return self",
-            "",
-            "    def __exit__(self, *args):",
-            "        fcntl.flock(self._fp, fcntl.LOCK_UN)",
-            "        self._fp.close()",
-            "        LOCK_FILE.unlink(missing_ok=True)",
-            "",
-            "# ── Main logic ────────────────────────────────────────────────",
-            "def main():",
-            "    log.info('Starting run')",
-            "    start = time.time()",
-            "",
-            "    try:",
-            "        # --- Your work goes here ---",
-            "        import psutil",
-            "        disk_pct = psutil.disk_usage('/').percent",
-            "        log.info(f'Disk usage: {disk_pct}%')",
-            "",
-            "        if disk_pct > 85:",
-            "            log.warning(f'HIGH DISK: {disk_pct}% — alerting')",
-            "            # send_alert(f'Disk at {disk_pct}%')",
-            "        # ---------------------------",
-            "",
-            "    except Exception as e:",
-            "        log.error(f'Unhandled error: {e}', exc_info=True)",
-            "        sys.exit(1)",
-            "    finally:",
-            "        elapsed = round(time.time() - start, 2)",
-            "        log.info(f'Run complete in {elapsed}s')",
-            "",
-            "if __name__ == '__main__':",
-            "    with SingleInstance():",
-            "        main()"
-          ].join('\n')} />
+          code={CODE_PYTHONSCHEDULING_2} />
       </section>
 
       <section>
@@ -278,56 +319,13 @@ export default function PythonScheduling() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Create and deploy a production-style scheduled health check."
-              command={[
-                "# Create the script",
-                "sudo mkdir -p /opt/scripts",
-                "cat > /opt/scripts/health-check.py << 'EOF'",
-                "#!/usr/bin/env python3",
-                "import logging, psutil",
-                "from pathlib import Path",
-                "from datetime import datetime",
-                "",
-                "logging.basicConfig(",
-                "    filename='/var/log/health-check.log',",
-                "    level=logging.INFO,",
-                "    format='%(asctime)s %(levelname)s %(message)s'",
-                ")",
-                "log = logging.getLogger('health')",
-                "",
-                "cpu = psutil.cpu_percent(interval=1)",
-                "mem = psutil.virtual_memory().percent",
-                "disk = psutil.disk_usage('/').percent",
-                "",
-                "log.info(f'cpu={cpu}% mem={mem}% disk={disk}%')",
-                "if any([cpu > 90, mem > 90, disk > 85]):",
-                "    log.warning(f'THRESHOLD EXCEEDED: cpu={cpu} mem={mem} disk={disk}')",
-                "EOF",
-                "chmod +x /opt/scripts/health-check.py",
-                "",
-                "# Test it",
-                "python3 /opt/scripts/health-check.py",
-                "cat /var/log/health-check.log"
-              ].join('\n')}
+              command={CODE_PYTHONSCHEDULING_3}
               output="2025-01-15 11:00:00 INFO cpu=8.5% mem=47.2% disk=15.3%"
             />
             <LabStep number={2}
               description="Schedule it with cron — run every 5 minutes."
-              command={[
-                "# Add to crontab",
-                "(crontab -l 2>/dev/null; echo \"*/5 * * * * python3 /opt/scripts/health-check.py >> /var/log/health-check.log 2>&1\") | crontab -",
-                "",
-                "# Verify it was added",
-                "crontab -l",
-                "",
-                "# Check cron is running",
-                "sudo systemctl status cron"
-              ].join('\n')}
-              output={[
-                "*/5 * * * * python3 /opt/scripts/health-check.py >> /var/log/health-check.log 2>&1",
-                "",
-                "cron.service - Regular background program processing daemon",
-                "   Active: active (running)"
-              ].join('\n')}
+              command={CODE_PYTHONSCHEDULING_4}
+              output={CODE_PYTHONSCHEDULING_5}
             />
           </div>
         </div>

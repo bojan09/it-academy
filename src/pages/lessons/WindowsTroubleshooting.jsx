@@ -3,6 +3,94 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WINDOWSTROUBLESHOOTING_1 = `# Last 50 errors in System log
+Get-EventLog -LogName System -EntryType Error -Newest 50 |
+  Select-Object TimeGenerated, Source, EventID, Message |
+  Format-Table -AutoSize
+
+# Service failures in last 24 hours
+Get-EventLog -LogName System -Source 'Service Control Manager' -Newest 100 |
+  Where-Object { $_.Message -like '*failed*' -or $_.Message -like '*terminated*' }
+
+# Security: failed logon attempts (Event ID 4625)
+Get-EventLog -LogName Security -InstanceId 4625 -Newest 20 |
+  Select-Object TimeGenerated, Message | Format-List
+
+# Modern approach using Get-WinEvent (more powerful)
+Get-WinEvent -FilterHashtable @{
+  LogName   = 'System'
+  Level     = 2          # 1=Critical, 2=Error, 3=Warning
+  StartTime = (Get-Date).AddHours(-24)
+} | Select-Object TimeCreated, ProviderName, Id, Message | Format-Table`
+const CODE_WINDOWSTROUBLESHOOTING_2 = `# STEP 1: Repair the Windows Component Store (requires internet for updates)
+DISM /Online /Cleanup-Image /CheckHealth    # Quick check — no repairs
+DISM /Online /Cleanup-Image /ScanHealth     # Deep scan — no repairs
+DISM /Online /Cleanup-Image /RestoreHealth  # Repair from Windows Update
+
+# STEP 2: Scan and repair protected system files
+sfc /scannow
+
+# If sfc finds errors it can't fix, check this log for details:
+$sfcLog = 'C:\\Windows\\Logs\\CBS\\CBS.log'
+Get-Content $sfcLog | Select-String 'cannot repair' | Select-Object -Last 20
+
+# STEP 3: Check Windows image health
+DISM /Online /Cleanup-Image /AnalyzeComponentStore
+
+# After repairs, run sfc again to confirm all files are healthy
+sfc /verifyonly`
+const CODE_WINDOWSTROUBLESHOOTING_3 = `# Full health snapshot
+$health = @{
+    ComputerName    = $env:COMPUTERNAME
+    Timestamp       = Get-Date
+    OS              = (Get-WmiObject Win32_OperatingSystem).Caption
+    Uptime_hrs      = [math]::Round((Get-Date - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime).TotalHours, 1)
+    SystemErrors_24h= (Get-EventLog System -EntryType Error -After (Get-Date).AddHours(-24) -ErrorAction SilentlyContinue | Measure-Object).Count
+    FailedServices  = (Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } | Measure-Object).Count
+    DiskFree_GB     = [math]::Round((Get-PSDrive C).Free / 1GB, 1)
+}
+[PSCustomObject]$health | Format-List`
+const CODE_WINDOWSTROUBLESHOOTING_4 = `ComputerName    : DC01
+Timestamp       : 01/15/2025 11:00:00
+OS              : Windows Server 2025 Standard Evaluation
+Uptime_hrs      : 6.3
+SystemErrors_24h: 2
+FailedServices  : 1
+DiskFree_GB     : 42.7`
+const CODE_WINDOWSTROUBLESHOOTING_5 = `# Get the actual error details
+Get-EventLog -LogName System -EntryType Error -After (Get-Date).AddHours(-24) |
+  Select-Object TimeGenerated, Source, EventID, Message |
+  Format-List
+
+# Find the stopped automatic service
+Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |
+  Select-Object Name, DisplayName, StartType
+
+# Check why it stopped — look for SCM events
+Get-EventLog -LogName System -Source 'Service Control Manager' -Newest 10 |
+  Where-Object { $_.EntryType -ne 'Information' } |
+  Format-List TimeGenerated, Message`
+const CODE_WINDOWSTROUBLESHOOTING_6 = `# Quick health check first (fast, no repair)
+DISM /Online /Cleanup-Image /CheckHealth
+
+# If issues found, run full restore
+# DISM /Online /Cleanup-Image /RestoreHealth
+
+# Verify system files
+sfc /verifyonly
+
+# Check the result
+$sfcLog = [System.Environment]::ExpandEnvironmentVariables('%windir%\\Logs\\CBS\\CBS.log')
+Get-Content $sfcLog | Select-String 'verification' | Select-Object -Last 5`
+const CODE_WINDOWSTROUBLESHOOTING_7 = `Deployment Image Servicing and Management tool
+Image Version: 10.0.26100.2
+The component store is repairable.
+The operation completed successfully.
+
+Windows Resource Protection did not find any integrity violations.`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -164,27 +252,7 @@ export default function WindowsTroubleshooting() {
           </div>
         </div>
         <CodeBlock className="mt-4" title="PowerShell Event Log queries" language="powershell"
-          code={[
-            "# Last 50 errors in System log",
-            "Get-EventLog -LogName System -EntryType Error -Newest 50 |",
-            "  Select-Object TimeGenerated, Source, EventID, Message |",
-            "  Format-Table -AutoSize",
-            "",
-            "# Service failures in last 24 hours",
-            "Get-EventLog -LogName System -Source 'Service Control Manager' -Newest 100 |",
-            "  Where-Object { $_.Message -like '*failed*' -or $_.Message -like '*terminated*' }",
-            "",
-            "# Security: failed logon attempts (Event ID 4625)",
-            "Get-EventLog -LogName Security -InstanceId 4625 -Newest 20 |",
-            "  Select-Object TimeGenerated, Message | Format-List",
-            "",
-            "# Modern approach using Get-WinEvent (more powerful)",
-            "Get-WinEvent -FilterHashtable @{",
-            "  LogName   = 'System'",
-            "  Level     = 2          # 1=Critical, 2=Error, 3=Warning",
-            "  StartTime = (Get-Date).AddHours(-24)",
-            "} | Select-Object TimeCreated, ProviderName, Id, Message | Format-Table"
-          ].join('\n')} />
+          code={CODE_WINDOWSTROUBLESHOOTING_1} />
       </section>
 
       <section>
@@ -194,25 +262,7 @@ export default function WindowsTroubleshooting() {
           system files. Running SFC on a corrupted component store produces unreliable results.
         </Callout>
         <CodeBlock title="System file repair — the correct procedure" language="powershell"
-          code={[
-            "# STEP 1: Repair the Windows Component Store (requires internet for updates)",
-            "DISM /Online /Cleanup-Image /CheckHealth    # Quick check — no repairs",
-            "DISM /Online /Cleanup-Image /ScanHealth     # Deep scan — no repairs",
-            "DISM /Online /Cleanup-Image /RestoreHealth  # Repair from Windows Update",
-            "",
-            "# STEP 2: Scan and repair protected system files",
-            "sfc /scannow",
-            "",
-            "# If sfc finds errors it can't fix, check this log for details:",
-            "$sfcLog = 'C:\\Windows\\Logs\\CBS\\CBS.log'",
-            "Get-Content $sfcLog | Select-String 'cannot repair' | Select-Object -Last 20",
-            "",
-            "# STEP 3: Check Windows image health",
-            "DISM /Online /Cleanup-Image /AnalyzeComponentStore",
-            "",
-            "# After repairs, run sfc again to confirm all files are healthy",
-            "sfc /verifyonly"
-          ].join('\n')} />
+          code={CODE_WINDOWSTROUBLESHOOTING_2} />
       </section>
 
       <section>
@@ -273,71 +323,17 @@ export default function WindowsTroubleshooting() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Build a comprehensive system health snapshot using PowerShell."
-              command={[
-                "# Full health snapshot",
-                "$health = @{",
-                "    ComputerName    = $env:COMPUTERNAME",
-                "    Timestamp       = Get-Date",
-                "    OS              = (Get-WmiObject Win32_OperatingSystem).Caption",
-                "    Uptime_hrs      = [math]::Round((Get-Date - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime).TotalHours, 1)",
-                "    SystemErrors_24h= (Get-EventLog System -EntryType Error -After (Get-Date).AddHours(-24) -ErrorAction SilentlyContinue | Measure-Object).Count",
-                "    FailedServices  = (Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } | Measure-Object).Count",
-                "    DiskFree_GB     = [math]::Round((Get-PSDrive C).Free / 1GB, 1)",
-                "}",
-                "[PSCustomObject]$health | Format-List"
-              ].join('\n')}
-              output={[
-                "ComputerName    : DC01",
-                "Timestamp       : 01/15/2025 11:00:00",
-                "OS              : Windows Server 2025 Standard Evaluation",
-                "Uptime_hrs      : 6.3",
-                "SystemErrors_24h: 2",
-                "FailedServices  : 1",
-                "DiskFree_GB     : 42.7"
-              ].join('\n')}
+              command={CODE_WINDOWSTROUBLESHOOTING_3}
+              output={CODE_WINDOWSTROUBLESHOOTING_4}
             />
             <LabStep number={2}
               description="Investigate the system errors found in the health check."
-              command={[
-                "# Get the actual error details",
-                "Get-EventLog -LogName System -EntryType Error -After (Get-Date).AddHours(-24) |",
-                "  Select-Object TimeGenerated, Source, EventID, Message |",
-                "  Format-List",
-                "",
-                "# Find the stopped automatic service",
-                "Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |",
-                "  Select-Object Name, DisplayName, StartType",
-                "",
-                "# Check why it stopped — look for SCM events",
-                "Get-EventLog -LogName System -Source 'Service Control Manager' -Newest 10 |",
-                "  Where-Object { $_.EntryType -ne 'Information' } |",
-                "  Format-List TimeGenerated, Message"
-              ].join('\n')}
+              command={CODE_WINDOWSTROUBLESHOOTING_5}
             />
             <LabStep number={3}
               description="Run the SFC and DISM repair sequence on DC01."
-              command={[
-                "# Quick health check first (fast, no repair)",
-                "DISM /Online /Cleanup-Image /CheckHealth",
-                "",
-                "# If issues found, run full restore",
-                "# DISM /Online /Cleanup-Image /RestoreHealth",
-                "",
-                "# Verify system files",
-                "sfc /verifyonly",
-                "",
-                "# Check the result",
-                "$sfcLog = [System.Environment]::ExpandEnvironmentVariables('%windir%\\Logs\\CBS\\CBS.log')",
-                "Get-Content $sfcLog | Select-String 'verification' | Select-Object -Last 5"
-              ].join('\n')}
-              output={[
-                "Deployment Image Servicing and Management tool",
-                "Image Version: 10.0.26100.2",
-                "The component store is repairable.",
-                "The operation completed successfully.",
-                "",
-                "Windows Resource Protection did not find any integrity violations."
-              ].join('\n')}
+              command={CODE_WINDOWSTROUBLESHOOTING_6}
+              output={CODE_WINDOWSTROUBLESHOOTING_7}
             />
           </div>
         </div>

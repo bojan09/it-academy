@@ -3,6 +3,127 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYWINDOWSHARDENING_1 = `# Audit installed roles and features
+Get-WindowsFeature | Where-Object { $_.InstallState -eq 'Installed' } |
+  Select-Object Name, DisplayName | Sort-Object Name
+
+# Remove commonly unnecessary features on a DC
+# (adjust based on actual requirements)
+$featurestoRemove = @(
+    'Telnet-Client',
+    'TFTP-Client',
+    'Internet-Print-Client',
+    'WindowsPowerShellV2',
+    'WindowsPowerShellV2Root'
+)
+
+foreach ($feat in $featurestoRemove) {
+    if ((Get-WindowsFeature $feat).InstallState -eq 'Installed') {
+        Remove-WindowsFeature $feat -WhatIf
+    }
+}
+
+# Audit listening services
+Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Running' } |
+  Select-Object Name, DisplayName | Sort-Object Name
+
+# Disable Print Spooler if not a print server (PrintNightmare vector)
+Stop-Service -Name Spooler -Force
+Set-Service -Name Spooler -StartupType Disabled`
+const CODE_CYBERSECURITYWINDOWSHARDENING_2 = `# Set domain password policy (run on DC01)
+Set-ADDefaultDomainPasswordPolicy \`
+  -Identity lab.local \`
+  -PasswordHistoryCount 24 \`
+  -MaxPasswordAge 365.00:00:00 \`
+  -MinPasswordAge 1.00:00:00 \`
+  -MinPasswordLength 14 \`
+  -ComplexityEnabled $true \`
+  -LockoutThreshold 5 \`
+  -LockoutDuration 00:15:00 \`
+  -LockoutObservationWindow 00:15:00
+
+# Verify
+Get-ADDefaultDomainPasswordPolicy`
+const CODE_CYBERSECURITYWINDOWSHARDENING_3 = `# ── Account Logon ────────────────────────────────────────────
+auditpol /set /subcategory:'Credential Validation' /success:enable /failure:enable
+auditpol /set /subcategory:'Kerberos Authentication Service' /success:enable /failure:enable
+
+# ── Account Management ───────────────────────────────────────
+auditpol /set /subcategory:'User Account Management' /success:enable /failure:enable
+auditpol /set /subcategory:'Security Group Management' /success:enable /failure:enable
+auditpol /set /subcategory:'Computer Account Management' /success:enable /failure:enable
+
+# ── Logon/Logoff ─────────────────────────────────────────────
+auditpol /set /subcategory:'Logon' /success:enable /failure:enable
+auditpol /set /subcategory:'Special Logon' /success:enable /failure:enable
+
+# ── Privilege Use ─────────────────────────────────────────────
+auditpol /set /subcategory:'Sensitive Privilege Use' /success:enable /failure:enable
+
+# ── Policy Change ─────────────────────────────────────────────
+auditpol /set /subcategory:'Audit Policy Change' /success:enable /failure:enable
+
+# Verify current policy
+auditpol /get /category:*`
+const CODE_CYBERSECURITYWINDOWSHARDENING_4 = `# Check current password policy
+Get-ADDefaultDomainPasswordPolicy | Select-Object MinPasswordLength,
+  PasswordHistoryCount, LockoutThreshold, ComplexityEnabled
+
+# Check for accounts with password never expires
+Get-ADUser -Filter { PasswordNeverExpires -eq $true -and Enabled -eq $true } \`\`
+  -Properties PasswordNeverExpires | Select-Object Name, SamAccountName
+
+# Check running services attack surface
+Get-Service | Where-Object { $_.Status -eq 'Running' } |
+  Measure-Object | Select-Object Count`
+const CODE_CYBERSECURITYWINDOWSHARDENING_5 = `MinPasswordLength : 7   ← too short, CIS requires 14
+PasswordHistoryCount: 0  ← should be 24
+LockoutThreshold  : 0   ← no lockout! critical finding
+ComplexityEnabled : True
+
+Name          SamAccountName
+----          --------------
+Administrator Administrator  ← fix this
+
+Count : 67  ← audit each one`
+const CODE_CYBERSECURITYWINDOWSHARDENING_6 = `Set-ADDefaultDomainPasswordPolicy -Identity lab.local \`\`
+  -MinPasswordLength 14 \`\`
+  -PasswordHistoryCount 24 \`\`
+  -LockoutThreshold 5 \`\`
+  -LockoutDuration 00:15:00 \`\`
+  -LockoutObservationWindow 00:15:00 \`\`
+  -ComplexityEnabled $true
+
+# Fix Administrator account
+Set-ADUser -Identity Administrator -PasswordNeverExpires $false
+
+# Verify
+Get-ADDefaultDomainPasswordPolicy | Select-Object MinPasswordLength, LockoutThreshold
+Write-Host 'Password policy hardened' -ForegroundColor Green`
+const CODE_CYBERSECURITYWINDOWSHARDENING_7 = `MinPasswordLength : 14   ✔
+LockoutThreshold  : 5    ✔
+Password policy hardened`
+const CODE_CYBERSECURITYWINDOWSHARDENING_8 = `# Enable key audit categories
+auditpol /set /subcategory:'Credential Validation' /success:enable /failure:enable
+auditpol /set /subcategory:'Logon' /success:enable /failure:enable
+auditpol /set /subcategory:'User Account Management' /success:enable /failure:enable
+
+# Disable Print Spooler (PrintNightmare mitigation)
+Stop-Service -Name Spooler -Force -ErrorAction SilentlyContinue
+Set-Service  -Name Spooler -StartupType Disabled
+
+# Confirm
+Get-Service Spooler | Select-Object Name, Status, StartType
+auditpol /get /subcategory:'Logon'`
+const CODE_CYBERSECURITYWINDOWSHARDENING_9 = `Name    Status  StartType
+----    ------  ---------
+Spooler Stopped Disabled    ✔ PrintNightmare mitigated
+
+System audit policy
+Logon: Success and Failure   ✔`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -147,35 +268,7 @@ export default function CybersecurityWindowsHardening() {
       <section>
         <h2>Attack Surface Reduction</h2>
         <CodeBlock title="Remove unused roles, features, and services" language="powershell"
-          code={[
-            "# Audit installed roles and features",
-            "Get-WindowsFeature | Where-Object { $_.InstallState -eq 'Installed' } |",
-            "  Select-Object Name, DisplayName | Sort-Object Name",
-            "",
-            "# Remove commonly unnecessary features on a DC",
-            "# (adjust based on actual requirements)",
-            "$featurestoRemove = @(",
-            "    'Telnet-Client',",
-            "    'TFTP-Client',",
-            "    'Internet-Print-Client',",
-            "    'WindowsPowerShellV2',",
-            "    'WindowsPowerShellV2Root'",
-            ")",
-            "",
-            "foreach ($feat in $featurestoRemove) {",
-            "    if ((Get-WindowsFeature $feat).InstallState -eq 'Installed') {",
-            "        Remove-WindowsFeature $feat -WhatIf",
-            "    }",
-            "}",
-            "",
-            "# Audit listening services",
-            "Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Running' } |",
-            "  Select-Object Name, DisplayName | Sort-Object Name",
-            "",
-            "# Disable Print Spooler if not a print server (PrintNightmare vector)",
-            "Stop-Service -Name Spooler -Force",
-            "Set-Service -Name Spooler -StartupType Disabled"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYWINDOWSHARDENING_1} />
       </section>
 
       <section>
@@ -202,50 +295,13 @@ export default function CybersecurityWindowsHardening() {
           </div>
         </div>
         <CodeBlock className="mt-4" title="Configure password policy via PowerShell" language="powershell"
-          code={[
-            "# Set domain password policy (run on DC01)",
-            "Set-ADDefaultDomainPasswordPolicy `",
-            "  -Identity lab.local `",
-            "  -PasswordHistoryCount 24 `",
-            "  -MaxPasswordAge 365.00:00:00 `",
-            "  -MinPasswordAge 1.00:00:00 `",
-            "  -MinPasswordLength 14 `",
-            "  -ComplexityEnabled $true `",
-            "  -LockoutThreshold 5 `",
-            "  -LockoutDuration 00:15:00 `",
-            "  -LockoutObservationWindow 00:15:00",
-            "",
-            "# Verify",
-            "Get-ADDefaultDomainPasswordPolicy"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYWINDOWSHARDENING_2} />
       </section>
 
       <section>
         <h2>Security Auditing Configuration</h2>
         <CodeBlock title="Enable comprehensive security audit policy" language="powershell"
-          code={[
-            "# ── Account Logon ────────────────────────────────────────────",
-            "auditpol /set /subcategory:'Credential Validation' /success:enable /failure:enable",
-            "auditpol /set /subcategory:'Kerberos Authentication Service' /success:enable /failure:enable",
-            "",
-            "# ── Account Management ───────────────────────────────────────",
-            "auditpol /set /subcategory:'User Account Management' /success:enable /failure:enable",
-            "auditpol /set /subcategory:'Security Group Management' /success:enable /failure:enable",
-            "auditpol /set /subcategory:'Computer Account Management' /success:enable /failure:enable",
-            "",
-            "# ── Logon/Logoff ─────────────────────────────────────────────",
-            "auditpol /set /subcategory:'Logon' /success:enable /failure:enable",
-            "auditpol /set /subcategory:'Special Logon' /success:enable /failure:enable",
-            "",
-            "# ── Privilege Use ─────────────────────────────────────────────",
-            "auditpol /set /subcategory:'Sensitive Privilege Use' /success:enable /failure:enable",
-            "",
-            "# ── Policy Change ─────────────────────────────────────────────",
-            "auditpol /set /subcategory:'Audit Policy Change' /success:enable /failure:enable",
-            "",
-            "# Verify current policy",
-            "auditpol /get /category:*"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYWINDOWSHARDENING_3} />
       </section>
 
       <section>
@@ -259,80 +315,18 @@ export default function CybersecurityWindowsHardening() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Audit the current security state of DC01 before hardening."
-              command={[
-                "# Check current password policy",
-                "Get-ADDefaultDomainPasswordPolicy | Select-Object MinPasswordLength,",
-                "  PasswordHistoryCount, LockoutThreshold, ComplexityEnabled",
-                "",
-                "# Check for accounts with password never expires",
-                "Get-ADUser -Filter { PasswordNeverExpires -eq $true -and Enabled -eq $true } ``",
-                "  -Properties PasswordNeverExpires | Select-Object Name, SamAccountName",
-                "",
-                "# Check running services attack surface",
-                "Get-Service | Where-Object { $_.Status -eq 'Running' } |",
-                "  Measure-Object | Select-Object Count"
-              ].join('\n')}
-              output={[
-                "MinPasswordLength : 7   ← too short, CIS requires 14",
-                "PasswordHistoryCount: 0  ← should be 24",
-                "LockoutThreshold  : 0   ← no lockout! critical finding",
-                "ComplexityEnabled : True",
-                "",
-                "Name          SamAccountName",
-                "----          --------------",
-                "Administrator Administrator  ← fix this",
-                "",
-                "Count : 67  ← audit each one"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYWINDOWSHARDENING_4}
+              output={CODE_CYBERSECURITYWINDOWSHARDENING_5}
             />
             <LabStep number={2}
               description="Apply CIS-compliant password and lockout policy."
-              command={[
-                "Set-ADDefaultDomainPasswordPolicy -Identity lab.local ``",
-                "  -MinPasswordLength 14 ``",
-                "  -PasswordHistoryCount 24 ``",
-                "  -LockoutThreshold 5 ``",
-                "  -LockoutDuration 00:15:00 ``",
-                "  -LockoutObservationWindow 00:15:00 ``",
-                "  -ComplexityEnabled $true",
-                "",
-                "# Fix Administrator account",
-                "Set-ADUser -Identity Administrator -PasswordNeverExpires $false",
-                "",
-                "# Verify",
-                "Get-ADDefaultDomainPasswordPolicy | Select-Object MinPasswordLength, LockoutThreshold",
-                "Write-Host 'Password policy hardened' -ForegroundColor Green"
-              ].join('\n')}
-              output={[
-                "MinPasswordLength : 14   ✔",
-                "LockoutThreshold  : 5    ✔",
-                "Password policy hardened"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYWINDOWSHARDENING_6}
+              output={CODE_CYBERSECURITYWINDOWSHARDENING_7}
             />
             <LabStep number={3}
               description="Enable security auditing and disable the Print Spooler service."
-              command={[
-                "# Enable key audit categories",
-                "auditpol /set /subcategory:'Credential Validation' /success:enable /failure:enable",
-                "auditpol /set /subcategory:'Logon' /success:enable /failure:enable",
-                "auditpol /set /subcategory:'User Account Management' /success:enable /failure:enable",
-                "",
-                "# Disable Print Spooler (PrintNightmare mitigation)",
-                "Stop-Service -Name Spooler -Force -ErrorAction SilentlyContinue",
-                "Set-Service  -Name Spooler -StartupType Disabled",
-                "",
-                "# Confirm",
-                "Get-Service Spooler | Select-Object Name, Status, StartType",
-                "auditpol /get /subcategory:'Logon'"
-              ].join('\n')}
-              output={[
-                "Name    Status  StartType",
-                "----    ------  ---------",
-                "Spooler Stopped Disabled    ✔ PrintNightmare mitigated",
-                "",
-                "System audit policy",
-                "Logon: Success and Failure   ✔"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYWINDOWSHARDENING_8}
+              output={CODE_CYBERSECURITYWINDOWSHARDENING_9}
             />
           </div>
         </div>

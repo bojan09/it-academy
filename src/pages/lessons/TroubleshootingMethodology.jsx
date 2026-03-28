@@ -3,6 +3,54 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_TROUBLESHOOTINGMETHODOLOGY_1 = `# L1: Is the interface up?
+ip link show ens33
+
+# L2: Do we have a MAC / ARP entry for the gateway?
+ip neigh show
+
+# L3: Do we have an IP and can we reach the gateway?
+ip addr show ens33
+ping -c 3 192.168.100.1
+
+# L4: Can we open a TCP connection to an external service?
+nc -zv 8.8.8.8 53
+
+# L7: Can we resolve DNS and reach a URL?
+dig google.com +short
+curl -I --max-time 5 https://example.com`
+const CODE_TROUBLESHOOTINGMETHODOLOGY_2 = `L1: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP>  ← Interface up ✔
+L2: 192.168.100.1 dev ens33 lladdr 00:50:56:01:... REACHABLE  ✔
+L3: inet 192.168.100.20/24  |  ping 64 bytes, time=0.421ms ✔
+L4: Connection to 8.8.8.8 53 succeeded ✔
+L7: 142.250.80.46  |  HTTP/2 200 ✔
+→ All layers working — problem may be intermittent or already resolved`
+const CODE_TROUBLESHOOTINGMETHODOLOGY_3 = `# Break DNS temporarily (pointing to a non-existent server)
+echo "nameserver 192.168.100.99" | sudo tee /etc/resolv.conf
+
+# Now reproduce the symptom
+dig google.com
+
+# Diagnose: what layer fails?
+ping -c 1 8.8.8.8   # L3 — does IP routing still work?
+nc -zv 8.8.8.8 443  # L4 — is TCP to internet working?
+dig @192.168.100.99 google.com  # L7 — is THIS DNS server reachable?
+dig @192.168.100.10 google.com  # Test with DC01's DNS instead
+
+# Fix: restore correct DNS
+echo "nameserver 192.168.100.10" | sudo tee /etc/resolv.conf
+dig google.com +short  # Confirm fixed`
+const CODE_TROUBLESHOOTINGMETHODOLOGY_4 = `dig google.com: connection timed out; no servers could be reached  ← symptom
+ping 8.8.8.8: 64 bytes — time=12ms ← IP routing works ✔
+nc 8.8.8.8:443 succeeded ← internet TCP works ✔
+dig @192.168.100.99: timed out ← that DNS server doesn't exist ← ROOT CAUSE
+dig @192.168.100.10: 142.250.80.46 ← DC01 DNS works fine ✔
+
+Root cause: /etc/resolv.conf pointed to a non-existent DNS server.
+Fix: restored correct DNS server (192.168.100.10).`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -232,62 +280,13 @@ export default function TroubleshootingMethodology() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Scenario: A user reports 'I can't reach the internet from the Ubuntu Server VM.' Apply the OSI methodology — start at L1 and work up."
-              command={[
-    "# L1: Is the interface up?",
-    "ip link show ens33",
-    "",
-    "# L2: Do we have a MAC / ARP entry for the gateway?",
-    "ip neigh show",
-    "",
-    "# L3: Do we have an IP and can we reach the gateway?",
-    "ip addr show ens33",
-    "ping -c 3 192.168.100.1",
-    "",
-    "# L4: Can we open a TCP connection to an external service?",
-    "nc -zv 8.8.8.8 53",
-    "",
-    "# L7: Can we resolve DNS and reach a URL?",
-    "dig google.com +short",
-    "curl -I --max-time 5 https://example.com"
-  ].join('\n')}
-              output={[
-    "L1: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP>  ← Interface up ✔",
-    "L2: 192.168.100.1 dev ens33 lladdr 00:50:56:01:... REACHABLE  ✔",
-    "L3: inet 192.168.100.20/24  |  ping 64 bytes, time=0.421ms ✔",
-    "L4: Connection to 8.8.8.8 53 succeeded ✔",
-    "L7: 142.250.80.46  |  HTTP/2 200 ✔",
-    "→ All layers working — problem may be intermittent or already resolved"
-  ].join('\n')}
+              command={CODE_TROUBLESHOOTINGMETHODOLOGY_1}
+              output={CODE_TROUBLESHOOTINGMETHODOLOGY_2}
             />
             <LabStep number={2}
               description="Simulate a broken DNS scenario and diagnose it systematically."
-              command={[
-    "# Break DNS temporarily (pointing to a non-existent server)",
-    "echo \"nameserver 192.168.100.99\" | sudo tee /etc/resolv.conf",
-    "",
-    "# Now reproduce the symptom",
-    "dig google.com",
-    "",
-    "# Diagnose: what layer fails?",
-    "ping -c 1 8.8.8.8   # L3 — does IP routing still work?",
-    "nc -zv 8.8.8.8 443  # L4 — is TCP to internet working?",
-    "dig @192.168.100.99 google.com  # L7 — is THIS DNS server reachable?",
-    "dig @192.168.100.10 google.com  # Test with DC01's DNS instead",
-    "",
-    "# Fix: restore correct DNS",
-    "echo \"nameserver 192.168.100.10\" | sudo tee /etc/resolv.conf",
-    "dig google.com +short  # Confirm fixed"
-  ].join('\n')}
-              output={[
-    "dig google.com: connection timed out; no servers could be reached  ← symptom",
-    "ping 8.8.8.8: 64 bytes — time=12ms ← IP routing works ✔",
-    "nc 8.8.8.8:443 succeeded ← internet TCP works ✔",
-    "dig @192.168.100.99: timed out ← that DNS server doesn't exist ← ROOT CAUSE",
-    "dig @192.168.100.10: 142.250.80.46 ← DC01 DNS works fine ✔",
-    "",
-    "Root cause: /etc/resolv.conf pointed to a non-existent DNS server.",
-    "Fix: restored correct DNS server (192.168.100.10)."
-  ].join('\n')}
+              command={CODE_TROUBLESHOOTINGMETHODOLOGY_3}
+              output={CODE_TROUBLESHOOTINGMETHODOLOGY_4}
             />
             <Callout type="success" icon="✅" title="Lab Complete">
               You've applied the OSI methodology to identify a connectivity issue layer by

@@ -3,6 +3,237 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXSHELL_1 = `# ── Where am I / What's here ────────────────────────────────
+pwd                   # Print Working Directory
+ls                    # List files
+ls -la                # Long format, show hidden files (-a), all details (-l)
+ls -lah               # Same + human-readable sizes
+ls -lt                # Sort by modification time (newest first)
+tree -L 2             # Directory tree, 2 levels deep
+
+# ── Moving around ────────────────────────────────────────────
+cd /var/log           # Absolute path
+cd ../..              # Go up two levels
+cd ~                  # Home directory
+cd -                  # Previous directory (toggle)
+cd /etc && ls         # Chain commands with &&
+
+# ── File inspection ──────────────────────────────────────────
+cat /etc/os-release   # Print entire file
+less /var/log/syslog  # Paginated viewer (q to quit, /search to find)
+head -20 /var/log/syslog   # First 20 lines
+tail -20 /var/log/syslog   # Last 20 lines
+tail -f /var/log/syslog    # Follow live log output
+file /bin/bash        # Identify file type
+stat /etc/passwd      # Full metadata (size, permissions, timestamps)
+wc -l /etc/passwd     # Count lines`
+const CODE_LINUXSHELL_2 = `# ── Pipes ───────────────────────────────────────────────────
+ls -la | grep ".log"              # Filter ls output
+ps aux | grep nginx               # Find nginx processes
+cat /etc/passwd | cut -d: -f1     # Extract usernames
+journalctl | tail -100 | grep -i error
+
+# ── Redirection ──────────────────────────────────────────────
+echo "hello" > /tmp/test.txt      # Overwrite (or create)
+echo "world" >> /tmp/test.txt     # Append
+cat /etc/nonexistent 2> /tmp/errors.txt    # Redirect stderr only
+ls /etc/ > /tmp/out.txt 2>&1      # Redirect both stdout + stderr
+command > /dev/null 2>&1          # Silence all output completely
+
+# ── Combining ────────────────────────────────────────────────
+grep -r "FAILED" /var/log/ 2>/dev/null | sort | uniq -c | sort -rn | head -10
+# Read: search logs → sort → count duplicates → sort by count → top 10`
+const CODE_LINUXSHELL_3 = `# Basic grep
+grep "error" /var/log/syslog              # Lines containing "error"
+grep -i "error" /var/log/syslog           # Case-insensitive
+grep -n "error" /var/log/syslog           # Show line numbers
+grep -v "info"  /var/log/syslog           # Invert — exclude matching lines
+grep -c "error" /var/log/syslog           # Count matching lines
+grep -l "error" /var/log/*.log            # List files with matches only
+grep -r "password" /etc/ 2>/dev/null      # Recursive search
+
+# Extended regex
+grep -E "error|warning|critical" /var/log/syslog    # OR pattern
+grep -E "^Jan 15" /var/log/syslog          # Lines starting with "Jan 15"
+grep -E "\\b[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\b" file  # IP addresses`
+const CODE_LINUXSHELL_4 = `# Find by name
+find /etc -name "*.conf"                    # All .conf files in /etc
+find /var/log -name "*.log" -type f         # Only files, not dirs
+find / -name "sshd_config" 2>/dev/null      # Anywhere on disk
+
+# Find by time
+find /var/log -mtime -1                     # Modified in last 24 hours
+find /tmp -mtime +7 -delete                 # Delete files older than 7 days
+
+# Find by size
+find / -size +100M -type f 2>/dev/null      # Files larger than 100 MB
+find /home -size +1G -type f                # Users with large files
+
+# Find by permissions (security auditing)
+find / -perm -4000 -type f 2>/dev/null      # SUID binaries
+find /etc -perm -o+w 2>/dev/null            # World-writable config files
+
+# Execute command on results
+find /tmp -name "*.log" -exec rm {} \\;      # Delete all .log in /tmp
+find /var/log -name "*.log" -exec ls -lh {} \\;   # Show sizes`
+const CODE_LINUXSHELL_5 = `# ── sort ───────────────────────────────────────────────────
+sort /etc/passwd                  # Alphabetically
+sort -n numbers.txt               # Numerically
+sort -r file.txt                  # Reverse
+sort -k3 -n /etc/passwd           # Sort by 3rd field numerically
+sort -u file.txt                  # Sort + deduplicate
+
+# ── cut ─────────────────────────────────────────────────────
+cut -d: -f1 /etc/passwd           # 1st field, delimiter ":"
+cut -d, -f2,4 data.csv            # 2nd and 4th CSV fields
+cut -c1-10 file.txt               # First 10 characters per line
+
+# ── uniq ────────────────────────────────────────────────────
+sort file.txt | uniq              # Remove duplicates (must sort first)
+sort file.txt | uniq -c           # Count occurrences
+sort file.txt | uniq -d           # Show only duplicates
+
+# ── wc ──────────────────────────────────────────────────────
+wc -l /etc/passwd                 # Line count
+wc -w file.txt                    # Word count
+ls /etc/*.conf | wc -l            # Count .conf files
+
+# ── awk ─────────────────────────────────────────────────────
+awk '{print $1}' /var/log/nginx/access.log    # Print first field (IP)
+awk -F: '{print $1, $3}' /etc/passwd          # Username + UID
+awk '/error/ {print $0}' /var/log/syslog      # Lines matching "error"
+awk '{sum += $1} END {print sum}' numbers.txt # Sum a column
+
+# ── sed ─────────────────────────────────────────────────────
+sed 's/old/new/g' file.txt        # Replace globally (stdout only)
+sed -i 's/old/new/g' file.txt     # Replace in-place
+sed -n '10,20p' file.txt          # Print lines 10-20
+sed '/^#/d' /etc/ssh/sshd_config  # Delete comment lines
+
+# ── xargs ───────────────────────────────────────────────────
+find /tmp -name "*.tmp" | xargs rm -f           # Delete found files
+cat servers.txt | xargs -I{} ping -c 1 {}       # Ping each server`
+const CODE_LINUXSHELL_6 = `#!/bin/bash
+# Always start with a shebang
+
+# ── Variables ───────────────────────────────────────────────
+NAME="DC01"
+PORT=22
+LOGDIR="/var/log"
+TODAY=$(date +%Y-%m-%d)     # Command substitution
+FILES=$(ls $LOGDIR | wc -l) # Count files
+
+echo "Server: $NAME"
+echo "Log files today ($TODAY): $FILES"
+
+# ── Conditionals ────────────────────────────────────────────
+if ping -c 1 -W 1 192.168.100.10 &>/dev/null; then
+    echo "DC01 is reachable"
+else
+    echo "DC01 is unreachable — check the network"
+    exit 1
+fi
+
+# File tests
+if [ -f "/etc/ssh/sshd_config" ]; then
+    echo "SSH config exists"
+fi
+
+if [ ! -d "/var/backups" ]; then
+    mkdir -p /var/backups
+    echo "Created backup directory"
+fi
+
+# ── Loops ────────────────────────────────────────────────────
+SERVERS=("192.168.100.10" "192.168.100.20" "192.168.100.30")
+for SERVER in "$SERVERS[@]"; do
+    if ping -c 1 -W 1 "$SERVER" &>/dev/null; then
+        echo "✔ $SERVER online"
+    else
+        echo "✗ $SERVER UNREACHABLE"
+    fi
+done
+
+# While loop — wait for a service to start
+while ! systemctl is-active --quiet nginx; do
+    echo "Waiting for nginx..."
+    sleep 2
+done
+echo "nginx is running"
+
+# ── Functions ────────────────────────────────────────────────
+check_port() {
+    local HOST=$1
+    local PORT=$2
+    if nc -zw2 "$HOST" "$PORT" 2>/dev/null; then
+        echo "✔ $HOST:$PORT open"
+    else
+        echo "✗ $HOST:$PORT closed/filtered"
+    fi
+}
+
+check_port 192.168.100.10 22
+check_port 192.168.100.10 389`
+const CODE_LINUXSHELL_7 = `# Find the top 5 largest files in /var
+find /var -type f -printf '%s %p\\
+' 2>/dev/null | sort -rn | head -5
+
+# Count unique IPs in the auth log (who's been connecting?)
+grep "Accepted\\|Failed" /var/log/auth.log 2>/dev/null |
+  grep -oE "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" |
+  sort | uniq -c | sort -rn | head -10`
+const CODE_LINUXSHELL_8 = `cat > ~/health-check.sh << 'EOF'
+#!/bin/bash
+# health-check.sh — Lab network health checker
+
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+LOGFILE="/tmp/health-check-$(date +%Y%m%d).log"
+SERVERS=("192.168.100.10:DC01" "192.168.100.20:SRV01")
+
+echo "=== Health Check: $TIMESTAMP ===" | tee -a "$LOGFILE"
+
+for ENTRY in "$SERVERS[@]"; do
+    IP="\${ENTRY%%:*}"
+    NAME="\${ENTRY##*:}"
+
+    if ping -c 1 -W 2 "$IP" &>/dev/null; then
+        STATUS="✔ ONLINE"
+    else
+        STATUS="✗ OFFLINE"
+    fi
+
+    echo "[$STATUS] $NAME ($IP)" | tee -a "$LOGFILE"
+done
+
+echo "Report saved: $LOGFILE"
+EOF
+
+chmod +x ~/health-check.sh
+~/health-check.sh`
+const CODE_LINUXSHELL_9 = `=== Health Check: 2025-01-15 11:00:00 ===
+[✔ ONLINE]  DC01 (192.168.100.10)
+[✗ OFFLINE] SRV01 (192.168.100.20)  ← Not deployed yet
+Report saved: /tmp/health-check-20250115.log`
+const CODE_LINUXSHELL_10 = `# Generate some test log data
+for i in {1..20}; do
+    echo "2025-01-15 $i:00:00 INFO Service started" >> /tmp/test.log
+    [ $((i % 3)) -eq 0 ] && echo "2025-01-15 $i:00:01 ERROR Connection failed" >> /tmp/test.log
+    [ $((i % 5)) -eq 0 ] && echo "2025-01-15 $i:00:02 WARN Disk usage high" >> /tmp/test.log
+done
+
+# Summarise log levels
+echo "Log Summary:"
+for LEVEL in INFO ERROR WARN; do
+    COUNT=$(grep -c "$LEVEL" /tmp/test.log)
+    echo "  $LEVEL: $COUNT"
+done`
+const CODE_LINUXSHELL_11 = `Log Summary:
+  INFO: 20
+  ERROR: 6
+  WARN: 4`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -140,32 +371,7 @@ export default function LinuxShell() {
       {/* ── NAVIGATION ── */}
       <section>
         <h2>Navigation & Essential Commands</h2>
-        <CodeBlock title="Filesystem navigation" language="bash" code={[
-    "# ── Where am I / What's here ────────────────────────────────",
-    "pwd                   # Print Working Directory",
-    "ls                    # List files",
-    "ls -la                # Long format, show hidden files (-a), all details (-l)",
-    "ls -lah               # Same + human-readable sizes",
-    "ls -lt                # Sort by modification time (newest first)",
-    "tree -L 2             # Directory tree, 2 levels deep",
-    "",
-    "# ── Moving around ────────────────────────────────────────────",
-    "cd /var/log           # Absolute path",
-    "cd ../..              # Go up two levels",
-    "cd ~                  # Home directory",
-    "cd -                  # Previous directory (toggle)",
-    "cd /etc && ls         # Chain commands with &&",
-    "",
-    "# ── File inspection ──────────────────────────────────────────",
-    "cat /etc/os-release   # Print entire file",
-    "less /var/log/syslog  # Paginated viewer (q to quit, /search to find)",
-    "head -20 /var/log/syslog   # First 20 lines",
-    "tail -20 /var/log/syslog   # Last 20 lines",
-    "tail -f /var/log/syslog    # Follow live log output",
-    "file /bin/bash        # Identify file type",
-    "stat /etc/passwd      # Full metadata (size, permissions, timestamps)",
-    "wc -l /etc/passwd     # Count lines"
-  ].join('\n')} />
+        <CodeBlock title="Filesystem navigation" language="bash" code={CODE_LINUXSHELL_1} />
       </section>
 
       {/* ── STREAMS, PIPES, REDIRECTION ── */}
@@ -188,179 +394,27 @@ export default function LinuxShell() {
             </div>
           ))}
         </div>
-        <CodeBlock title="Pipes and redirection" language="bash" code={[
-    "# ── Pipes ───────────────────────────────────────────────────",
-    "ls -la | grep \".log\"              # Filter ls output",
-    "ps aux | grep nginx               # Find nginx processes",
-    "cat /etc/passwd | cut -d: -f1     # Extract usernames",
-    "journalctl | tail -100 | grep -i error",
-    "",
-    "# ── Redirection ──────────────────────────────────────────────",
-    "echo \"hello\" > /tmp/test.txt      # Overwrite (or create)",
-    "echo \"world\" >> /tmp/test.txt     # Append",
-    "cat /etc/nonexistent 2> /tmp/errors.txt    # Redirect stderr only",
-    "ls /etc/ > /tmp/out.txt 2>&1      # Redirect both stdout + stderr",
-    "command > /dev/null 2>&1          # Silence all output completely",
-    "",
-    "# ── Combining ────────────────────────────────────────────────",
-    "grep -r \"FAILED\" /var/log/ 2>/dev/null | sort | uniq -c | sort -rn | head -10",
-    "# Read: search logs → sort → count duplicates → sort by count → top 10"
-  ].join('\n')} />
+        <CodeBlock title="Pipes and redirection" language="bash" code={CODE_LINUXSHELL_2} />
       </section>
 
       {/* ── GREP AND FIND ── */}
       <section>
         <h2>grep, find, and Text Processing</h2>
-        <CodeBlock title="grep — searching text content" language="bash" code={[
-    "# Basic grep",
-    "grep \"error\" /var/log/syslog              # Lines containing \"error\"",
-    "grep -i \"error\" /var/log/syslog           # Case-insensitive",
-    "grep -n \"error\" /var/log/syslog           # Show line numbers",
-    "grep -v \"info\"  /var/log/syslog           # Invert — exclude matching lines",
-    "grep -c \"error\" /var/log/syslog           # Count matching lines",
-    "grep -l \"error\" /var/log/*.log            # List files with matches only",
-    "grep -r \"password\" /etc/ 2>/dev/null      # Recursive search",
-    "",
-    "# Extended regex",
-    "grep -E \"error|warning|critical\" /var/log/syslog    # OR pattern",
-    "grep -E \"^Jan 15\" /var/log/syslog          # Lines starting with \"Jan 15\"",
-    "grep -E \"\\b[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\b\" file  # IP addresses"
-  ].join('\n')} />
+        <CodeBlock title="grep — searching text content" language="bash" code={CODE_LINUXSHELL_3} />
 
-        <CodeBlock className="mt-4" title="find — searching by file attributes" language="bash" code={[
-    "# Find by name",
-    "find /etc -name \"*.conf\"                    # All .conf files in /etc",
-    "find /var/log -name \"*.log\" -type f         # Only files, not dirs",
-    "find / -name \"sshd_config\" 2>/dev/null      # Anywhere on disk",
-    "",
-    "# Find by time",
-    "find /var/log -mtime -1                     # Modified in last 24 hours",
-    "find /tmp -mtime +7 -delete                 # Delete files older than 7 days",
-    "",
-    "# Find by size",
-    "find / -size +100M -type f 2>/dev/null      # Files larger than 100 MB",
-    "find /home -size +1G -type f                # Users with large files",
-    "",
-    "# Find by permissions (security auditing)",
-    "find / -perm -4000 -type f 2>/dev/null      # SUID binaries",
-    "find /etc -perm -o+w 2>/dev/null            # World-writable config files",
-    "",
-    "# Execute command on results",
-    "find /tmp -name \"*.log\" -exec rm {} \\;      # Delete all .log in /tmp",
-    "find /var/log -name \"*.log\" -exec ls -lh {} \\;   # Show sizes"
-  ].join('\n')} />
+        <CodeBlock className="mt-4" title="find — searching by file attributes" language="bash" code={CODE_LINUXSHELL_4} />
       </section>
 
       {/* ── ESSENTIAL TOOLS ── */}
       <section>
         <h2>Essential Text Processing Tools</h2>
-        <CodeBlock title="sort, cut, uniq, awk, sed, xargs" language="bash" code={[
-    "# ── sort ───────────────────────────────────────────────────",
-    "sort /etc/passwd                  # Alphabetically",
-    "sort -n numbers.txt               # Numerically",
-    "sort -r file.txt                  # Reverse",
-    "sort -k3 -n /etc/passwd           # Sort by 3rd field numerically",
-    "sort -u file.txt                  # Sort + deduplicate",
-    "",
-    "# ── cut ─────────────────────────────────────────────────────",
-    "cut -d: -f1 /etc/passwd           # 1st field, delimiter \":\"",
-    "cut -d, -f2,4 data.csv            # 2nd and 4th CSV fields",
-    "cut -c1-10 file.txt               # First 10 characters per line",
-    "",
-    "# ── uniq ────────────────────────────────────────────────────",
-    "sort file.txt | uniq              # Remove duplicates (must sort first)",
-    "sort file.txt | uniq -c           # Count occurrences",
-    "sort file.txt | uniq -d           # Show only duplicates",
-    "",
-    "# ── wc ──────────────────────────────────────────────────────",
-    "wc -l /etc/passwd                 # Line count",
-    "wc -w file.txt                    # Word count",
-    "ls /etc/*.conf | wc -l            # Count .conf files",
-    "",
-    "# ── awk ─────────────────────────────────────────────────────",
-    "awk '{print $1}' /var/log/nginx/access.log    # Print first field (IP)",
-    "awk -F: '{print $1, $3}' /etc/passwd          # Username + UID",
-    "awk '/error/ {print $0}' /var/log/syslog      # Lines matching \"error\"",
-    "awk '{sum += $1} END {print sum}' numbers.txt # Sum a column",
-    "",
-    "# ── sed ─────────────────────────────────────────────────────",
-    "sed 's/old/new/g' file.txt        # Replace globally (stdout only)",
-    "sed -i 's/old/new/g' file.txt     # Replace in-place",
-    "sed -n '10,20p' file.txt          # Print lines 10-20",
-    "sed '/^#/d' /etc/ssh/sshd_config  # Delete comment lines",
-    "",
-    "# ── xargs ───────────────────────────────────────────────────",
-    "find /tmp -name \"*.tmp\" | xargs rm -f           # Delete found files",
-    "cat servers.txt | xargs -I{} ping -c 1 {}       # Ping each server"
-  ].join('\n')} />
+        <CodeBlock title="sort, cut, uniq, awk, sed, xargs" language="bash" code={CODE_LINUXSHELL_5} />
       </section>
 
       {/* ── VARIABLES AND SCRIPTS ── */}
       <section>
         <h2>Variables & Your First Script</h2>
-        <CodeBlock title="bash-essentials.sh — variables, conditions, loops" language="bash" code={[
-    "#!/bin/bash",
-    "# Always start with a shebang",
-    "",
-    "# ── Variables ───────────────────────────────────────────────",
-    "NAME=\"DC01\"",
-    "PORT=22",
-    "LOGDIR=\"/var/log\"",
-    "TODAY=$(date +%Y-%m-%d)     # Command substitution",
-    "FILES=$(ls $LOGDIR | wc -l) # Count files",
-    "",
-    "echo \"Server: $NAME\"",
-    "echo \"Log files today ($TODAY): $FILES\"",
-    "",
-    "# ── Conditionals ────────────────────────────────────────────",
-    "if ping -c 1 -W 1 192.168.100.10 &>/dev/null; then",
-    "    echo \"DC01 is reachable\"",
-    "else",
-    "    echo \"DC01 is unreachable — check the network\"",
-    "    exit 1",
-    "fi",
-    "",
-    "# File tests",
-    "if [ -f \"/etc/ssh/sshd_config\" ]; then",
-    "    echo \"SSH config exists\"",
-    "fi",
-    "",
-    "if [ ! -d \"/var/backups\" ]; then",
-    "    mkdir -p /var/backups",
-    "    echo \"Created backup directory\"",
-    "fi",
-    "",
-    "# ── Loops ────────────────────────────────────────────────────",
-    "SERVERS=(\"192.168.100.10\" \"192.168.100.20\" \"192.168.100.30\")",
-    "for SERVER in \"$SERVERS[@]\"; do",
-    "    if ping -c 1 -W 1 \"$SERVER\" &>/dev/null; then",
-    "        echo \"✔ $SERVER online\"",
-    "    else",
-    "        echo \"✗ $SERVER UNREACHABLE\"",
-    "    fi",
-    "done",
-    "",
-    "# While loop — wait for a service to start",
-    "while ! systemctl is-active --quiet nginx; do",
-    "    echo \"Waiting for nginx...\"",
-    "    sleep 2",
-    "done",
-    "echo \"nginx is running\"",
-    "",
-    "# ── Functions ────────────────────────────────────────────────",
-    "check_port() {",
-    "    local HOST=$1",
-    "    local PORT=$2",
-    "    if nc -zw2 \"$HOST\" \"$PORT\" 2>/dev/null; then",
-    "        echo \"✔ $HOST:$PORT open\"",
-    "    else",
-    "        echo \"✗ $HOST:$PORT closed/filtered\"",
-    "    fi",
-    "}",
-    "",
-    "check_port 192.168.100.10 22",
-    "check_port 192.168.100.10 389"
-  ].join('\n')} />
+        <CodeBlock title="bash-essentials.sh — variables, conditions, loops" language="bash" code={CODE_LINUXSHELL_6} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -375,78 +429,17 @@ export default function LinuxShell() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Warm up with piped command chains to analyse the system."
-              command={[
-    "# Find the top 5 largest files in /var",
-    "find /var -type f -printf '%s %p\\n' 2>/dev/null | sort -rn | head -5",
-    "",
-    "# Count unique IPs in the auth log (who's been connecting?)",
-    "grep \"Accepted\\|Failed\" /var/log/auth.log 2>/dev/null |",
-    "  grep -oE \"[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\" |",
-    "  sort | uniq -c | sort -rn | head -10"
-  ].join('\n')}
+              command={CODE_LINUXSHELL_7}
             />
             <LabStep number={2}
               description="Write a health check script that tests connectivity to DC01."
-              command={[
-    "cat > ~/health-check.sh << 'EOF'",
-    "#!/bin/bash",
-    "# health-check.sh — Lab network health checker",
-    "",
-    "TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')",
-    "LOGFILE=\"/tmp/health-check-$(date +%Y%m%d).log\"",
-    "SERVERS=(\"192.168.100.10:DC01\" \"192.168.100.20:SRV01\")",
-    "",
-    "echo \"=== Health Check: $TIMESTAMP ===\" | tee -a \"$LOGFILE\"",
-    "",
-    "for ENTRY in \"$SERVERS[@]\"; do",
-    "    IP=\"${ENTRY%%:*}\"",
-    "    NAME=\"${ENTRY##*:}\"",
-    "",
-    "    if ping -c 1 -W 2 \"$IP\" &>/dev/null; then",
-    "        STATUS=\"✔ ONLINE\"",
-    "    else",
-    "        STATUS=\"✗ OFFLINE\"",
-    "    fi",
-    "",
-    "    echo \"[$STATUS] $NAME ($IP)\" | tee -a \"$LOGFILE\"",
-    "done",
-    "",
-    "echo \"Report saved: $LOGFILE\"",
-    "EOF",
-    "",
-    "chmod +x ~/health-check.sh",
-    "~/health-check.sh"
-  ].join('\n')}
-              output={[
-    "=== Health Check: 2025-01-15 11:00:00 ===",
-    "[✔ ONLINE]  DC01 (192.168.100.10)",
-    "[✗ OFFLINE] SRV01 (192.168.100.20)  ← Not deployed yet",
-    "Report saved: /tmp/health-check-20250115.log"
-  ].join('\n')}
+              command={CODE_LINUXSHELL_8}
+              output={CODE_LINUXSHELL_9}
             />
             <LabStep number={3}
               description="Use grep and awk to parse a log file and produce a summary."
-              command={[
-    "# Generate some test log data",
-    "for i in {1..20}; do",
-    "    echo \"2025-01-15 $i:00:00 INFO Service started\" >> /tmp/test.log",
-    "    [ $((i % 3)) -eq 0 ] && echo \"2025-01-15 $i:00:01 ERROR Connection failed\" >> /tmp/test.log",
-    "    [ $((i % 5)) -eq 0 ] && echo \"2025-01-15 $i:00:02 WARN Disk usage high\" >> /tmp/test.log",
-    "done",
-    "",
-    "# Summarise log levels",
-    "echo \"Log Summary:\"",
-    "for LEVEL in INFO ERROR WARN; do",
-    "    COUNT=$(grep -c \"$LEVEL\" /tmp/test.log)",
-    "    echo \"  $LEVEL: $COUNT\"",
-    "done"
-  ].join('\n')}
-              output={[
-    "Log Summary:",
-    "  INFO: 20",
-    "  ERROR: 6",
-    "  WARN: 4"
-  ].join('\n')}
+              command={CODE_LINUXSHELL_10}
+              output={CODE_LINUXSHELL_11}
             />
           </div>
         </div>

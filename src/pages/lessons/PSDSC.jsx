@@ -3,6 +3,119 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_PSDSC_1 = `# A configuration is a special function decorated with 'Configuration'
+Configuration WebServerBaseline {
+    param([string[]]$ComputerName = 'localhost')
+
+    # Import required DSC resource modules
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
+
+    Node $ComputerName {
+
+        # Ensure IIS Web Server role is installed
+        WindowsFeature IIS {
+            Ensure = 'Present'
+            Name   = 'Web-Server'
+        }
+
+        # Ensure IIS Management Tools are installed
+        WindowsFeature IISMgmt {
+            Ensure    = 'Present'
+            Name      = 'Web-Mgmt-Tools'
+            DependsOn = '[WindowsFeature]IIS'
+        }
+
+        # Ensure W3SVC service is running and starts automatically
+        Service W3SVC {
+            Name        = 'W3SVC'
+            State       = 'Running'
+            StartupType = 'Automatic'
+            DependsOn   = '[WindowsFeature]IIS'
+        }
+
+        # Ensure default site has correct permissions
+        File DefaultSitePath {
+            DestinationPath = 'C:\\inetpub\\wwwroot'
+            Type            = 'Directory'
+            Ensure          = 'Present'
+        }
+
+        # Registry: disable directory browsing
+        Registry DisableDirBrowse {
+            Key       = 'HKLM:\\SOFTWARE\\Policies\\IIS'
+            ValueName = 'DirectoryBrowsing'
+            ValueData = '0'
+            ValueType = 'DWord'
+            Ensure    = 'Present'
+        }
+    }
+}
+
+# Compile to .mof file
+WebServerBaseline -ComputerName 'WEB01'
+# Creates: .\\WebServerBaseline\\WEB01.mof
+
+# Apply the configuration
+Start-DscConfiguration -Path .\\WebServerBaseline -Wait -Verbose -Force`
+const CODE_PSDSC_2 = `[DSCLocalConfigurationManager()]
+Configuration LCMConfig {
+    Node 'localhost' {
+        Settings {
+            # ApplyOnly      — apply once, no monitoring
+            # ApplyAndMonitor — apply + report drift (no auto-correct)
+            # ApplyAndAutoCorrect — apply + auto-correct drift (recommended)
+            ConfigurationMode              = 'ApplyAndAutoCorrect'
+            RefreshFrequencyMins           = 30    # Check every 30 min
+            ConfigurationModeFrequencyMins = 15    # Correct drift every 15 min
+            RebootNodeIfNeeded             = $false
+            AllowModuleOverwrite           = $true
+        }
+    }
+}
+
+# Compile and apply LCM settings
+LCMConfig
+Set-DscLocalConfigurationManager -Path .\\LCMConfig -Verbose
+
+# Verify LCM settings
+Get-DscLocalConfigurationManager | Select-Object ConfigurationMode,
+  RefreshFrequencyMins, RebootNodeIfNeeded, LCMState`
+const CODE_PSDSC_3 = `Configuration LabBaseline {
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
+
+    Node 'localhost' {
+        Service WinRM {
+            Name        = 'WinRM'
+            State       = 'Running'
+            StartupType = 'Automatic'
+        }
+        Service DNS {
+            Name        = 'DNS'
+            State       = 'Running'
+            StartupType = 'Automatic'
+        }
+    }
+}
+
+# Compile — creates ./LabBaseline/localhost.mof
+LabBaseline
+Write-Host 'Compiled:' (Get-ChildItem .\\LabBaseline\\*.mof | Select-Object -Exp Name)`
+const CODE_PSDSC_4 = `# Apply
+Start-DscConfiguration -Path .\\LabBaseline -Wait -Force -Verbose 2>&1 | Select-String 'resource|success'
+
+# Test compliance
+$result = Test-DscConfiguration -Detailed
+Write-Host "In desired state: $($result.InDesiredState)"
+$result.ResourcesInDesiredState | Select-Object ResourceId, InDesiredState`
+const CODE_PSDSC_5 = `In desired state: True
+
+ResourceId              InDesiredState
+----------              --------------
+[Service]WinRM          True
+[Service]DNS            True`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -141,92 +254,13 @@ export default function PSDSC() {
       <section>
         <h2>Writing Your First DSC Configuration</h2>
         <CodeBlock title="DSC configuration — web server baseline" language="powershell"
-          code={[
-            "# A configuration is a special function decorated with 'Configuration'",
-            "Configuration WebServerBaseline {",
-            "    param([string[]]$ComputerName = 'localhost')",
-            "",
-            "    # Import required DSC resource modules",
-            "    Import-DscResource -ModuleName PSDesiredStateConfiguration",
-            "",
-            "    Node $ComputerName {",
-            "",
-            "        # Ensure IIS Web Server role is installed",
-            "        WindowsFeature IIS {",
-            "            Ensure = 'Present'",
-            "            Name   = 'Web-Server'",
-            "        }",
-            "",
-            "        # Ensure IIS Management Tools are installed",
-            "        WindowsFeature IISMgmt {",
-            "            Ensure    = 'Present'",
-            "            Name      = 'Web-Mgmt-Tools'",
-            "            DependsOn = '[WindowsFeature]IIS'",
-            "        }",
-            "",
-            "        # Ensure W3SVC service is running and starts automatically",
-            "        Service W3SVC {",
-            "            Name        = 'W3SVC'",
-            "            State       = 'Running'",
-            "            StartupType = 'Automatic'",
-            "            DependsOn   = '[WindowsFeature]IIS'",
-            "        }",
-            "",
-            "        # Ensure default site has correct permissions",
-            "        File DefaultSitePath {",
-            "            DestinationPath = 'C:\\inetpub\\wwwroot'",
-            "            Type            = 'Directory'",
-            "            Ensure          = 'Present'",
-            "        }",
-            "",
-            "        # Registry: disable directory browsing",
-            "        Registry DisableDirBrowse {",
-            "            Key       = 'HKLM:\\SOFTWARE\\Policies\\IIS'",
-            "            ValueName = 'DirectoryBrowsing'",
-            "            ValueData = '0'",
-            "            ValueType = 'DWord'",
-            "            Ensure    = 'Present'",
-            "        }",
-            "    }",
-            "}",
-            "",
-            "# Compile to .mof file",
-            "WebServerBaseline -ComputerName 'WEB01'",
-            "# Creates: .\\WebServerBaseline\\WEB01.mof",
-            "",
-            "# Apply the configuration",
-            "Start-DscConfiguration -Path .\\WebServerBaseline -Wait -Verbose -Force"
-          ].join('\n')} />
+          code={CODE_PSDSC_1} />
       </section>
 
       <section>
         <h2>LCM Configuration</h2>
         <CodeBlock title="Configure the Local Configuration Manager" language="powershell"
-          code={[
-            "[DSCLocalConfigurationManager()]",
-            "Configuration LCMConfig {",
-            "    Node 'localhost' {",
-            "        Settings {",
-            "            # ApplyOnly      — apply once, no monitoring",
-            "            # ApplyAndMonitor — apply + report drift (no auto-correct)",
-            "            # ApplyAndAutoCorrect — apply + auto-correct drift (recommended)",
-            "            ConfigurationMode              = 'ApplyAndAutoCorrect'",
-            "            RefreshFrequencyMins           = 30    # Check every 30 min",
-            "            ConfigurationModeFrequencyMins = 15    # Correct drift every 15 min",
-            "            RebootNodeIfNeeded             = $false",
-            "            AllowModuleOverwrite           = $true",
-            "        }",
-            "    }",
-            "}",
-            "",
-            "# Compile and apply LCM settings",
-            "LCMConfig",
-            "Set-DscLocalConfigurationManager -Path .\\LCMConfig -Verbose",
-            "",
-            "# Verify LCM settings",
-            "Get-DscLocalConfigurationManager | Select-Object ConfigurationMode,",
-            "  RefreshFrequencyMins, RebootNodeIfNeeded, LCMState"
-          ].join('\n')} />
+          code={CODE_PSDSC_2} />
       </section>
 
       <section>
@@ -240,49 +274,13 @@ export default function PSDSC() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Write and compile a simple DSC configuration ensuring key services are running."
-              command={[
-                "Configuration LabBaseline {",
-                "    Import-DscResource -ModuleName PSDesiredStateConfiguration",
-                "",
-                "    Node 'localhost' {",
-                "        Service WinRM {",
-                "            Name        = 'WinRM'",
-                "            State       = 'Running'",
-                "            StartupType = 'Automatic'",
-                "        }",
-                "        Service DNS {",
-                "            Name        = 'DNS'",
-                "            State       = 'Running'",
-                "            StartupType = 'Automatic'",
-                "        }",
-                "    }",
-                "}",
-                "",
-                "# Compile — creates ./LabBaseline/localhost.mof",
-                "LabBaseline",
-                "Write-Host 'Compiled:' (Get-ChildItem .\\LabBaseline\\*.mof | Select-Object -Exp Name)"
-              ].join('\n')}
+              command={CODE_PSDSC_3}
               output="Compiled: localhost.mof"
             />
             <LabStep number={2}
               description="Apply the configuration and verify compliance."
-              command={[
-                "# Apply",
-                "Start-DscConfiguration -Path .\\LabBaseline -Wait -Force -Verbose 2>&1 | Select-String 'resource|success'",
-                "",
-                "# Test compliance",
-                "$result = Test-DscConfiguration -Detailed",
-                "Write-Host \"In desired state: $($result.InDesiredState)\"",
-                "$result.ResourcesInDesiredState | Select-Object ResourceId, InDesiredState"
-              ].join('\n')}
-              output={[
-                "In desired state: True",
-                "",
-                "ResourceId              InDesiredState",
-                "----------              --------------",
-                "[Service]WinRM          True",
-                "[Service]DNS            True"
-              ].join('\n')}
+              command={CODE_PSDSC_4}
+              output={CODE_PSDSC_5}
             />
           </div>
         </div>

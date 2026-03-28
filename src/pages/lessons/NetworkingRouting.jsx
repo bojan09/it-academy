@@ -3,6 +3,75 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_NETWORKINGROUTING_1 = `# ── View routing table ───────────────────────────────────────
+ip route show
+ip route show table main   # Same as above
+route -n                   # Legacy format (still useful)
+
+# ── Find which route is used for a destination ───────────────
+ip route get 8.8.8.8       # Which route reaches Google DNS?
+ip route get 10.10.20.5    # Which route for internal IP?
+
+# ── Add static routes ────────────────────────────────────────
+# Route a specific network via a gateway
+sudo ip route add 10.20.0.0/16 via 192.168.100.1
+
+# Route via a specific interface
+sudo ip route add 172.16.0.0/12 dev ens34
+
+# Add a default route (gateway of last resort)
+sudo ip route add default via 192.168.100.1
+
+# ── Remove routes ────────────────────────────────────────────
+sudo ip route del 10.20.0.0/16
+sudo ip route del default
+
+# ── Make routes persistent (Netplan) ─────────────────────────
+# In /etc/netplan/00-config.yaml:
+# network:
+#   ethernets:
+#     ens33:
+#       routes:
+#         - to: 10.20.0.0/16
+#           via: 192.168.100.1
+#         - to: default
+#           via: 192.168.100.1
+sudo netplan apply`
+const CODE_NETWORKINGROUTING_2 = `# Current routing table
+ip route show
+
+# Which route reaches DC01?
+ip route get 192.168.100.10
+
+# Trace the actual path
+traceroute -n 192.168.100.10
+traceroute -n 8.8.8.8`
+const CODE_NETWORKINGROUTING_3 = `default via 192.168.100.1 dev ens33 proto static
+192.168.100.0/24 dev ens33 proto kernel scope link src 192.168.100.20
+
+192.168.100.10 dev ens33 src 192.168.100.20 uid 1000
+  cache
+
+traceroute to 192.168.100.10: 1 hop
+ 1  192.168.100.10  0.412 ms`
+const CODE_NETWORKINGROUTING_4 = `# Simulate a static route to a remote network
+sudo ip route add 172.16.50.0/24 via 192.168.100.1
+
+# Verify it was added
+ip route show | grep 172.16
+
+# Check which route would be used
+ip route get 172.16.50.100
+
+# Clean up
+sudo ip route del 172.16.50.0/24`
+const CODE_NETWORKINGROUTING_5 = `172.16.50.0/24 via 192.168.100.1 dev ens33
+
+172.16.50.100 via 192.168.100.1 dev ens33 src 192.168.100.20
+  cache`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -173,42 +242,7 @@ export default function NetworkingRouting() {
       <section>
         <h2>Static Routes on Linux</h2>
         <CodeBlock title="Static route management with ip route" language="bash"
-          code={[
-            "# ── View routing table ───────────────────────────────────────",
-            "ip route show",
-            "ip route show table main   # Same as above",
-            "route -n                   # Legacy format (still useful)",
-            "",
-            "# ── Find which route is used for a destination ───────────────",
-            "ip route get 8.8.8.8       # Which route reaches Google DNS?",
-            "ip route get 10.10.20.5    # Which route for internal IP?",
-            "",
-            "# ── Add static routes ────────────────────────────────────────",
-            "# Route a specific network via a gateway",
-            "sudo ip route add 10.20.0.0/16 via 192.168.100.1",
-            "",
-            "# Route via a specific interface",
-            "sudo ip route add 172.16.0.0/12 dev ens34",
-            "",
-            "# Add a default route (gateway of last resort)",
-            "sudo ip route add default via 192.168.100.1",
-            "",
-            "# ── Remove routes ────────────────────────────────────────────",
-            "sudo ip route del 10.20.0.0/16",
-            "sudo ip route del default",
-            "",
-            "# ── Make routes persistent (Netplan) ─────────────────────────",
-            "# In /etc/netplan/00-config.yaml:",
-            "# network:",
-            "#   ethernets:",
-            "#     ens33:",
-            "#       routes:",
-            "#         - to: 10.20.0.0/16",
-            "#           via: 192.168.100.1",
-            "#         - to: default",
-            "#           via: 192.168.100.1",
-            "sudo netplan apply"
-          ].join('\n')} />
+          code={CODE_NETWORKINGROUTING_1} />
       </section>
 
       <section>
@@ -263,49 +297,13 @@ export default function NetworkingRouting() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Inspect the current routing table and trace path to various destinations."
-              command={[
-                "# Current routing table",
-                "ip route show",
-                "",
-                "# Which route reaches DC01?",
-                "ip route get 192.168.100.10",
-                "",
-                "# Trace the actual path",
-                "traceroute -n 192.168.100.10",
-                "traceroute -n 8.8.8.8"
-              ].join('\n')}
-              output={[
-                "default via 192.168.100.1 dev ens33 proto static",
-                "192.168.100.0/24 dev ens33 proto kernel scope link src 192.168.100.20",
-                "",
-                "192.168.100.10 dev ens33 src 192.168.100.20 uid 1000",
-                "  cache",
-                "",
-                "traceroute to 192.168.100.10: 1 hop",
-                " 1  192.168.100.10  0.412 ms"
-              ].join('\n')}
+              command={CODE_NETWORKINGROUTING_2}
+              output={CODE_NETWORKINGROUTING_3}
             />
             <LabStep number={2}
               description="Add a static route for a simulated remote network and verify it."
-              command={[
-                "# Simulate a static route to a remote network",
-                "sudo ip route add 172.16.50.0/24 via 192.168.100.1",
-                "",
-                "# Verify it was added",
-                "ip route show | grep 172.16",
-                "",
-                "# Check which route would be used",
-                "ip route get 172.16.50.100",
-                "",
-                "# Clean up",
-                "sudo ip route del 172.16.50.0/24"
-              ].join('\n')}
-              output={[
-                "172.16.50.0/24 via 192.168.100.1 dev ens33",
-                "",
-                "172.16.50.100 via 192.168.100.1 dev ens33 src 192.168.100.20",
-                "  cache"
-              ].join('\n')}
+              command={CODE_NETWORKINGROUTING_4}
+              output={CODE_NETWORKINGROUTING_5}
             />
           </div>
         </div>

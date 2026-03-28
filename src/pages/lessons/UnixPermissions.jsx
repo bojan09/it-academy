@@ -3,6 +3,42 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_UNIXPERMISSIONS_1 = `# Octal notation: chmod ugo
+chmod 755 script.sh   # rwxr-xr-x
+chmod 644 file.txt    # rw-r--r--
+chmod 600 key.pem     # rw-------
+chmod 1777 /tmp       # sticky + world-writable
+chmod 4755 program    # SUID + rwxr-xr-x
+chmod 2775 /shared    # SGID + rwxrwxr-x
+
+# POSIX ACLs
+getfacl /project/data
+setfacl -m u:alice:rwx /project/data
+setfacl -m g:devteam:rx /project/data
+setfacl -R -m u:bob:r-x /project/    # recursive
+getfacl /project/data | setfacl --set-file=- /project/archive  # copy ACLs`
+const CODE_UNIXPERMISSIONS_2 = `sudo apt install acl -y
+mkdir -p ~/project-test
+
+# Set base permissions
+chmod 750 ~/project-test
+
+# Add per-user ACLs
+setfacl -m u:root:rwx ~/project-test
+setfacl -m o::--- ~/project-test
+
+getfacl ~/project-test`
+const CODE_UNIXPERMISSIONS_3 = `# file: project-test
+# owner: user
+# group: user
+user::rwx
+user:root:rwx
+group::r-x
+mask::rwx
+other::---`
+
+
 const QUIZ_QUESTIONS = [
   { id:'q1', question:'On a BSD system, what does "chmod 4755 program" set?', options:['rwxr-xr-x with no special bits','rwsr-xr-x — SUID set (runs as file owner), full owner access, read/execute for group and others','r-xr-xr-x — read-only for everyone','rwxrwxr-x — write access for group'], correct:1, explanation:'Octal 4755: 4=SUID bit, 7=owner rwx, 5=group r-x, 5=others r-x. The SUID bit (4000) sets the effective UID to the file owner when executed. Combined as 4755: owner has full control (7=rwx), group and others have read/execute (5=r-x), and the SUID bit means the program runs as the file owner regardless of who executes it. Classic example: passwd utility runs as root to modify /etc/shadow.' },
   { id:'q2', question:'What are POSIX ACLs and when should you use them instead of standard Unix permissions?', options:['POSIX ACLs are the standard rwx permissions','Extended ACLs provide per-user and per-group permissions beyond the owner/group/others model — use when you need user A to have read-only, user B to have read-write, and others to have no access on the same file','POSIX ACLs are only available on BSD, not Linux','ACLs replace the standard permission bits entirely'], correct:1, explanation:'Standard Unix permissions have three subjects: owner, group, others. POSIX ACLs add arbitrary users and groups: setfacl -m u:alice:r-x,u:bob:rwx file allows alice read/execute and bob full access. View with getfacl. A file with ACLs shows a + at the end of its permission string in ls -l. ACLs are essential for shared project directories where different users need different access levels that cannot be expressed with a single group.' },
@@ -42,7 +78,7 @@ export default function UnixPermissions() {
       <section>
         <h2>Permission Reference</h2>
         <CodeBlock title="Complete permission operations" language="bash"
-          code={["# Octal notation: chmod ugo","chmod 755 script.sh   # rwxr-xr-x","chmod 644 file.txt    # rw-r--r--","chmod 600 key.pem     # rw-------","chmod 1777 /tmp       # sticky + world-writable","chmod 4755 program    # SUID + rwxr-xr-x","chmod 2775 /shared    # SGID + rwxrwxr-x","","# POSIX ACLs","getfacl /project/data","setfacl -m u:alice:rwx /project/data","setfacl -m g:devteam:rx /project/data","setfacl -R -m u:bob:r-x /project/    # recursive","getfacl /project/data | setfacl --set-file=- /project/archive  # copy ACLs"].join('\n')} />
+          code={CODE_UNIXPERMISSIONS_1} />
       </section>
       <section>
         <h2>VMware Lab Exercise</h2>
@@ -50,8 +86,8 @@ export default function UnixPermissions() {
           <div className="lab-header"><span className="lab-badge">LAB UNIX-4</span><span className="text-sm font-semibold text-white">POSIX ACL Practice on Ubuntu</span><span className="ml-auto text-xs text-slate-500 font-mono">~15 min</span></div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Create a shared project directory with per-user ACLs."
-              command={["sudo apt install acl -y","mkdir -p ~/project-test","","# Set base permissions","chmod 750 ~/project-test","","# Add per-user ACLs","setfacl -m u:root:rwx ~/project-test","setfacl -m o::--- ~/project-test","","getfacl ~/project-test"].join('\n')}
-              output={["# file: project-test","# owner: user","# group: user","user::rwx","user:root:rwx","group::r-x","mask::rwx","other::---"].join('\n')} />
+              command={CODE_UNIXPERMISSIONS_2}
+              output={CODE_UNIXPERMISSIONS_3} />
           </div>
         </div>
       </section>

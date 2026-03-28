@@ -3,6 +3,77 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_NETWORKINGWIRELESS_1 = `# ── Scan for networks ────────────────────────────────────────
+nmcli device wifi list
+sudo iw dev wlan0 scan | grep -E 'SSID|signal|freq'
+
+# ── Connect to a WPA2-Personal network ───────────────────────
+nmcli device wifi connect 'OfficeWiFi' password 'SecurePass123'
+
+# ── Connect to WPA2-Enterprise (802.1X EAP-PEAP) ────────────
+nmcli connection add type wifi ssid 'CorpWiFi' \\
+  wifi-sec.key-mgmt wpa-eap \\
+  802-1x.eap peap \\
+  802-1x.phase2-auth mschapv2 \\
+  802-1x.identity 'jsmith@corp.com' \\
+  802-1x.password 'DomainPass!'
+nmcli connection up 'CorpWiFi'
+
+# ── View signal strength and link quality ─────────────────────
+iwconfig wlan0
+watch -n 1 'cat /proc/net/wireless'
+
+# ── Show connection details ───────────────────────────────────
+nmcli connection show 'OfficeWiFi'
+iw dev wlan0 link
+
+# ── Disconnect ────────────────────────────────────────────────
+nmcli device disconnect wlan0`
+const CODE_NETWORKINGWIRELESS_2 = `# Check if wireless interfaces exist
+ip link show | grep -E 'wlan|wifi'
+
+# In VMware without a physical wireless adapter:
+echo 'No wireless adapter in VM — using wired (ens33)'
+
+# Check network manager status
+nmcli general status
+
+# List all connection profiles
+nmcli connection show
+
+# Show wireless capabilities of the system
+lshw -class network 2>/dev/null | grep -A5 'Wireless\\|WiFi\\|802.11'`
+const CODE_NETWORKINGWIRELESS_3 = `No wireless adapter in VM — using wired (ens33)
+
+STATE      CONNECTIVITY  WIFI-HW   WIFI      WWAN-HW   WWAN
+connected  full          enabled   enabled   enabled   enabled
+
+NAME        UUID     TYPE      DEVICE
+Lab-Network xxxxx    ethernet  ens33`
+const CODE_NETWORKINGWIRELESS_4 = `# Show wpa_supplicant version
+wpa_supplicant -v 2>&1 | head -2
+
+# Show available EAP methods (for WPA-Enterprise)
+wpa_supplicant -v 2>&1 | grep EAP | head -10
+
+# Example wpa_supplicant.conf for WPA2-Enterprise
+cat << 'EOF'
+# /etc/wpa_supplicant/corp.conf
+network={
+    ssid="CorpWiFi"
+    key_mgmt=WPA-EAP
+    eap=PEAP
+    identity="jsmith@corp.com"
+    password="DomainPassword"
+    phase2="auth=MSCHAPV2"
+    ca_cert="/etc/ssl/certs/corp-ca.pem"
+}
+EOF`
+const CODE_NETWORKINGWIRELESS_5 = `wpa_supplicant v2.10
+EAP methods: EAP-TLS EAP-PEAP EAP-TTLS EAP-PWD EAP-SIM`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -217,34 +288,7 @@ export default function NetworkingWireless() {
       <section>
         <h2>Linux Wireless Management</h2>
         <CodeBlock title="nmcli and iw — wireless tools on Linux" language="bash"
-          code={[
-            "# ── Scan for networks ────────────────────────────────────────",
-            "nmcli device wifi list",
-            "sudo iw dev wlan0 scan | grep -E 'SSID|signal|freq'",
-            "",
-            "# ── Connect to a WPA2-Personal network ───────────────────────",
-            "nmcli device wifi connect 'OfficeWiFi' password 'SecurePass123'",
-            "",
-            "# ── Connect to WPA2-Enterprise (802.1X EAP-PEAP) ────────────",
-            "nmcli connection add type wifi ssid 'CorpWiFi' \\",
-            "  wifi-sec.key-mgmt wpa-eap \\",
-            "  802-1x.eap peap \\",
-            "  802-1x.phase2-auth mschapv2 \\",
-            "  802-1x.identity 'jsmith@corp.com' \\",
-            "  802-1x.password 'DomainPass!'",
-            "nmcli connection up 'CorpWiFi'",
-            "",
-            "# ── View signal strength and link quality ─────────────────────",
-            "iwconfig wlan0",
-            "watch -n 1 'cat /proc/net/wireless'",
-            "",
-            "# ── Show connection details ───────────────────────────────────",
-            "nmcli connection show 'OfficeWiFi'",
-            "iw dev wlan0 link",
-            "",
-            "# ── Disconnect ────────────────────────────────────────────────",
-            "nmcli device disconnect wlan0"
-          ].join('\n')} />
+          code={CODE_NETWORKINGWIRELESS_1} />
       </section>
 
       <section>
@@ -280,59 +324,13 @@ export default function NetworkingWireless() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Check wireless hardware and driver status on the Ubuntu VM."
-              command={[
-                "# Check if wireless interfaces exist",
-                "ip link show | grep -E 'wlan|wifi'",
-                "",
-                "# In VMware without a physical wireless adapter:",
-                "echo 'No wireless adapter in VM — using wired (ens33)'",
-                "",
-                "# Check network manager status",
-                "nmcli general status",
-                "",
-                "# List all connection profiles",
-                "nmcli connection show",
-                "",
-                "# Show wireless capabilities of the system",
-                "lshw -class network 2>/dev/null | grep -A5 'Wireless\\|WiFi\\|802.11'"
-              ].join('\n')}
-              output={[
-                "No wireless adapter in VM — using wired (ens33)",
-                "",
-                "STATE      CONNECTIVITY  WIFI-HW   WIFI      WWAN-HW   WWAN",
-                "connected  full          enabled   enabled   enabled   enabled",
-                "",
-                "NAME        UUID     TYPE      DEVICE",
-                "Lab-Network xxxxx    ethernet  ens33"
-              ].join('\n')}
+              command={CODE_NETWORKINGWIRELESS_2}
+              output={CODE_NETWORKINGWIRELESS_3}
             />
             <LabStep number={2}
               description="Explore wireless security configuration with wpa_supplicant (pre-installed)."
-              command={[
-                "# Show wpa_supplicant version",
-                "wpa_supplicant -v 2>&1 | head -2",
-                "",
-                "# Show available EAP methods (for WPA-Enterprise)",
-                "wpa_supplicant -v 2>&1 | grep EAP | head -10",
-                "",
-                "# Example wpa_supplicant.conf for WPA2-Enterprise",
-                "cat << 'EOF'",
-                "# /etc/wpa_supplicant/corp.conf",
-                "network={",
-                "    ssid=\"CorpWiFi\"",
-                "    key_mgmt=WPA-EAP",
-                "    eap=PEAP",
-                "    identity=\"jsmith@corp.com\"",
-                "    password=\"DomainPassword\"",
-                "    phase2=\"auth=MSCHAPV2\"",
-                "    ca_cert=\"/etc/ssl/certs/corp-ca.pem\"",
-                "}",
-                "EOF"
-              ].join('\n')}
-              output={[
-                "wpa_supplicant v2.10",
-                "EAP methods: EAP-TLS EAP-PEAP EAP-TTLS EAP-PWD EAP-SIM"
-              ].join('\n')}
+              command={CODE_NETWORKINGWIRELESS_4}
+              output={CODE_NETWORKINGWIRELESS_5}
             />
           </div>
         </div>

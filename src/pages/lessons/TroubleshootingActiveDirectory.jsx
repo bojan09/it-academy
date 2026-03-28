@@ -3,6 +3,98 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_TROUBLESHOOTINGACTIVEDIRECTORY_1 = `# Run all tests on the local DC
+dcdiag /test:all /v
+
+# Key individual tests:
+dcdiag /test:replications   # Replication health
+dcdiag /test:netlogon       # Netlogon service + SYSVOL/NETLOGON shares
+dcdiag /test:services       # Required AD services running
+dcdiag /test:dns            # DNS configuration
+dcdiag /test:fsmocheck      # FSMO role holders reachable
+dcdiag /test:kccEvent       # KCC (topology generator) errors
+
+# Check FSMO role holders
+netdom query fsmo
+
+# Check all DCs in the domain
+dcdiag /s:DC01 /test:all
+
+# PowerShell equivalent
+Get-ADDomainController -Filter * | Select-Object Name, Site,
+  IPv4Address, IsGlobalCatalog, IsReadOnly |
+  Format-Table -AutoSize`
+const CODE_TROUBLESHOOTINGACTIVEDIRECTORY_2 = `# Quick summary of all replication
+repadmin /replsummary
+
+# Detailed replication status
+repadmin /showrepl
+repadmin /showrepl DC01
+
+# Check replication queue
+repadmin /queue
+
+# Force immediate replication
+repadmin /syncall DC01 /AdeP
+# /A = all naming contexts
+# /d = identify servers by DN
+# /e = replicate across site links
+# /P = push (replicate from this DC)
+
+# Show replication metadata for a specific object
+repadmin /showobjmeta DC01 'CN=Administrator,CN=Users,DC=lab,DC=local'
+
+# Check SYSVOL replication (DFS-R)
+dfsrdiag ReplicationState /member:DC01
+
+# PowerShell approach
+Get-ADReplicationFailure -Target 'DC01' -Scope Server
+Get-ADReplicationPartnerMetadata -Target 'DC01' |
+  Select-Object Partner, LastReplicationAttempt,
+  LastReplicationResult, ConsecutiveReplicationFailures`
+const CODE_TROUBLESHOOTINGACTIVEDIRECTORY_3 = `# Full dcdiag — all tests
+dcdiag /test:all 2>&1 | Tee-Object -FilePath C:\\dcdiag-report.txt
+
+# Summary: count passes and failures
+Select-String -Path C:\\dcdiag-report.txt -Pattern 'passed|failed' |
+  Group-Object {$_.Line -match 'failed'} |
+  Select-Object @{N='Status';E={if($_.Name){'FAILED'}else{'passed'}}}, Count`
+const CODE_TROUBLESHOOTINGACTIVEDIRECTORY_4 = `Testing server: Default-First-Site-Name\\DC01
+   Starting test: Replications .............. passed
+   Starting test: NCSecDesc .................. passed
+   Starting test: NetLogons .................. passed
+   Starting test: Advertising ................ passed
+   Starting test: KnowsOfRoleHolders ........ passed
+   Starting test: RidManager ................. passed
+
+Status   Count
+------   -----
+passed   18`
+const CODE_TROUBLESHOOTINGACTIVEDIRECTORY_5 = `# Check FSMO role holders
+netdom query fsmo
+
+# Check DC01's time sync source
+w32tm /query /status
+
+# Check replication summary
+repadmin /replsummary
+
+# Verify DNS SRV records exist (critical for AD)
+Resolve-DnsName _ldap._tcp.lab.local -Type SRV |
+  Select-Object Name, NameTarget, Port`
+const CODE_TROUBLESHOOTINGACTIVEDIRECTORY_6 = `Schema master          DC01.lab.local
+Domain naming master   DC01.lab.local
+PDC                    DC01.lab.local
+RID pool manager       DC01.lab.local
+Infrastructure master  DC01.lab.local
+
+Replication Summary — no failures detected
+
+Name                        NameTarget        Port
+_ldap._tcp.lab.local        dc01.lab.local    389`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -143,64 +235,13 @@ export default function TroubleshootingActiveDirectory() {
       <section>
         <h2>DC Health Check — The Diagnostic Toolkit</h2>
         <CodeBlock title="dcdiag — comprehensive DC health tests" language="powershell"
-          code={[
-            "# Run all tests on the local DC",
-            "dcdiag /test:all /v",
-            "",
-            "# Key individual tests:",
-            "dcdiag /test:replications   # Replication health",
-            "dcdiag /test:netlogon       # Netlogon service + SYSVOL/NETLOGON shares",
-            "dcdiag /test:services       # Required AD services running",
-            "dcdiag /test:dns            # DNS configuration",
-            "dcdiag /test:fsmocheck      # FSMO role holders reachable",
-            "dcdiag /test:kccEvent       # KCC (topology generator) errors",
-            "",
-            "# Check FSMO role holders",
-            "netdom query fsmo",
-            "",
-            "# Check all DCs in the domain",
-            "dcdiag /s:DC01 /test:all",
-            "",
-            "# PowerShell equivalent",
-            "Get-ADDomainController -Filter * | Select-Object Name, Site,",
-            "  IPv4Address, IsGlobalCatalog, IsReadOnly |",
-            "  Format-Table -AutoSize"
-          ].join('\n')} />
+          code={CODE_TROUBLESHOOTINGACTIVEDIRECTORY_1} />
       </section>
 
       <section>
         <h2>Replication Troubleshooting</h2>
         <CodeBlock title="repadmin — diagnose and fix replication" language="powershell"
-          code={[
-            "# Quick summary of all replication",
-            "repadmin /replsummary",
-            "",
-            "# Detailed replication status",
-            "repadmin /showrepl",
-            "repadmin /showrepl DC01",
-            "",
-            "# Check replication queue",
-            "repadmin /queue",
-            "",
-            "# Force immediate replication",
-            "repadmin /syncall DC01 /AdeP",
-            "# /A = all naming contexts",
-            "# /d = identify servers by DN",
-            "# /e = replicate across site links",
-            "# /P = push (replicate from this DC)",
-            "",
-            "# Show replication metadata for a specific object",
-            "repadmin /showobjmeta DC01 'CN=Administrator,CN=Users,DC=lab,DC=local'",
-            "",
-            "# Check SYSVOL replication (DFS-R)",
-            "dfsrdiag ReplicationState /member:DC01",
-            "",
-            "# PowerShell approach",
-            "Get-ADReplicationFailure -Target 'DC01' -Scope Server",
-            "Get-ADReplicationPartnerMetadata -Target 'DC01' |",
-            "  Select-Object Partner, LastReplicationAttempt,",
-            "  LastReplicationResult, ConsecutiveReplicationFailures"
-          ].join('\n')} />
+          code={CODE_TROUBLESHOOTINGACTIVEDIRECTORY_2} />
       </section>
 
       <section>
@@ -249,57 +290,13 @@ export default function TroubleshootingActiveDirectory() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Run the comprehensive dcdiag health check on DC01."
-              command={[
-                "# Full dcdiag — all tests",
-                "dcdiag /test:all 2>&1 | Tee-Object -FilePath C:\\dcdiag-report.txt",
-                "",
-                "# Summary: count passes and failures",
-                "Select-String -Path C:\\dcdiag-report.txt -Pattern 'passed|failed' |",
-                "  Group-Object {$_.Line -match 'failed'} |",
-                "  Select-Object @{N='Status';E={if($_.Name){'FAILED'}else{'passed'}}}, Count"
-              ].join('\n')}
-              output={[
-                "Testing server: Default-First-Site-Name\\DC01",
-                "   Starting test: Replications .............. passed",
-                "   Starting test: NCSecDesc .................. passed",
-                "   Starting test: NetLogons .................. passed",
-                "   Starting test: Advertising ................ passed",
-                "   Starting test: KnowsOfRoleHolders ........ passed",
-                "   Starting test: RidManager ................. passed",
-                "",
-                "Status   Count",
-                "------   -----",
-                "passed   18"
-              ].join('\n')}
+              command={CODE_TROUBLESHOOTINGACTIVEDIRECTORY_3}
+              output={CODE_TROUBLESHOOTINGACTIVEDIRECTORY_4}
             />
             <LabStep number={2}
               description="Check FSMO roles and Kerberos time sync."
-              command={[
-                "# Check FSMO role holders",
-                "netdom query fsmo",
-                "",
-                "# Check DC01's time sync source",
-                "w32tm /query /status",
-                "",
-                "# Check replication summary",
-                "repadmin /replsummary",
-                "",
-                "# Verify DNS SRV records exist (critical for AD)",
-                "Resolve-DnsName _ldap._tcp.lab.local -Type SRV |",
-                "  Select-Object Name, NameTarget, Port"
-              ].join('\n')}
-              output={[
-                "Schema master          DC01.lab.local",
-                "Domain naming master   DC01.lab.local",
-                "PDC                    DC01.lab.local",
-                "RID pool manager       DC01.lab.local",
-                "Infrastructure master  DC01.lab.local",
-                "",
-                "Replication Summary — no failures detected",
-                "",
-                "Name                        NameTarget        Port",
-                "_ldap._tcp.lab.local        dc01.lab.local    389"
-              ].join('\n')}
+              command={CODE_TROUBLESHOOTINGACTIVEDIRECTORY_5}
+              output={CODE_TROUBLESHOOTINGACTIVEDIRECTORY_6}
             />
           </div>
         </div>

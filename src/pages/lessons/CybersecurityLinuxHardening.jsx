@@ -3,6 +3,111 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYLINUXHARDENING_1 = `sudo apt install unattended-upgrades apt-listchanges -y
+
+# Enable automatic security updates
+sudo dpkg-reconfigure -plow unattended-upgrades
+
+# Configure what to auto-install
+sudo tee /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+Unattended-Upgrade::Allowed-Origins {
+    "\${distro_id}:\${distro_codename}-security";
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+EOF
+
+# Enable the daily timer
+sudo tee /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+
+# Test dry run
+sudo unattended-upgrades --dry-run --debug 2>&1 | head -20`
+const CODE_CYBERSECURITYLINUXHARDENING_2 = `sudo apt install auditd audispd-plugins -y
+sudo systemctl enable auditd --now
+
+# Add audit rules
+sudo tee /etc/audit/rules.d/99-security.rules << 'EOF'
+# Delete all existing rules
+-D
+
+# Monitor access to sensitive files
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group  -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/ssh/sshd_config -p wa -k sshd
+
+# Monitor privilege escalation
+-w /bin/su     -p x -k privilege_escalation
+-w /usr/bin/sudo -p x -k privilege_escalation
+
+# Monitor changes to audit config itself
+-w /etc/audit/ -p wa -k audit_config
+-w /etc/audit/audit.rules -p wa -k audit_config
+
+# Log all commands run by root
+-a exit,always -F arch=b64 -F euid=0 -S execve -k root_commands
+EOF
+
+sudo augenrules --load
+sudo auditctl -l   # List active rules
+
+# Search audit log
+sudo ausearch -k identity --interpret | tail -5
+sudo aureport --summary`
+const CODE_CYBERSECURITYLINUXHARDENING_3 = `sudo apt install lynis -y
+sudo lynis audit system --quiet 2>/dev/null
+grep 'Hardening index' /var/log/lynis.log | tail -1`
+const CODE_CYBERSECURITYLINUXHARDENING_4 = `# Kernel hardening
+sudo tee /etc/sysctl.d/99-cis.conf << 'EOF'
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.all.rp_filter = 1
+kernel.randomize_va_space = 2
+kernel.dmesg_restrict = 1
+fs.suid_dumpable = 0
+EOF
+sudo sysctl -p /etc/sysctl.d/99-cis.conf
+
+# Auto-updates
+sudo apt install -y unattended-upgrades
+echo 'APT::Periodic::Unattended-Upgrade "1";' | sudo tee /etc/apt/apt.conf.d/20auto
+
+# Auditd
+sudo apt install -y auditd
+sudo systemctl enable auditd --now
+sudo auditctl -w /etc/passwd -p wa -k identity
+
+# Re-audit
+sudo lynis audit system --quiet 2>/dev/null
+grep 'Hardening index' /var/log/lynis.log | tail -1`
+const CODE_CYBERSECURITYLINUXHARDENING_5 = `net.ipv4.tcp_syncookies = 1
+... applied
+
+[+] Hardening index : 68 [#############       ]  ← +12 points`
+const CODE_CYBERSECURITYLINUXHARDENING_6 = `# Trigger an auditable event
+sudo cat /etc/shadow > /dev/null
+
+# Search the audit log for it
+sudo ausearch -k identity --interpret 2>/dev/null | grep -A3 'shadow'
+
+# Check sudo usage log
+sudo journalctl _COMM=sudo | tail -5`
+const CODE_CYBERSECURITYLINUXHARDENING_7 = `time->Wed Jan 15 11:30:00 2025
+type=PATH msg=audit(1705312200.123:456): item=0 name='/etc/shadow'
+  ouid=0 ogid=0 rdev=0:0 nametype=NORMAL
+
+Jan 15 11:30:00 srv01 sudo: user : TTY=pts/0 ; PWD=/home/user
+  USER=root ; COMMAND=/bin/cat /etc/shadow`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -166,72 +271,13 @@ export default function CybersecurityLinuxHardening() {
       <section>
         <h2>Automatic Security Updates</h2>
         <CodeBlock title="Configure unattended-upgrades" language="bash"
-          code={[
-            "sudo apt install unattended-upgrades apt-listchanges -y",
-            "",
-            "# Enable automatic security updates",
-            "sudo dpkg-reconfigure -plow unattended-upgrades",
-            "",
-            "# Configure what to auto-install",
-            "sudo tee /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'",
-            "Unattended-Upgrade::Allowed-Origins {",
-            '    "${distro_id}:${distro_codename}-security";',
-            "};",
-            "Unattended-Upgrade::AutoFixInterruptedDpkg \"true\";",
-            "Unattended-Upgrade::Remove-Unused-Dependencies \"true\";",
-            "Unattended-Upgrade::Automatic-Reboot \"false\";",
-            "Unattended-Upgrade::Automatic-Reboot-Time \"02:00\";",
-            "EOF",
-            "",
-            "# Enable the daily timer",
-            "sudo tee /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'",
-            "APT::Periodic::Update-Package-Lists \"1\";",
-            "APT::Periodic::Unattended-Upgrade \"1\";",
-            "EOF",
-            "",
-            "# Test dry run",
-            "sudo unattended-upgrades --dry-run --debug 2>&1 | head -20"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYLINUXHARDENING_1} />
       </section>
 
       <section>
         <h2>auditd — Kernel-Level Audit Trail</h2>
         <CodeBlock title="Install and configure auditd with security-focused rules" language="bash"
-          code={[
-            "sudo apt install auditd audispd-plugins -y",
-            "sudo systemctl enable auditd --now",
-            "",
-            "# Add audit rules",
-            "sudo tee /etc/audit/rules.d/99-security.rules << 'EOF'",
-            "# Delete all existing rules",
-            "-D",
-            "",
-            "# Monitor access to sensitive files",
-            "-w /etc/passwd -p wa -k identity",
-            "-w /etc/shadow -p wa -k identity",
-            "-w /etc/group  -p wa -k identity",
-            "-w /etc/sudoers -p wa -k sudoers",
-            "-w /etc/ssh/sshd_config -p wa -k sshd",
-            "",
-            "# Monitor privilege escalation",
-            "-w /bin/su     -p x -k privilege_escalation",
-            "-w /usr/bin/sudo -p x -k privilege_escalation",
-            "",
-            "# Monitor changes to audit config itself",
-            "-w /etc/audit/ -p wa -k audit_config",
-            "-w /etc/audit/audit.rules -p wa -k audit_config",
-            "",
-            "# Log all commands run by root",
-            "-a exit,always -F arch=b64 -F euid=0 -S execve -k root_commands",
-            "EOF",
-            "",
-            "sudo augenrules --load",
-            "sudo auditctl -l   # List active rules",
-            "",
-            "# Search audit log",
-            "sudo ausearch -k identity --interpret | tail -5",
-            "sudo aureport --summary"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYLINUXHARDENING_2} />
       </section>
 
       <section>
@@ -245,68 +291,18 @@ export default function CybersecurityLinuxHardening() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Run a baseline audit to score the system before hardening."
-              command={[
-                "sudo apt install lynis -y",
-                "sudo lynis audit system --quiet 2>/dev/null",
-                "grep 'Hardening index' /var/log/lynis.log | tail -1"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYLINUXHARDENING_3}
               output="[+] Hardening index : 56 [###########         ]"
             />
             <LabStep number={2}
               description="Apply sysctl hardening, automatic updates, and auditd."
-              command={[
-                "# Kernel hardening",
-                "sudo tee /etc/sysctl.d/99-cis.conf << 'EOF'",
-                "net.ipv4.tcp_syncookies = 1",
-                "net.ipv4.conf.all.accept_redirects = 0",
-                "net.ipv4.conf.all.log_martians = 1",
-                "net.ipv4.conf.all.rp_filter = 1",
-                "kernel.randomize_va_space = 2",
-                "kernel.dmesg_restrict = 1",
-                "fs.suid_dumpable = 0",
-                "EOF",
-                "sudo sysctl -p /etc/sysctl.d/99-cis.conf",
-                "",
-                "# Auto-updates",
-                "sudo apt install -y unattended-upgrades",
-                "echo 'APT::Periodic::Unattended-Upgrade \"1\";' | sudo tee /etc/apt/apt.conf.d/20auto",
-                "",
-                "# Auditd",
-                "sudo apt install -y auditd",
-                "sudo systemctl enable auditd --now",
-                "sudo auditctl -w /etc/passwd -p wa -k identity",
-                "",
-                "# Re-audit",
-                "sudo lynis audit system --quiet 2>/dev/null",
-                "grep 'Hardening index' /var/log/lynis.log | tail -1"
-              ].join('\n')}
-              output={[
-                "net.ipv4.tcp_syncookies = 1",
-                "... applied",
-                "",
-                "[+] Hardening index : 68 [#############       ]  ← +12 points"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYLINUXHARDENING_4}
+              output={CODE_CYBERSECURITYLINUXHARDENING_5}
             />
             <LabStep number={3}
               description="Audit privileged command usage with auditd."
-              command={[
-                "# Trigger an auditable event",
-                "sudo cat /etc/shadow > /dev/null",
-                "",
-                "# Search the audit log for it",
-                "sudo ausearch -k identity --interpret 2>/dev/null | grep -A3 'shadow'",
-                "",
-                "# Check sudo usage log",
-                "sudo journalctl _COMM=sudo | tail -5"
-              ].join('\n')}
-              output={[
-                "time->Wed Jan 15 11:30:00 2025",
-                "type=PATH msg=audit(1705312200.123:456): item=0 name='/etc/shadow'",
-                "  ouid=0 ogid=0 rdev=0:0 nametype=NORMAL",
-                "",
-                "Jan 15 11:30:00 srv01 sudo: user : TTY=pts/0 ; PWD=/home/user",
-                "  USER=root ; COMMAND=/bin/cat /etc/shadow"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYLINUXHARDENING_6}
+              output={CODE_CYBERSECURITYLINUXHARDENING_7}
             />
           </div>
         </div>

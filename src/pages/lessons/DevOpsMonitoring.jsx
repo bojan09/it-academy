@@ -3,6 +3,138 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_DEVOPSMONITORING_1 = `version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    ports: ['9090:9090']
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports: ['3000:3000']
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+    ports: ['9100:9100']
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:`
+const CODE_DEVOPSMONITORING_2 = `global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - 'alerts.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'lab-ubuntu'`
+const CODE_DEVOPSMONITORING_3 = `# ── CPU ──────────────────────────────────────────────────────
+# CPU usage % per instance
+100 - (avg by(instance) (rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)
+
+# ── Memory ───────────────────────────────────────────────────
+# Available memory %
+node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100
+
+# ── Disk ─────────────────────────────────────────────────────
+# Disk usage % per mount
+100 - (node_filesystem_avail_bytes{fstype!~'tmpfs|overlay'} /
+       node_filesystem_size_bytes{fstype!~'tmpfs|overlay'} * 100)
+
+# ── Network ──────────────────────────────────────────────────
+# Network throughput (bytes/sec receive)
+rate(node_network_receive_bytes_total{device!='lo'}[5m])
+
+# ── Alerts.yml example ───────────────────────────────────────
+# groups:
+#   - name: infrastructure
+#     rules:
+#       - alert: HighCPU
+#         expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode='idle'}[5m]))*100) > 90
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: 'CPU above 90% for 5 minutes on {{ $labels.instance }}'`
+const CODE_DEVOPSMONITORING_4 = `mkdir -p ~/monitoring && cd ~/monitoring
+
+# Create minimal prometheus config
+cat > prometheus.yml << 'EOF'
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: node
+    static_configs:
+      - targets: ['node-exporter:9100']
+EOF
+
+# Create docker-compose.yml (stripped down)
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes: ['./prometheus.yml:/etc/prometheus/prometheus.yml']
+    ports: ['9090:9090']
+  grafana:
+    image: grafana/grafana
+    environment: ['GF_SECURITY_ADMIN_PASSWORD=admin']
+    ports: ['3000:3000']
+  node-exporter:
+    image: prom/node-exporter
+    ports: ['9100:9100']
+EOF
+
+docker compose up -d
+docker compose ps`
+const CODE_DEVOPSMONITORING_5 = `NAME                    STATUS
+monitoring-prometheus-1  running  0.0.0.0:9090->9090/tcp
+monitoring-grafana-1     running  0.0.0.0:3000->3000/tcp
+monitoring-node-exporter-1 running  0.0.0.0:9100->9100/tcp`
+const CODE_DEVOPSMONITORING_6 = `# Check node exporter is exposing metrics
+curl -s http://localhost:9100/metrics | grep node_cpu | head -5
+
+# Query via Prometheus API
+curl -s 'http://localhost:9090/api/v1/query?query=up' |
+  python3 -c "import json,sys; d=json.load(sys.stdin); print([r['metric']['job'] for r in d['data']['result']])"`
+const CODE_DEVOPSMONITORING_7 = `node_cpu_seconds_total{cpu='0',mode='idle'} 12345.67
+node_cpu_seconds_total{cpu='0',mode='system'} 234.56
+
+['node', 'prometheus']   <- both targets UP`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -154,102 +286,15 @@ export default function DevOpsMonitoring() {
       <section>
         <h2>Docker Compose Stack</h2>
         <CodeBlock title="docker-compose.yml — Prometheus + Grafana + Node Exporter" language="yaml"
-          code={[
-            "version: '3.8'",
-            "",
-            "services:",
-            "  prometheus:",
-            "    image: prom/prometheus:latest",
-            "    volumes:",
-            "      - ./prometheus.yml:/etc/prometheus/prometheus.yml",
-            "      - ./alerts.yml:/etc/prometheus/alerts.yml",
-            "      - prometheus_data:/prometheus",
-            "    command:",
-            "      - '--config.file=/etc/prometheus/prometheus.yml'",
-            "      - '--storage.tsdb.retention.time=30d'",
-            "    ports: ['9090:9090']",
-            "    restart: unless-stopped",
-            "",
-            "  grafana:",
-            "    image: grafana/grafana:latest",
-            "    volumes:",
-            "      - grafana_data:/var/lib/grafana",
-            "    environment:",
-            "      - GF_SECURITY_ADMIN_PASSWORD=admin",
-            "    ports: ['3000:3000']",
-            "    restart: unless-stopped",
-            "",
-            "  node-exporter:",
-            "    image: prom/node-exporter:latest",
-            "    volumes:",
-            "      - /proc:/host/proc:ro",
-            "      - /sys:/host/sys:ro",
-            "      - /:/rootfs:ro",
-            "    command:",
-            "      - '--path.procfs=/host/proc'",
-            "      - '--path.sysfs=/host/sys'",
-            "    ports: ['9100:9100']",
-            "    restart: unless-stopped",
-            "",
-            "volumes:",
-            "  prometheus_data:",
-            "  grafana_data:"
-          ].join('\n')} />
+          code={CODE_DEVOPSMONITORING_1} />
         <CodeBlock className="mt-4" title="prometheus.yml — scrape configuration" language="yaml"
-          code={[
-            "global:",
-            "  scrape_interval: 15s",
-            "  evaluation_interval: 15s",
-            "",
-            "rule_files:",
-            "  - 'alerts.yml'",
-            "",
-            "scrape_configs:",
-            "  - job_name: 'prometheus'",
-            "    static_configs:",
-            "      - targets: ['localhost:9090']",
-            "",
-            "  - job_name: 'node'",
-            "    static_configs:",
-            "      - targets: ['node-exporter:9100']",
-            "        labels:",
-            "          instance: 'lab-ubuntu'"
-          ].join('\n')} />
+          code={CODE_DEVOPSMONITORING_2} />
       </section>
 
       <section>
         <h2>PromQL Queries for Infrastructure</h2>
         <CodeBlock title="Essential PromQL queries" language="bash"
-          code={[
-            "# ── CPU ──────────────────────────────────────────────────────",
-            "# CPU usage % per instance",
-            "100 - (avg by(instance) (rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)",
-            "",
-            "# ── Memory ───────────────────────────────────────────────────",
-            "# Available memory %",
-            "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100",
-            "",
-            "# ── Disk ─────────────────────────────────────────────────────",
-            "# Disk usage % per mount",
-            "100 - (node_filesystem_avail_bytes{fstype!~'tmpfs|overlay'} /",
-            "       node_filesystem_size_bytes{fstype!~'tmpfs|overlay'} * 100)",
-            "",
-            "# ── Network ──────────────────────────────────────────────────",
-            "# Network throughput (bytes/sec receive)",
-            "rate(node_network_receive_bytes_total{device!='lo'}[5m])",
-            "",
-            "# ── Alerts.yml example ───────────────────────────────────────",
-            "# groups:",
-            "#   - name: infrastructure",
-            "#     rules:",
-            "#       - alert: HighCPU",
-            "#         expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode='idle'}[5m]))*100) > 90",
-            "#         for: 5m",
-            "#         labels:",
-            "#           severity: warning",
-            "#         annotations:",
-            "#           summary: 'CPU above 90% for 5 minutes on {{ $labels.instance }}'"
-          ].join('\n')} />
+          code={CODE_DEVOPSMONITORING_3} />
       </section>
 
       <section>
@@ -263,62 +308,13 @@ export default function DevOpsMonitoring() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Deploy the monitoring stack with Docker Compose."
-              command={[
-                "mkdir -p ~/monitoring && cd ~/monitoring",
-                "",
-                "# Create minimal prometheus config",
-                "cat > prometheus.yml << 'EOF'",
-                "global:",
-                "  scrape_interval: 15s",
-                "scrape_configs:",
-                "  - job_name: node",
-                "    static_configs:",
-                "      - targets: ['node-exporter:9100']",
-                "EOF",
-                "",
-                "# Create docker-compose.yml (stripped down)",
-                "cat > docker-compose.yml << 'EOF'",
-                "version: '3.8'",
-                "services:",
-                "  prometheus:",
-                "    image: prom/prometheus",
-                "    volumes: ['./prometheus.yml:/etc/prometheus/prometheus.yml']",
-                "    ports: ['9090:9090']",
-                "  grafana:",
-                "    image: grafana/grafana",
-                "    environment: ['GF_SECURITY_ADMIN_PASSWORD=admin']",
-                "    ports: ['3000:3000']",
-                "  node-exporter:",
-                "    image: prom/node-exporter",
-                "    ports: ['9100:9100']",
-                "EOF",
-                "",
-                "docker compose up -d",
-                "docker compose ps"
-              ].join('\n')}
-              output={[
-                "NAME                    STATUS",
-                "monitoring-prometheus-1  running  0.0.0.0:9090->9090/tcp",
-                "monitoring-grafana-1     running  0.0.0.0:3000->3000/tcp",
-                "monitoring-node-exporter-1 running  0.0.0.0:9100->9100/tcp"
-              ].join('\n')}
+              command={CODE_DEVOPSMONITORING_4}
+              output={CODE_DEVOPSMONITORING_5}
             />
             <LabStep number={2}
               description="Verify metrics are flowing and run a PromQL query."
-              command={[
-                "# Check node exporter is exposing metrics",
-                "curl -s http://localhost:9100/metrics | grep node_cpu | head -5",
-                "",
-                "# Query via Prometheus API",
-                "curl -s 'http://localhost:9090/api/v1/query?query=up' |",
-                "  python3 -c \"import json,sys; d=json.load(sys.stdin); print([r['metric']['job'] for r in d['data']['result']])\""
-              ].join('\n')}
-              output={[
-                "node_cpu_seconds_total{cpu='0',mode='idle'} 12345.67",
-                "node_cpu_seconds_total{cpu='0',mode='system'} 234.56",
-                "",
-                "['node', 'prometheus']   <- both targets UP"
-              ].join('\n')}
+              command={CODE_DEVOPSMONITORING_6}
+              output={CODE_DEVOPSMONITORING_7}
             />
           </div>
         </div>

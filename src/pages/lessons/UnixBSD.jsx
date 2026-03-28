@@ -3,6 +3,43 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_UNIXBSD_1 = `# Bootstrap pkg if first run
+pkg bootstrap
+
+# Update package catalogue
+pkg update
+
+# Install packages
+pkg install nginx python39 vim
+
+# Upgrade all installed packages
+pkg upgrade
+
+# Search for packages
+pkg search webserver
+
+# Show package info
+pkg info nginx
+
+# List installed packages
+pkg list
+
+# Remove a package
+pkg delete nginx
+
+# Audit for known vulnerabilities
+pkg audit -F`
+const CODE_UNIXBSD_2 = `uname -a           # Linux kernel info
+uname -s           # OS name: Linux (vs FreeBSD, Darwin)
+
+# On Linux, check if any BSD tools are installed
+which pkg 2>/dev/null || echo 'pkg not available (Linux system)'
+
+# macOS/BSD users have 'sw_vers' for version info
+# sw_vers          # on macOS only`
+
+
 const QUIZ_QUESTIONS = [
   { id:'q1', question:'What is the main licensing difference between BSD and Linux?', options:['There is no licensing difference','BSD uses the permissive BSD/MIT license allowing use in proprietary products without source disclosure; Linux uses the GPL which requires derivative works to be open source','BSD requires commercial licenses; Linux is free','GPL allows commercial use; BSD does not'], correct:1, explanation:'The BSD license (2-clause or 3-clause) allows anyone to use, modify, and redistribute the code — even in closed-source commercial products — with minimal requirements (attribution). The GPL (Linux kernel) requires that derivative works also be GPL-licensed. Apple used BSD networking code in macOS without open-sourcing all of macOS. Sony uses FreeBSD in PlayStation OS. This licensing flexibility drives BSD adoption in commercial products.' },
   { id:'q2', question:'What is the FreeBSD Ports system?', options:['A package manager for downloading pre-compiled binaries','A collection of build scripts and patches for compiling third-party software from source on FreeBSD, with automatic dependency handling — produces locally optimised binaries','A repository of FreeBSD kernel modules','A system for managing network ports and firewall rules'], correct:1, explanation:'The FreeBSD Ports Collection contains build recipes (Makefiles + patches) for thousands of applications. "cd /usr/ports/www/nginx && make install clean" downloads the source, applies BSD-specific patches, compiles with local optimisations, and installs. pkg is the binary package manager (like apt) that installs pre-compiled versions. Ports give you customisation (compile with specific options); pkg gives you speed. Both share the same dependency graph.' },
@@ -60,7 +97,7 @@ export default function UnixBSD() {
       <section>
         <h2>FreeBSD Package Management</h2>
         <CodeBlock title="pkg — FreeBSD binary package manager" language="bash"
-          code={["# Bootstrap pkg if first run","pkg bootstrap","","# Update package catalogue","pkg update","","# Install packages","pkg install nginx python39 vim","","# Upgrade all installed packages","pkg upgrade","","# Search for packages","pkg search webserver","","# Show package info","pkg info nginx","","# List installed packages","pkg list","","# Remove a package","pkg delete nginx","","# Audit for known vulnerabilities","pkg audit -F"].join('\n')} />
+          code={CODE_UNIXBSD_1} />
       </section>
       <section>
         <h2>VMware Lab Exercise</h2>
@@ -68,7 +105,7 @@ export default function UnixBSD() {
           <div className="lab-header"><span className="lab-badge">LAB UNIX-3</span><span className="text-sm font-semibold text-white">Explore BSD Concepts on Ubuntu</span><span className="ml-auto text-xs text-slate-500 font-mono">~10 min</span></div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Compare Linux and BSD uname output to understand system identification."
-              command={["uname -a           # Linux kernel info","uname -s           # OS name: Linux (vs FreeBSD, Darwin)","","# On Linux, check if any BSD tools are installed","which pkg 2>/dev/null || echo 'pkg not available (Linux system)'","","# macOS/BSD users have 'sw_vers' for version info","# sw_vers          # on macOS only"].join('\n')}
+              command={CODE_UNIXBSD_2}
               output={"Linux srv01 5.15.0 #1 SMP x86_64 GNU/Linux\nLinux\npkg not available (Linux system)"} />
           </div>
         </div>

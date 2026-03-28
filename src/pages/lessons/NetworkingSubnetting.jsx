@@ -3,6 +3,49 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_NETWORKINGSUBNETTING_1 = `sudo apt install ipcalc -y
+
+# Calculate subnet info for each of our lab addresses
+ipcalc 192.168.100.10/24
+ipcalc 10.50.200.100/18
+ipcalc 172.16.45.200/20`
+const CODE_NETWORKINGSUBNETTING_2 = `Address:   192.168.100.10         11000000.10101000.01100100. 00001010
+Netmask:   255.255.255.0 = 24      11111111.11111111.11111111. 00000000
+Network:   192.168.100.0/24
+HostMin:   192.168.100.1
+HostMax:   192.168.100.254
+Broadcast: 192.168.100.255
+Hosts/Net: 254`
+const CODE_NETWORKINGSUBNETTING_3 = `python3 << 'PYEOF'
+import ipaddress
+
+# Inspect a network
+net = ipaddress.ip_network('192.168.100.0/24')
+print(f'Network:   {net.network_address}')
+print(f'Broadcast: {net.broadcast_address}')
+print(f'Netmask:   {net.netmask}')
+print(f'Hosts:     {net.num_addresses - 2}')
+
+# Split into 4 subnets
+print('\\
+Subnets (/26):')
+for subnet in net.subnets(prefixlen_diff=2):
+    hosts = list(subnet.hosts())
+    print(f'  {subnet}  first={hosts[0]}  last={hosts[-1]}')
+PYEOF`
+const CODE_NETWORKINGSUBNETTING_4 = `Network:   192.168.100.0
+Broadcast: 192.168.100.255
+Netmask:   255.255.255.0
+Hosts:     254
+
+Subnets (/26):
+  192.168.100.0/26    first=192.168.100.1   last=192.168.100.62
+  192.168.100.64/26   first=192.168.100.65  last=192.168.100.126
+  192.168.100.128/26  first=192.168.100.129 last=192.168.100.190
+  192.168.100.192/26  first=192.168.100.193 last=192.168.100.254`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -310,56 +353,13 @@ export default function NetworkingSubnetting() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Use ipcalc to verify subnet calculations on the Ubuntu VM."
-              command={[
-                "sudo apt install ipcalc -y",
-                "",
-                "# Calculate subnet info for each of our lab addresses",
-                "ipcalc 192.168.100.10/24",
-                "ipcalc 10.50.200.100/18",
-                "ipcalc 172.16.45.200/20"
-              ].join('\n')}
-              output={[
-                "Address:   192.168.100.10         11000000.10101000.01100100. 00001010",
-                "Netmask:   255.255.255.0 = 24      11111111.11111111.11111111. 00000000",
-                "Network:   192.168.100.0/24",
-                "HostMin:   192.168.100.1",
-                "HostMax:   192.168.100.254",
-                "Broadcast: 192.168.100.255",
-                "Hosts/Net: 254"
-              ].join('\n')}
+              command={CODE_NETWORKINGSUBNETTING_1}
+              output={CODE_NETWORKINGSUBNETTING_2}
             />
             <LabStep number={2}
               description="Use Python's ipaddress module — the production way to do subnet math."
-              command={[
-                "python3 << 'PYEOF'",
-                "import ipaddress",
-                "",
-                "# Inspect a network",
-                "net = ipaddress.ip_network('192.168.100.0/24')",
-                "print(f'Network:   {net.network_address}')",
-                "print(f'Broadcast: {net.broadcast_address}')",
-                "print(f'Netmask:   {net.netmask}')",
-                "print(f'Hosts:     {net.num_addresses - 2}')",
-                "",
-                "# Split into 4 subnets",
-                "print('\\nSubnets (/26):')",
-                "for subnet in net.subnets(prefixlen_diff=2):",
-                "    hosts = list(subnet.hosts())",
-                "    print(f'  {subnet}  first={hosts[0]}  last={hosts[-1]}')",
-                "PYEOF"
-              ].join('\n')}
-              output={[
-                "Network:   192.168.100.0",
-                "Broadcast: 192.168.100.255",
-                "Netmask:   255.255.255.0",
-                "Hosts:     254",
-                "",
-                "Subnets (/26):",
-                "  192.168.100.0/26    first=192.168.100.1   last=192.168.100.62",
-                "  192.168.100.64/26   first=192.168.100.65  last=192.168.100.126",
-                "  192.168.100.128/26  first=192.168.100.129 last=192.168.100.190",
-                "  192.168.100.192/26  first=192.168.100.193 last=192.168.100.254"
-              ].join('\n')}
+              command={CODE_NETWORKINGSUBNETTING_3}
+              output={CODE_NETWORKINGSUBNETTING_4}
             />
           </div>
         </div>

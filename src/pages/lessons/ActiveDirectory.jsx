@@ -4,6 +4,100 @@ import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 import GlossaryTooltip from '../../components/GlossaryTooltip.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_ACTIVEDIRECTORY_1 = `# Rename the server
+Rename-Computer -NewName "DC01" -Restart
+
+# After reboot — set static IP
+New-NetIPAddress -InterfaceAlias "Ethernet0" -IPAddress 192.168.100.10 -PrefixLength 24 -DefaultGateway 192.168.100.1
+
+# Set DNS to itself (required before AD promotion)
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet0" -ServerAddresses 127.0.0.1`
+const CODE_ACTIVEDIRECTORY_2 = `Success Restart Needed Exit Code      Feature Result
+------- -------------- ---------      --------------
+True    No             Success        {Active Directory Domain Services, DNS...}`
+const CODE_ACTIVEDIRECTORY_3 = `$securePassword = ConvertTo-SecureString "Admin@Lab123!" -AsPlainText -Force
+
+Install-ADDSForest -DomainName "lab.local" -DomainNetBIOSName "LAB" -DomainMode "WinThreshold" -ForestMode "WinThreshold" -InstallDNS -SafeModeAdministratorPassword $securePassword -Force`
+const CODE_ACTIVEDIRECTORY_4 = `WARNING: Windows Server 2025 evaluation builds expire after 180 days.
+The target server will be configured as a domain controller and restarted.
+...
+✔ Server successfully configured as domain controller for lab.local
+Restarting in 10 seconds...`
+const CODE_ACTIVEDIRECTORY_5 = `# Verify the domain
+Get-ADDomain | Select-Object DNSRoot, DomainMode, PDCEmulator
+
+# Verify DNS SRV records were created
+Resolve-DnsName -Name "_ldap._tcp.dc._msdcs.lab.local" -Type SRV
+
+# Check SYSVOL is shared
+net share`
+const CODE_ACTIVEDIRECTORY_6 = `DNSRoot    DomainMode PDCEmulator
+-------    ---------- -----------
+lab.local  WinThreshold DC01.lab.local
+
+Name    Type TTL   Section    NameTarget        Port Weight Priority
+----    ---- ---   -------    ----------        ---- ------ --------
+_ldap   SRV  600   Answer     dc01.lab.local    389  0      0
+
+Share name   Resource                        Remark
+SYSVOL       C:\\Windows\\SYSVOL\\sysvol        Logon server share
+NETLOGON     C:\\Windows\\SYSVOL\\...\\scripts   Logon server share`
+const CODE_ACTIVEDIRECTORY_7 = `# Create OUs
+New-ADOrganizationalUnit -Name "IT"      -Path "DC=lab,DC=local"
+New-ADOrganizationalUnit -Name "Finance" -Path "DC=lab,DC=local"
+New-ADOrganizationalUnit -Name "HR"      -Path "DC=lab,DC=local"
+
+# Create a test user in the IT OU
+New-ADUser -Name "Alice Smith" -GivenName "Alice" -Surname "Smith" -SamAccountName "asmith" -UserPrincipalName "asmith@lab.local" -Path "OU=IT,DC=lab,DC=local" -AccountPassword (ConvertTo-SecureString "User@Lab123!" -AsPlainText -Force) -Enabled $true -PasswordNeverExpires $false -ChangePasswordAtLogon $true
+
+# Verify
+Get-ADUser -Identity asmith -Properties *`
+const CODE_ACTIVEDIRECTORY_8 = `DistinguishedName : CN=Alice Smith,OU=IT,DC=lab,DC=local
+Enabled           : True
+GivenName         : Alice
+SamAccountName    : asmith
+UserPrincipalName : asmith@lab.local
+✔ User created successfully`
+const CODE_ACTIVEDIRECTORY_9 = `# Verify FSMO roles are on DC01
+netdom query fsmo`
+const CODE_ACTIVEDIRECTORY_10 = `Schema master          DC01.lab.local
+Domain naming master   DC01.lab.local
+PDC                    DC01.lab.local
+RID pool manager       DC01.lab.local
+Infrastructure master  DC01.lab.local
+The command completed successfully.`
+const CODE_ACTIVEDIRECTORY_11 = `# ── User Management ──────────────────────────────────────────
+Get-ADUser -Filter * | Select-Object Name, Enabled, LastLogonDate
+Get-ADUser -Identity jdoe -Properties *
+New-ADUser -Name "John Doe" -SamAccountName jdoe -Enabled $true
+Set-ADUser -Identity jdoe -Department "IT" -Manager "asmith"
+Disable-ADAccount -Identity jdoe
+Unlock-ADAccount -Identity jdoe
+Set-ADAccountPassword -Identity jdoe -Reset -NewPassword (Read-Host -AsSecureString)
+
+# ── Group Management ──────────────────────────────────────────
+Get-ADGroup -Filter * | Select-Object Name, GroupScope, GroupCategory
+New-ADGroup -Name "IT-Admins" -GroupScope Global -GroupCategory Security -Path "OU=IT,DC=lab,DC=local"
+Add-ADGroupMember -Identity "IT-Admins" -Members jdoe, asmith
+Get-ADGroupMember -Identity "Domain Admins" -Recursive
+
+# ── Computer Accounts ─────────────────────────────────────────
+Get-ADComputer -Filter * | Select-Object Name, OperatingSystem, LastLogonDate
+Remove-ADComputer -Identity "OLD-PC01"
+
+# ── OU Management ────────────────────────────────────────────
+Get-ADOrganizationalUnit -Filter * | Select-Object Name, DistinguishedName
+New-ADOrganizationalUnit -Name "Servers" -Path "DC=lab,DC=local"
+Move-ADObject -Identity "CN=Alice Smith,OU=HR,DC=lab,DC=local" -TargetPath "OU=IT,DC=lab,DC=local"
+
+# ── Replication & Health ──────────────────────────────────────
+repadmin /replsummary
+repadmin /showrepl
+dcdiag /test:replications /v
+netdom query fsmo`
+
+
 // ─── Quiz questions ───────────────────────────────────────────────────────────
 const QUIZ_QUESTIONS = [
   {
@@ -406,16 +500,7 @@ export default function ActiveDirectory() {
             <LabStep
               number={1}
               description="Rename the server to DC01 and set a static IP. Open PowerShell as Administrator."
-              command={[
-    "# Rename the server",
-    "Rename-Computer -NewName \"DC01\" -Restart",
-    "",
-    "# After reboot — set static IP",
-    "New-NetIPAddress -InterfaceAlias \"Ethernet0\" -IPAddress 192.168.100.10 -PrefixLength 24 -DefaultGateway 192.168.100.1",
-    "",
-    "# Set DNS to itself (required before AD promotion)",
-    "Set-DnsClientServerAddress -InterfaceAlias \"Ethernet0\" -ServerAddresses 127.0.0.1"
-  ].join('\n')}
+              command={CODE_ACTIVEDIRECTORY_1}
             />
 
             {/* Step 2 */}
@@ -423,102 +508,39 @@ export default function ActiveDirectory() {
               number={2}
               description="Install the AD DS and DNS Server roles."
               command={"Install-WindowsFeature -Name AD-Domain-Services, DNS -IncludeManagementTools -Verbose"}
-              output={[
-    "Success Restart Needed Exit Code      Feature Result",
-    "------- -------------- ---------      --------------",
-    "True    No             Success        {Active Directory Domain Services, DNS...}"
-  ].join('\n')}
+              output={CODE_ACTIVEDIRECTORY_2}
             />
 
             {/* Step 3 */}
             <LabStep
               number={3}
               description="Promote the server to a Domain Controller and create the forest. This will restart the server."
-              command={[
-    "$securePassword = ConvertTo-SecureString \"Admin@Lab123!\" -AsPlainText -Force",
-    "",
-    "Install-ADDSForest -DomainName \"lab.local\" -DomainNetBIOSName \"LAB\" -DomainMode \"WinThreshold\" -ForestMode \"WinThreshold\" -InstallDNS -SafeModeAdministratorPassword $securePassword -Force"
-  ].join('\n')}
-              output={[
-    "WARNING: Windows Server 2025 evaluation builds expire after 180 days.",
-    "The target server will be configured as a domain controller and restarted.",
-    "...",
-    "✔ Server successfully configured as domain controller for lab.local",
-    "Restarting in 10 seconds..."
-  ].join('\n')}
+              command={CODE_ACTIVEDIRECTORY_3}
+              output={CODE_ACTIVEDIRECTORY_4}
             />
 
             {/* Step 4 */}
             <LabStep
               number={4}
               description="After reboot — log in as LAB\\Administrator. Verify the deployment."
-              command={[
-    "# Verify the domain",
-    "Get-ADDomain | Select-Object DNSRoot, DomainMode, PDCEmulator",
-    "",
-    "# Verify DNS SRV records were created",
-    "Resolve-DnsName -Name \"_ldap._tcp.dc._msdcs.lab.local\" -Type SRV",
-    "",
-    "# Check SYSVOL is shared",
-    "net share"
-  ].join('\n')}
-              output={[
-    "DNSRoot    DomainMode PDCEmulator",
-    "-------    ---------- -----------",
-    "lab.local  WinThreshold DC01.lab.local",
-    "",
-    "Name    Type TTL   Section    NameTarget        Port Weight Priority",
-    "----    ---- ---   -------    ----------        ---- ------ --------",
-    "_ldap   SRV  600   Answer     dc01.lab.local    389  0      0",
-    "",
-    "Share name   Resource                        Remark",
-    "SYSVOL       C:\\Windows\\SYSVOL\\sysvol        Logon server share",
-    "NETLOGON     C:\\Windows\\SYSVOL\\...\\scripts   Logon server share"
-  ].join('\n')}
+              command={CODE_ACTIVEDIRECTORY_5}
+              output={CODE_ACTIVEDIRECTORY_6}
             />
 
             {/* Step 5 */}
             <LabStep
               number={5}
               description="Create a basic OU structure and test user account."
-              command={[
-    "# Create OUs",
-    "New-ADOrganizationalUnit -Name \"IT\"      -Path \"DC=lab,DC=local\"",
-    "New-ADOrganizationalUnit -Name \"Finance\" -Path \"DC=lab,DC=local\"",
-    "New-ADOrganizationalUnit -Name \"HR\"      -Path \"DC=lab,DC=local\"",
-    "",
-    "# Create a test user in the IT OU",
-    "New-ADUser -Name \"Alice Smith\" -GivenName \"Alice\" -Surname \"Smith\" -SamAccountName \"asmith\" -UserPrincipalName \"asmith@lab.local\" -Path \"OU=IT,DC=lab,DC=local\" -AccountPassword (ConvertTo-SecureString \"User@Lab123!\" -AsPlainText -Force) -Enabled $true -PasswordNeverExpires $false -ChangePasswordAtLogon $true",
-    "",
-    "# Verify",
-    "Get-ADUser -Identity asmith -Properties *"
-  ].join('\n')}
-              output={[
-    "DistinguishedName : CN=Alice Smith,OU=IT,DC=lab,DC=local",
-    "Enabled           : True",
-    "GivenName         : Alice",
-    "SamAccountName    : asmith",
-    "UserPrincipalName : asmith@lab.local",
-    "✔ User created successfully"
-  ].join('\n')}
+              command={CODE_ACTIVEDIRECTORY_7}
+              output={CODE_ACTIVEDIRECTORY_8}
             />
 
             {/* Step 6 */}
             <LabStep
               number={6}
               description="Take a VMware snapshot now — this is your clean AD baseline."
-              command={[
-    "# Verify FSMO roles are on DC01",
-    "netdom query fsmo"
-  ].join('\n')}
-              output={[
-    "Schema master          DC01.lab.local",
-    "Domain naming master   DC01.lab.local",
-    "PDC                    DC01.lab.local",
-    "RID pool manager       DC01.lab.local",
-    "Infrastructure master  DC01.lab.local",
-    "The command completed successfully."
-  ].join('\n')}
+              command={CODE_ACTIVEDIRECTORY_9}
+              output={CODE_ACTIVEDIRECTORY_10}
             />
 
             <Callout type="success" icon="✅" title="Lab Complete">
@@ -605,37 +627,7 @@ export default function ActiveDirectory() {
         <CodeBlock
           title="Active Directory — Essential PowerShell Commands"
           language="powershell"
-          code={[
-    "# ── User Management ──────────────────────────────────────────",
-    "Get-ADUser -Filter * | Select-Object Name, Enabled, LastLogonDate",
-    "Get-ADUser -Identity jdoe -Properties *",
-    "New-ADUser -Name \"John Doe\" -SamAccountName jdoe -Enabled $true",
-    "Set-ADUser -Identity jdoe -Department \"IT\" -Manager \"asmith\"",
-    "Disable-ADAccount -Identity jdoe",
-    "Unlock-ADAccount -Identity jdoe",
-    "Set-ADAccountPassword -Identity jdoe -Reset -NewPassword (Read-Host -AsSecureString)",
-    "",
-    "# ── Group Management ──────────────────────────────────────────",
-    "Get-ADGroup -Filter * | Select-Object Name, GroupScope, GroupCategory",
-    "New-ADGroup -Name \"IT-Admins\" -GroupScope Global -GroupCategory Security -Path \"OU=IT,DC=lab,DC=local\"",
-    "Add-ADGroupMember -Identity \"IT-Admins\" -Members jdoe, asmith",
-    "Get-ADGroupMember -Identity \"Domain Admins\" -Recursive",
-    "",
-    "# ── Computer Accounts ─────────────────────────────────────────",
-    "Get-ADComputer -Filter * | Select-Object Name, OperatingSystem, LastLogonDate",
-    "Remove-ADComputer -Identity \"OLD-PC01\"",
-    "",
-    "# ── OU Management ────────────────────────────────────────────",
-    "Get-ADOrganizationalUnit -Filter * | Select-Object Name, DistinguishedName",
-    "New-ADOrganizationalUnit -Name \"Servers\" -Path \"DC=lab,DC=local\"",
-    "Move-ADObject -Identity \"CN=Alice Smith,OU=HR,DC=lab,DC=local\" -TargetPath \"OU=IT,DC=lab,DC=local\"",
-    "",
-    "# ── Replication & Health ──────────────────────────────────────",
-    "repadmin /replsummary",
-    "repadmin /showrepl",
-    "dcdiag /test:replications /v",
-    "netdom query fsmo"
-  ].join('\n')}
+          code={CODE_ACTIVEDIRECTORY_11}
         />
       </section>
 

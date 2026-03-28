@@ -3,6 +3,54 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_UNIXPROCESSES_1 = `# ── Inspect processes ────────────────────────────────────
+ps aux                    # All processes, all users
+ps aux | grep nginx        # Filter by name
+ps -ef                    # Full format (PPID visible)
+pgrep nginx               # Get PIDs by name
+pgrep -u root             # Get PIDs owned by root
+
+# ── Signals ──────────────────────────────────────────────
+kill PID                  # SIGTERM (15) — graceful
+kill -9 PID               # SIGKILL — force
+kill -HUP PID             # SIGHUP — reload config
+pkill nginx               # Kill by process name
+pkill -u alice            # Kill all of alice's processes
+killall -HUP sshd         # Signal all matching processes
+
+# ── Job control ──────────────────────────────────────────
+long_command &            # Run in background
+Ctrl+Z                    # Suspend current process
+jobs                      # List background/suspended jobs
+fg %1                     # Bring job 1 to foreground
+bg %1                     # Resume job 1 in background
+nohup command &           # Run immune to hangup (survives logout)
+disown %1                 # Remove from job table (survives shell exit)`
+const CODE_UNIXPROCESSES_2 = `# Start two background jobs
+sleep 60 &
+sleep 60 &
+
+# List them
+jobs
+
+# Check their PIDs
+ps aux | grep sleep | grep -v grep
+
+# Bring first to foreground and cancel it
+fg %1
+# Press Ctrl+C to kill it
+
+# Kill the remaining job by PID
+kill %2
+echo 'Both jobs cleaned up'`
+const CODE_UNIXPROCESSES_3 = `[1] 1234
+[2] 1235
+[1]-  Running    sleep 60 &
+[2]+  Running    sleep 60 &
+Both jobs cleaned up`
+
+
 const QUIZ_QUESTIONS = [
   { id:'q1', question:'What is the difference between SIGTERM and SIGKILL?', options:['They are identical signals','SIGTERM (15) politely requests the process to terminate — the process can catch it, clean up, and exit gracefully; SIGKILL (9) is sent directly to the kernel and cannot be caught, blocked, or ignored — the process is immediately destroyed without cleanup','SIGTERM kills the process group; SIGKILL kills only the named process','SIGKILL requires root; SIGTERM can be sent by any user'], correct:1, explanation:'Always try SIGTERM first: kill PID (default is SIGTERM). The well-behaved process closes files, releases locks, flushes buffers, and exits. Give it 5-10 seconds. Only use SIGKILL (kill -9 PID or kill -KILL PID) if the process is stuck and not responding to SIGTERM. SIGKILL-ing a process can leave: temporary files, lock files, open database transactions, and incomplete I/O. It is a last resort.' },
   { id:'q2', question:'What does "jobs" show in a shell session and how do you bring a background job to the foreground?', options:['It lists all system processes','jobs lists processes started in the current shell session that are running in the background (with &) or have been suspended (Ctrl+Z); fg %N brings job N to the foreground, bg %N resumes a suspended job in the background','jobs lists scheduled cron tasks','It shows CPU usage for each running program'], correct:1, explanation:'Unix job control: command & runs it in background. Ctrl+Z suspends a running process (SIGTSTP). jobs shows all background/suspended jobs with their job numbers. fg %1 brings job 1 to the foreground. bg %1 resumes job 1 in the background. The job number (%N) is shell-local — different from the PID. disown %N removes a job from the shell\'s job table so it survives shell exit (unlike plain backgrounding).' },
@@ -39,7 +87,7 @@ export default function UnixProcesses() {
       <section>
         <h2>Process & Signal Reference</h2>
         <CodeBlock title="Complete process management toolkit" language="bash"
-          code={["# ── Inspect processes ────────────────────────────────────","ps aux                    # All processes, all users","ps aux | grep nginx        # Filter by name","ps -ef                    # Full format (PPID visible)","pgrep nginx               # Get PIDs by name","pgrep -u root             # Get PIDs owned by root","","# ── Signals ──────────────────────────────────────────────","kill PID                  # SIGTERM (15) — graceful","kill -9 PID               # SIGKILL — force","kill -HUP PID             # SIGHUP — reload config","pkill nginx               # Kill by process name","pkill -u alice            # Kill all of alice's processes","killall -HUP sshd         # Signal all matching processes","","# ── Job control ──────────────────────────────────────────","long_command &            # Run in background","Ctrl+Z                    # Suspend current process","jobs                      # List background/suspended jobs","fg %1                     # Bring job 1 to foreground","bg %1                     # Resume job 1 in background","nohup command &           # Run immune to hangup (survives logout)","disown %1                 # Remove from job table (survives shell exit)"].join('\n')} />
+          code={CODE_UNIXPROCESSES_1} />
       </section>
       <section>
         <h2>VMware Lab Exercise</h2>
@@ -47,8 +95,8 @@ export default function UnixProcesses() {
           <div className="lab-header"><span className="lab-badge">LAB UNIX-5</span><span className="text-sm font-semibold text-white">Process Management on Ubuntu</span><span className="ml-auto text-xs text-slate-500 font-mono">~15 min</span></div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Practice job control and parallel execution."
-              command={["# Start two background jobs","sleep 60 &","sleep 60 &","","# List them","jobs","","# Check their PIDs","ps aux | grep sleep | grep -v grep","","# Bring first to foreground and cancel it","fg %1","# Press Ctrl+C to kill it","","# Kill the remaining job by PID","kill %2","echo 'Both jobs cleaned up'"].join('\n')}
-              output={["[1] 1234","[2] 1235","[1]-  Running    sleep 60 &","[2]+  Running    sleep 60 &","Both jobs cleaned up"].join('\n')} />
+              command={CODE_UNIXPROCESSES_2}
+              output={CODE_UNIXPROCESSES_3} />
           </div>
         </div>
       </section>

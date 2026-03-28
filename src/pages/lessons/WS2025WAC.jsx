@@ -3,6 +3,38 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WS2025WAC_1 = `# Download WAC installer
+$wacUrl = 'https://aka.ms/WACDownload'
+Invoke-WebRequest -Uri $wacUrl -OutFile C:\\Temp\\WindowsAdminCenter.msi
+
+# Install in gateway mode with HTTPS on port 443
+msiexec /i C:\\Temp\\WindowsAdminCenter.msi /qn /L*v C:\\Temp\\wac-install.log SME_PORT=443 SSL_CERTIFICATE_OPTION=generate
+
+# Wait for service to start
+Start-Sleep -Seconds 30
+Get-Service ServerManagementGateway | Select-Object Name, Status
+
+# Access: https://DC01 from any browser on the network`
+const CODE_WS2025WAC_2 = `# Check WinRM is running (required for WAC to manage servers)
+Get-Service WinRM | Select-Object Name, Status, StartType
+
+# Check WAC can reach itself via WinRM
+Test-WSMan localhost
+
+# Check Windows Firewall allows WinRM
+Get-NetFirewallRule -DisplayName '*Windows Remote Management*' |
+  Select-Object DisplayName, Enabled | Format-Table -AutoSize`
+const CODE_WS2025WAC_3 = `Name   Status  StartType
+----   ------  ---------
+WinRM  Running Automatic
+
+cfg     : http://schemas.microsoft.com/wbem/wsman/1/config
+
+DisplayName                            Enabled
+Windows Remote Management (HTTP-In)    True`
+
+
 const QUIZ_QUESTIONS = [
   {
     id:'q1', question:'What is Windows Admin Center (WAC) and what does it replace?',
@@ -90,7 +122,7 @@ export default function WS2025WAC() {
       <section>
         <h2>Installation & Setup</h2>
         <CodeBlock title="Install WAC in gateway mode on DC01" language="powershell"
-          code={["# Download WAC installer","$wacUrl = 'https://aka.ms/WACDownload'","Invoke-WebRequest -Uri $wacUrl -OutFile C:\\Temp\\WindowsAdminCenter.msi","","# Install in gateway mode with HTTPS on port 443","msiexec /i C:\\Temp\\WindowsAdminCenter.msi /qn /L*v C:\\Temp\\wac-install.log SME_PORT=443 SSL_CERTIFICATE_OPTION=generate","","# Wait for service to start","Start-Sleep -Seconds 30","Get-Service ServerManagementGateway | Select-Object Name, Status","","# Access: https://DC01 from any browser on the network"].join('\n')}
+          code={CODE_WS2025WAC_1}
         />
       </section>
       <section>
@@ -103,8 +135,8 @@ export default function WS2025WAC() {
           </div>
           <div className="lab-body space-y-8">
             <LabStep number={1} description="Check all WAC prerequisites are met on DC01."
-              command={["# Check WinRM is running (required for WAC to manage servers)","Get-Service WinRM | Select-Object Name, Status, StartType","","# Check WAC can reach itself via WinRM","Test-WSMan localhost","","# Check Windows Firewall allows WinRM","Get-NetFirewallRule -DisplayName '*Windows Remote Management*' |","  Select-Object DisplayName, Enabled | Format-Table -AutoSize"].join('\n')}
-              output={["Name   Status  StartType","----   ------  ---------","WinRM  Running Automatic","","cfg     : http://schemas.microsoft.com/wbem/wsman/1/config","","DisplayName                            Enabled","Windows Remote Management (HTTP-In)    True"].join('\n')}
+              command={CODE_WS2025WAC_2}
+              output={CODE_WS2025WAC_3}
             />
           </div>
         </div>

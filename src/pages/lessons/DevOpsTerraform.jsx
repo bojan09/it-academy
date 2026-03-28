@@ -3,6 +3,125 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_DEVOPSTERRAFORM_1 = `# ── Provider configuration ───────────────────────────────────
+terraform {
+  required_version = ">= 1.6.0"
+  required_providers {
+    local = { source = "hashicorp/local", version = "~> 2.4" }
+  }
+  # Remote state backend (production)
+  # backend "s3" {
+  #   bucket = "my-terraform-state"
+  #   key    = "prod/terraform.tfstate"
+  #   region = "us-east-1"
+  # }
+}
+
+# ── Variables ────────────────────────────────────────────────
+variable "environment" {
+  type        = string
+  description = "Deployment environment: dev, staging, prod"
+  default     = "dev"
+  validation {
+    condition     = contains(["dev","staging","prod"], var.environment)
+    error_message = "Must be dev, staging, or prod."
+  }
+}
+
+variable "server_count" {
+  type    = number
+  default = 2
+}
+
+# ── Locals (computed values) ──────────────────────────────────
+locals {
+  common_tags = {
+    environment = var.environment
+    managed_by  = "terraform"
+    team        = "infrastructure"
+  }
+}
+
+# ── Resources ────────────────────────────────────────────────
+resource "local_file" "inventory" {
+  count    = var.server_count
+  filename = "\${path.module}/server-\${count.index + 1}.txt"
+  content  = "Server \${count.index + 1} in \${var.environment}"
+}
+
+# ── Outputs ──────────────────────────────────────────────────
+output "server_files" {
+  value = local_file.inventory[*].filename
+}`
+const CODE_DEVOPSTERRAFORM_2 = `# ── Initialise ───────────────────────────────────────────────
+terraform init             # Download providers, set up backend
+terraform init -upgrade    # Upgrade provider versions
+
+# ── Validate & Format ────────────────────────────────────────
+terraform validate         # Check config syntax
+terraform fmt              # Auto-format all .tf files
+terraform fmt -check       # Fail if formatting needed (CI gate)
+
+# ── Plan ─────────────────────────────────────────────────────
+terraform plan                     # Preview all changes
+terraform plan -out=tfplan.binary  # Save plan to file
+terraform plan -var 'environment=prod'
+terraform plan -target=resource.name  # Plan single resource
+
+# ── Apply ────────────────────────────────────────────────────
+terraform apply                        # Interactive (yes/no)
+terraform apply -auto-approve          # Non-interactive (CI)
+terraform apply tfplan.binary          # Apply saved plan
+
+# ── Inspect state ────────────────────────────────────────────
+terraform show                   # Human-readable current state
+terraform state list             # All managed resources
+terraform state show resource.name  # Details of one resource
+
+# ── Destroy ──────────────────────────────────────────────────
+terraform destroy              # Destroy everything (dangerous!)
+terraform destroy -target=local_file.inventory[0]  # Targeted`
+const CODE_DEVOPSTERRAFORM_3 = `wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform -y
+terraform version`
+const CODE_DEVOPSTERRAFORM_4 = `mkdir -p ~/terraform-lab && cd ~/terraform-lab
+
+cat > main.tf << 'EOF'
+terraform {}
+
+variable "servers" {
+  default = ["web01", "app01", "db01"]
+}
+
+resource "local_file" "inventory" {
+  for_each = toset(var.servers)
+  filename = "\${path.module}/inventory/\${each.key}.txt"
+  content  = "hostname: \${each.key}\\
+managed_by: terraform"
+}
+
+output "files_created" {
+  value = keys(local_file.inventory)
+}
+EOF
+
+terraform init
+terraform plan
+terraform apply -auto-approve
+ls inventory/`
+const CODE_DEVOPSTERRAFORM_5 = `Terraform used the selected providers to generate the following execution plan.
+
+  + resource "local_file" "inventory" "app01"  will be created
+  + resource "local_file" "inventory" "db01"   will be created
+  + resource "local_file" "inventory" "web01"  will be created
+
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+app01.txt  db01.txt  web01.txt`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -142,93 +261,13 @@ export default function DevOpsTerraform() {
       <section>
         <h2>HCL Syntax & Core Concepts</h2>
         <CodeBlock title="main.tf — complete example with variables and outputs" language="bash"
-          code={[
-            "# ── Provider configuration ───────────────────────────────────",
-            "terraform {",
-            "  required_version = \">= 1.6.0\"",
-            "  required_providers {",
-            "    local = { source = \"hashicorp/local\", version = \"~> 2.4\" }",
-            "  }",
-            "  # Remote state backend (production)",
-            "  # backend \"s3\" {",
-            "  #   bucket = \"my-terraform-state\"",
-            "  #   key    = \"prod/terraform.tfstate\"",
-            "  #   region = \"us-east-1\"",
-            "  # }",
-            "}",
-            "",
-            "# ── Variables ────────────────────────────────────────────────",
-            "variable \"environment\" {",
-            "  type        = string",
-            "  description = \"Deployment environment: dev, staging, prod\"",
-            "  default     = \"dev\"",
-            "  validation {",
-            "    condition     = contains([\"dev\",\"staging\",\"prod\"], var.environment)",
-            "    error_message = \"Must be dev, staging, or prod.\"",
-            "  }",
-            "}",
-            "",
-            "variable \"server_count\" {",
-            "  type    = number",
-            "  default = 2",
-            "}",
-            "",
-            "# ── Locals (computed values) ──────────────────────────────────",
-            "locals {",
-            "  common_tags = {",
-            "    environment = var.environment",
-            "    managed_by  = \"terraform\"",
-            "    team        = \"infrastructure\"",
-            "  }",
-            "}",
-            "",
-            "# ── Resources ────────────────────────────────────────────────",
-            "resource \"local_file\" \"inventory\" {",
-            "  count    = var.server_count",
-            "  filename = \"${path.module}/server-${count.index + 1}.txt\"",
-            "  content  = \"Server ${count.index + 1} in ${var.environment}\"",
-            "}",
-            "",
-            "# ── Outputs ──────────────────────────────────────────────────",
-            "output \"server_files\" {",
-            "  value = local_file.inventory[*].filename",
-            "}"
-          ].join('\n')} />
+          code={CODE_DEVOPSTERRAFORM_1} />
       </section>
 
       <section>
         <h2>Terraform Workflow Commands</h2>
         <CodeBlock title="Core commands reference" language="bash"
-          code={[
-            "# ── Initialise ───────────────────────────────────────────────",
-            "terraform init             # Download providers, set up backend",
-            "terraform init -upgrade    # Upgrade provider versions",
-            "",
-            "# ── Validate & Format ────────────────────────────────────────",
-            "terraform validate         # Check config syntax",
-            "terraform fmt              # Auto-format all .tf files",
-            "terraform fmt -check       # Fail if formatting needed (CI gate)",
-            "",
-            "# ── Plan ─────────────────────────────────────────────────────",
-            "terraform plan                     # Preview all changes",
-            "terraform plan -out=tfplan.binary  # Save plan to file",
-            "terraform plan -var 'environment=prod'",
-            "terraform plan -target=resource.name  # Plan single resource",
-            "",
-            "# ── Apply ────────────────────────────────────────────────────",
-            "terraform apply                        # Interactive (yes/no)",
-            "terraform apply -auto-approve          # Non-interactive (CI)",
-            "terraform apply tfplan.binary          # Apply saved plan",
-            "",
-            "# ── Inspect state ────────────────────────────────────────────",
-            "terraform show                   # Human-readable current state",
-            "terraform state list             # All managed resources",
-            "terraform state show resource.name  # Details of one resource",
-            "",
-            "# ── Destroy ──────────────────────────────────────────────────",
-            "terraform destroy              # Destroy everything (dangerous!)",
-            "terraform destroy -target=local_file.inventory[0]  # Targeted"
-          ].join('\n')} />
+          code={CODE_DEVOPSTERRAFORM_2} />
       </section>
 
       <section>
@@ -242,53 +281,13 @@ export default function DevOpsTerraform() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install Terraform on the Ubuntu VM."
-              command={[
-                "wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg",
-                "echo \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list",
-                "sudo apt update && sudo apt install terraform -y",
-                "terraform version"
-              ].join('\n')}
+              command={CODE_DEVOPSTERRAFORM_3}
               output="Terraform v1.7.0"
             />
             <LabStep number={2}
               description="Write a Terraform config that manages local files as a simple demo."
-              command={[
-                "mkdir -p ~/terraform-lab && cd ~/terraform-lab",
-                "",
-                "cat > main.tf << 'EOF'",
-                "terraform {}",
-                "",
-                "variable \"servers\" {",
-                "  default = [\"web01\", \"app01\", \"db01\"]",
-                "}",
-                "",
-                "resource \"local_file\" \"inventory\" {",
-                "  for_each = toset(var.servers)",
-                "  filename = \"${path.module}/inventory/${each.key}.txt\"",
-                "  content  = \"hostname: ${each.key}\\nmanaged_by: terraform\"",
-                "}",
-                "",
-                "output \"files_created\" {",
-                "  value = keys(local_file.inventory)",
-                "}",
-                "EOF",
-                "",
-                "terraform init",
-                "terraform plan",
-                "terraform apply -auto-approve",
-                "ls inventory/"
-              ].join('\n')}
-              output={[
-                "Terraform used the selected providers to generate the following execution plan.",
-                "",
-                "  + resource \"local_file\" \"inventory\" \"app01\"  will be created",
-                "  + resource \"local_file\" \"inventory\" \"db01\"   will be created",
-                "  + resource \"local_file\" \"inventory\" \"web01\"  will be created",
-                "",
-                "Apply complete! Resources: 3 added, 0 changed, 0 destroyed.",
-                "",
-                "app01.txt  db01.txt  web01.txt"
-              ].join('\n')}
+              command={CODE_DEVOPSTERRAFORM_4}
+              output={CODE_DEVOPSTERRAFORM_5}
             />
           </div>
         </div>

@@ -3,6 +3,137 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_DEVOPSGIT_1 = `# ── Initial setup (once) ─────────────────────────────────────
+git config --global user.name "Your Name"
+git config --global user.email "you@company.com"
+git config --global core.editor "vim"
+git config --global init.defaultBranch main
+
+# ── Start work ───────────────────────────────────────────────
+git clone git@github.com:company/infrastructure.git
+cd infrastructure
+git checkout -b feature/add-monitoring    # Create & switch to new branch
+
+# ── The work loop ────────────────────────────────────────────
+# ... make changes ...
+git status                  # See what changed
+git diff                    # See exactly what changed
+git add monitoring.tf       # Stage specific file
+git add -p                  # Stage interactively (review each hunk)
+git commit -m 'feat: add Prometheus monitoring stack'
+
+# ── Stay up to date ──────────────────────────────────────────
+git fetch origin            # Download remote changes (no merge)
+git rebase origin/main      # Replay your commits on top of latest main
+
+# ── Share your work ──────────────────────────────────────────
+git push origin feature/add-monitoring
+# Open Pull Request on GitHub/GitLab
+
+# ── After PR is merged ───────────────────────────────────────
+git checkout main
+git pull origin main
+git branch -d feature/add-monitoring`
+const CODE_DEVOPSGIT_2 = `# ── Terraform ────────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+crash.log
+override.tf
+override.tf.json
+
+# ── Secrets & credentials ────────────────────────────────────
+.env
+*.env
+*.pem
+*.key
+secrets.yml
+credentials
+
+# ── Ansible ──────────────────────────────────────────────────
+*.retry
+inventory/production
+
+# ── OS & editor files ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.pyc
+venv/
+.env`
+const CODE_DEVOPSGIT_3 = `sudo apt install git -y
+git --version
+
+git config --global user.name 'Lab SysAdmin'
+git config --global user.email 'admin@lab.local'
+git config --global init.defaultBranch main
+git config --list`
+const CODE_DEVOPSGIT_4 = `git version 2.43.0
+user.name=Lab SysAdmin
+user.email=admin@lab.local
+init.defaultbranch=main`
+const CODE_DEVOPSGIT_5 = `mkdir -p ~/lab-scripts && cd ~/lab-scripts
+git init
+
+# Create .gitignore
+cat > .gitignore << 'EOF'
+*.log
+*.tmp
+__pycache__/
+*.pyc
+venv/
+.env
+secrets/
+EOF
+
+# Create README
+echo '# Lab Scripts' > README.md
+echo 'Automation scripts for the SysAdminPro lab environment.' >> README.md
+
+# Stage and commit
+git add .
+git commit -m 'init: initial repository setup with .gitignore'`
+const CODE_DEVOPSGIT_6 = `Initialized empty Git repository in /home/user/lab-scripts/.git/
+
+[main (root-commit) a1b2c3d] init: initial repository setup with .gitignore
+ 2 files changed, 4 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 README.md`
+const CODE_DEVOPSGIT_7 = `# Create feature branch
+git checkout -b feature/health-check
+
+# Add the health check script
+cat > health-check.sh << 'SCRIPT'
+#!/bin/bash
+echo '=== System Health ===' 
+df -h / | tail -1
+free -h | grep Mem
+systemctl is-active ssh && echo 'SSH: OK' || echo 'SSH: DOWN'
+SCRIPT
+chmod +x health-check.sh
+
+git add health-check.sh
+git commit -m 'feat: add system health check script'
+
+# Merge back to main
+git checkout main
+git merge feature/health-check --no-ff -m 'merge: health-check feature'
+git branch -d feature/health-check
+
+git log --oneline --graph`
+const CODE_DEVOPSGIT_8 = `*   b4c5d6e merge: health-check feature
+|\\
+| * 9a8b7c6 feat: add system health check script
+|/
+* a1b2c3d init: initial repository setup with .gitignore`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -162,39 +293,7 @@ export default function DevOpsGit() {
       <section>
         <h2>Daily Git Workflow</h2>
         <CodeBlock title="The complete daily workflow" language="bash"
-          code={[
-            "# ── Initial setup (once) ─────────────────────────────────────",
-            "git config --global user.name \"Your Name\"",
-            "git config --global user.email \"you@company.com\"",
-            "git config --global core.editor \"vim\"",
-            "git config --global init.defaultBranch main",
-            "",
-            "# ── Start work ───────────────────────────────────────────────",
-            "git clone git@github.com:company/infrastructure.git",
-            "cd infrastructure",
-            "git checkout -b feature/add-monitoring    # Create & switch to new branch",
-            "",
-            "# ── The work loop ────────────────────────────────────────────",
-            "# ... make changes ...",
-            "git status                  # See what changed",
-            "git diff                    # See exactly what changed",
-            "git add monitoring.tf       # Stage specific file",
-            "git add -p                  # Stage interactively (review each hunk)",
-            "git commit -m 'feat: add Prometheus monitoring stack'",
-            "",
-            "# ── Stay up to date ──────────────────────────────────────────",
-            "git fetch origin            # Download remote changes (no merge)",
-            "git rebase origin/main      # Replay your commits on top of latest main",
-            "",
-            "# ── Share your work ──────────────────────────────────────────",
-            "git push origin feature/add-monitoring",
-            "# Open Pull Request on GitHub/GitLab",
-            "",
-            "# ── After PR is merged ───────────────────────────────────────",
-            "git checkout main",
-            "git pull origin main",
-            "git branch -d feature/add-monitoring"
-          ].join('\n')} />
+          code={CODE_DEVOPSGIT_1} />
       </section>
 
       <section>
@@ -238,40 +337,7 @@ export default function DevOpsGit() {
       <section>
         <h2>Infrastructure as Code in Git</h2>
         <CodeBlock title=".gitignore for infrastructure repos" language="bash"
-          code={[
-            "# ── Terraform ────────────────────────────────────────────────",
-            ".terraform/",
-            "*.tfstate",
-            "*.tfstate.backup",
-            "*.tfstate.*.backup",
-            "crash.log",
-            "override.tf",
-            "override.tf.json",
-            "",
-            "# ── Secrets & credentials ────────────────────────────────────",
-            ".env",
-            "*.env",
-            "*.pem",
-            "*.key",
-            "secrets.yml",
-            "credentials",
-            "",
-            "# ── Ansible ──────────────────────────────────────────────────",
-            "*.retry",
-            "inventory/production",
-            "",
-            "# ── OS & editor files ─────────────────────────────────────────",
-            ".DS_Store",
-            "Thumbs.db",
-            ".vscode/",
-            ".idea/",
-            "",
-            "# ── Python ───────────────────────────────────────────────────",
-            "__pycache__/",
-            "*.pyc",
-            "venv/",
-            ".env"
-          ].join('\n')} />
+          code={CODE_DEVOPSGIT_2} />
       </section>
 
       <section>
@@ -285,89 +351,18 @@ export default function DevOpsGit() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install Git and configure identity on the Ubuntu Server VM."
-              command={[
-                "sudo apt install git -y",
-                "git --version",
-                "",
-                "git config --global user.name 'Lab SysAdmin'",
-                "git config --global user.email 'admin@lab.local'",
-                "git config --global init.defaultBranch main",
-                "git config --list"
-              ].join('\n')}
-              output={[
-                "git version 2.43.0",
-                "user.name=Lab SysAdmin",
-                "user.email=admin@lab.local",
-                "init.defaultbranch=main"
-              ].join('\n')}
+              command={CODE_DEVOPSGIT_3}
+              output={CODE_DEVOPSGIT_4}
             />
             <LabStep number={2}
               description="Create a scripts repository and commit your existing scripts."
-              command={[
-                "mkdir -p ~/lab-scripts && cd ~/lab-scripts",
-                "git init",
-                "",
-                "# Create .gitignore",
-                "cat > .gitignore << 'EOF'",
-                "*.log",
-                "*.tmp",
-                "__pycache__/",
-                "*.pyc",
-                "venv/",
-                ".env",
-                "secrets/",
-                "EOF",
-                "",
-                "# Create README",
-                "echo '# Lab Scripts' > README.md",
-                "echo 'Automation scripts for the SysAdminPro lab environment.' >> README.md",
-                "",
-                "# Stage and commit",
-                "git add .",
-                "git commit -m 'init: initial repository setup with .gitignore'"
-              ].join('\n')}
-              output={[
-                "Initialized empty Git repository in /home/user/lab-scripts/.git/",
-                "",
-                "[main (root-commit) a1b2c3d] init: initial repository setup with .gitignore",
-                " 2 files changed, 4 insertions(+)",
-                " create mode 100644 .gitignore",
-                " create mode 100644 README.md"
-              ].join('\n')}
+              command={CODE_DEVOPSGIT_5}
+              output={CODE_DEVOPSGIT_6}
             />
             <LabStep number={3}
               description="Create a feature branch, add a script, and merge it back."
-              command={[
-                "# Create feature branch",
-                "git checkout -b feature/health-check",
-                "",
-                "# Add the health check script",
-                "cat > health-check.sh << 'SCRIPT'",
-                "#!/bin/bash",
-                "echo '=== System Health ===' ",
-                "df -h / | tail -1",
-                "free -h | grep Mem",
-                "systemctl is-active ssh && echo 'SSH: OK' || echo 'SSH: DOWN'",
-                "SCRIPT",
-                "chmod +x health-check.sh",
-                "",
-                "git add health-check.sh",
-                "git commit -m 'feat: add system health check script'",
-                "",
-                "# Merge back to main",
-                "git checkout main",
-                "git merge feature/health-check --no-ff -m 'merge: health-check feature'",
-                "git branch -d feature/health-check",
-                "",
-                "git log --oneline --graph"
-              ].join('\n')}
-              output={[
-                "*   b4c5d6e merge: health-check feature",
-                "|\\",
-                "| * 9a8b7c6 feat: add system health check script",
-                "|/",
-                "* a1b2c3d init: initial repository setup with .gitignore"
-              ].join('\n')}
+              command={CODE_DEVOPSGIT_7}
+              output={CODE_DEVOPSGIT_8}
             />
           </div>
         </div>

@@ -3,6 +3,61 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WINDOWSPROCESSES_1 = `# ── View services ────────────────────────────────────────────
+Get-Service | Sort-Object Status -Descending | Format-Table -AutoSize
+
+# Find stopped automatic services (should be running)
+Get-Service | Where-Object {
+    $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped'
+} | Select-Object Name, DisplayName, Status
+
+# ── Control services ─────────────────────────────────────────
+Start-Service   -Name 'Spooler'
+Stop-Service    -Name 'Spooler' -Force
+Restart-Service -Name 'Spooler'
+
+# Change startup type
+Set-Service -Name 'Spooler' -StartupType Disabled
+Set-Service -Name 'WinRM'   -StartupType Automatic
+
+# ── Service dependencies ─────────────────────────────────────
+(Get-Service 'Spooler').DependentServices   # What depends ON this
+(Get-Service 'Spooler').RequiredServices    # What this depends ON
+
+# ── Identify what's inside a svchost ─────────────────────────
+$pid = (Get-Process svchost | Select-Object -First 1).Id
+Get-Service | Where-Object { $_.ServiceHandle } |
+    Get-Process | Where-Object Id -eq $pid`
+const CODE_WINDOWSPROCESSES_2 = `# Top 10 by CPU
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 10 |
+  Select-Object Name, Id,
+    @{N='CPU_s'; E={[math]::Round($_.CPU, 1)}},
+    @{N='RAM_MB'; E={[math]::Round($_.WorkingSet/1MB, 1)}}
+
+# Top 10 by RAM
+Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10 |
+  Select-Object Name, Id,
+    @{N='RAM_MB'; E={[math]::Round($_.WorkingSet/1MB, 1)}} |
+  Format-Table -AutoSize`
+const CODE_WINDOWSPROCESSES_3 = `Name         Id  CPU_s  RAM_MB
+svchost    1234   12.3   145.2
+lsass       680    4.1    56.8
+dns         892    2.9    38.4`
+const CODE_WINDOWSPROCESSES_4 = `Write-Host '=== Service Health Check ==='
+
+$stopped = Get-Service | Where-Object {
+    $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped'
+}
+
+if ($stopped) {
+    Write-Host "Found $($stopped.Count) stopped automatic service(s):" -ForegroundColor Yellow
+    $stopped | Select-Object Name, DisplayName | Format-Table -AutoSize
+} else {
+    Write-Host 'All automatic services are running ✓' -ForegroundColor Green
+}`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -148,33 +203,7 @@ export default function WindowsProcesses() {
       <section>
         <h2>Service Management</h2>
         <CodeBlock title="Managing Windows services with PowerShell" language="powershell"
-          code={[
-            "# ── View services ────────────────────────────────────────────",
-            "Get-Service | Sort-Object Status -Descending | Format-Table -AutoSize",
-            "",
-            "# Find stopped automatic services (should be running)",
-            "Get-Service | Where-Object {",
-            "    $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped'",
-            "} | Select-Object Name, DisplayName, Status",
-            "",
-            "# ── Control services ─────────────────────────────────────────",
-            "Start-Service   -Name 'Spooler'",
-            "Stop-Service    -Name 'Spooler' -Force",
-            "Restart-Service -Name 'Spooler'",
-            "",
-            "# Change startup type",
-            "Set-Service -Name 'Spooler' -StartupType Disabled",
-            "Set-Service -Name 'WinRM'   -StartupType Automatic",
-            "",
-            "# ── Service dependencies ─────────────────────────────────────",
-            "(Get-Service 'Spooler').DependentServices   # What depends ON this",
-            "(Get-Service 'Spooler').RequiredServices    # What this depends ON",
-            "",
-            "# ── Identify what's inside a svchost ─────────────────────────",
-            "$pid = (Get-Process svchost | Select-Object -First 1).Id",
-            "Get-Service | Where-Object { $_.ServiceHandle } |",
-            "    Get-Process | Where-Object Id -eq $pid"
-          ].join('\n')} />
+          code={CODE_WINDOWSPROCESSES_1} />
       </section>
 
       <section>
@@ -188,42 +217,12 @@ export default function WindowsProcesses() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Generate a process snapshot sorted by resource usage."
-              command={[
-                "# Top 10 by CPU",
-                "Get-Process | Sort-Object CPU -Descending | Select-Object -First 10 |",
-                "  Select-Object Name, Id,",
-                "    @{N='CPU_s'; E={[math]::Round($_.CPU, 1)}},",
-                "    @{N='RAM_MB'; E={[math]::Round($_.WorkingSet/1MB, 1)}}",
-                "",
-                "# Top 10 by RAM",
-                "Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10 |",
-                "  Select-Object Name, Id,",
-                "    @{N='RAM_MB'; E={[math]::Round($_.WorkingSet/1MB, 1)}} |",
-                "  Format-Table -AutoSize"
-              ].join('\n')}
-              output={[
-                "Name         Id  CPU_s  RAM_MB",
-                "svchost    1234   12.3   145.2",
-                "lsass       680    4.1    56.8",
-                "dns         892    2.9    38.4"
-              ].join('\n')}
+              command={CODE_WINDOWSPROCESSES_2}
+              output={CODE_WINDOWSPROCESSES_3}
             />
             <LabStep number={2}
               description="Audit all services and find any that are stopped but set to auto-start."
-              command={[
-                "Write-Host '=== Service Health Check ==='",
-                "",
-                "$stopped = Get-Service | Where-Object {",
-                "    $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped'",
-                "}",
-                "",
-                "if ($stopped) {",
-                "    Write-Host \"Found $($stopped.Count) stopped automatic service(s):\" -ForegroundColor Yellow",
-                "    $stopped | Select-Object Name, DisplayName | Format-Table -AutoSize",
-                "} else {",
-                "    Write-Host 'All automatic services are running ✓' -ForegroundColor Green",
-                "}"
-              ].join('\n')}
+              command={CODE_WINDOWSPROCESSES_4}
               output="All automatic services are running ✓"
             />
           </div>

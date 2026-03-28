@@ -3,6 +3,103 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WS2025FILESERVICES_1 = `# Install File Services role
+Install-WindowsFeature -Name FS-FileServer -IncludeManagementTools
+
+# Create directory structure
+New-Item -Path 'D:\\Shares\\Departments\\IT' -ItemType Directory -Force
+New-Item -Path 'D:\\Shares\\Departments\\Finance' -ItemType Directory -Force
+New-Item -Path 'D:\\Shares\\Departments\\HR' -ItemType Directory -Force
+
+# Create SMB shares
+New-SmbShare -Name 'IT$' -Path 'D:\\Shares\\Departments\\IT' \`\`
+  -FullAccess 'Domain Admins' \`\`
+  -ChangeAccess 'IT Staff' \`\`
+  -Description 'IT Department Files'
+
+# Set NTFS permissions (remove inherited, then set explicit)
+$acl = Get-Acl 'D:\\Shares\\Departments\\IT'
+$acl.SetAccessRuleProtection($true, $false)  # Disable inheritance
+
+# Add permissions
+$rule1 = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    'BUILTIN\\Administrators','FullControl','ContainerInherit,ObjectInherit','None','Allow')
+$rule2 = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    'LAB\\IT Staff','Modify','ContainerInherit,ObjectInherit','None','Allow')
+
+$acl.AddAccessRule($rule1)
+$acl.AddAccessRule($rule2)
+Set-Acl -Path 'D:\\Shares\\Departments\\IT' -AclObject $acl
+
+# Verify
+Get-SmbShare | Select-Object Name, Path, Description | Format-Table`
+const CODE_WS2025FILESERVICES_2 = `# Enable shadow copies on D: drive
+# GUI: Server Manager > File and Storage Services > Volumes > Shadow Copies
+
+# PowerShell approach
+$volume = 'D:'
+
+# Create shadow copy NOW
+(Get-WmiObject -Class Win32_ShadowCopy).Create($volume, 'ClientAccessible')
+
+# List existing shadow copies
+Get-WmiObject Win32_ShadowCopy | Select-Object ID, VolumeName, InstallDate |
+  Format-Table
+
+# Schedule automatic shadow copies (run as scheduled task)
+# Recommended: 07:00 and 12:00 on weekdays
+$taskParams = @{
+    TaskName = 'Shadow Copy - D Drive'
+    Action   = New-ScheduledTaskAction -Execute 'vssadmin' \`\`
+                 -Argument 'create shadow /for=D:'
+    Trigger  = @(
+        $(New-ScheduledTaskTrigger -Daily -At '07:00'),
+        $(New-ScheduledTaskTrigger -Daily -At '12:00')
+    )
+    Principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest
+    Settings  = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+}
+Register-ScheduledTask @taskParams | Out-Null
+Write-Host 'Shadow copies scheduled: 07:00 and 12:00 daily'`
+const CODE_WS2025FILESERVICES_3 = `# Install File Services
+Install-WindowsFeature FS-FileServer, FS-DFS-Namespace -IncludeManagementTools
+
+# Create directories
+'IT','Finance','HR','All Staff' | ForEach-Object {
+    New-Item -Path "C:\\Shares\\$_" -ItemType Directory -Force | Out-Null
+    Write-Host "Created: C:\\Shares\\$_"
+}
+
+# Create the All Staff share with simple permissions
+New-SmbShare -Name 'AllStaff' -Path 'C:\\Shares\\All Staff' \`\`
+  -FullAccess 'Domain Admins' \`\`
+  -ChangeAccess 'Domain Users' \`\`
+  -Description 'Company-wide file share'
+
+Write-Host 'File Server configured' -ForegroundColor Green`
+const CODE_WS2025FILESERVICES_4 = `Created: C:\\Shares\\IT
+Created: C:\\Shares\\Finance
+Created: C:\\Shares\\HR
+Created: C:\\Shares\\All Staff
+File Server configured`
+const CODE_WS2025FILESERVICES_5 = `# On Ubuntu VM
+sudo apt install smbclient -y
+
+# List shares on DC01
+smbclient -L //192.168.100.10 -U 'LAB\\Administrator'
+
+# Connect to the AllStaff share
+smbclient //192.168.100.10/AllStaff -U 'LAB\\Administrator'
+# Inside smbclient: ls, put testfile.txt, get testfile.txt, exit`
+const CODE_WS2025FILESERVICES_6 = `Sharename   Type  Comment
+---------   ----  -------
+AllStaff    Disk  Company-wide file share
+NETLOGON    Disk  Logon server share
+SYSVOL      Disk  Logon server share
+IPC$        IPC   Remote IPC`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -143,73 +240,13 @@ export default function WS2025FileServices() {
           when NTFS is not available (e.g. old non-NTFS shares).
         </Callout>
         <CodeBlock title="Create and configure file shares" language="powershell"
-          code={[
-            "# Install File Services role",
-            "Install-WindowsFeature -Name FS-FileServer -IncludeManagementTools",
-            "",
-            "# Create directory structure",
-            "New-Item -Path 'D:\\Shares\\Departments\\IT' -ItemType Directory -Force",
-            "New-Item -Path 'D:\\Shares\\Departments\\Finance' -ItemType Directory -Force",
-            "New-Item -Path 'D:\\Shares\\Departments\\HR' -ItemType Directory -Force",
-            "",
-            "# Create SMB shares",
-            "New-SmbShare -Name 'IT$' -Path 'D:\\Shares\\Departments\\IT' ``",
-            "  -FullAccess 'Domain Admins' ``",
-            "  -ChangeAccess 'IT Staff' ``",
-            "  -Description 'IT Department Files'",
-            "",
-            "# Set NTFS permissions (remove inherited, then set explicit)",
-            "$acl = Get-Acl 'D:\\Shares\\Departments\\IT'",
-            "$acl.SetAccessRuleProtection($true, $false)  # Disable inheritance",
-            "",
-            "# Add permissions",
-            "$rule1 = New-Object System.Security.AccessControl.FileSystemAccessRule(",
-            "    'BUILTIN\\Administrators','FullControl','ContainerInherit,ObjectInherit','None','Allow')",
-            "$rule2 = New-Object System.Security.AccessControl.FileSystemAccessRule(",
-            "    'LAB\\IT Staff','Modify','ContainerInherit,ObjectInherit','None','Allow')",
-            "",
-            "$acl.AddAccessRule($rule1)",
-            "$acl.AddAccessRule($rule2)",
-            "Set-Acl -Path 'D:\\Shares\\Departments\\IT' -AclObject $acl",
-            "",
-            "# Verify",
-            "Get-SmbShare | Select-Object Name, Path, Description | Format-Table"
-          ].join('\n')} />
+          code={CODE_WS2025FILESERVICES_1} />
       </section>
 
       <section>
         <h2>Shadow Copies — Self-Service Recovery</h2>
         <CodeBlock title="Configure Volume Shadow Copies" language="powershell"
-          code={[
-            "# Enable shadow copies on D: drive",
-            "# GUI: Server Manager > File and Storage Services > Volumes > Shadow Copies",
-            "",
-            "# PowerShell approach",
-            "$volume = 'D:'",
-            "",
-            "# Create shadow copy NOW",
-            "(Get-WmiObject -Class Win32_ShadowCopy).Create($volume, 'ClientAccessible')",
-            "",
-            "# List existing shadow copies",
-            "Get-WmiObject Win32_ShadowCopy | Select-Object ID, VolumeName, InstallDate |",
-            "  Format-Table",
-            "",
-            "# Schedule automatic shadow copies (run as scheduled task)",
-            "# Recommended: 07:00 and 12:00 on weekdays",
-            "$taskParams = @{",
-            "    TaskName = 'Shadow Copy - D Drive'",
-            "    Action   = New-ScheduledTaskAction -Execute 'vssadmin' ``",
-            "                 -Argument 'create shadow /for=D:'",
-            "    Trigger  = @(",
-            "        $(New-ScheduledTaskTrigger -Daily -At '07:00'),",
-            "        $(New-ScheduledTaskTrigger -Daily -At '12:00')",
-            "    )",
-            "    Principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest",
-            "    Settings  = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)",
-            "}",
-            "Register-ScheduledTask @taskParams | Out-Null",
-            "Write-Host 'Shadow copies scheduled: 07:00 and 12:00 daily'"
-          ].join('\n')} />
+          code={CODE_WS2025FILESERVICES_2} />
       </section>
 
       <section>
@@ -223,54 +260,14 @@ export default function WS2025FileServices() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install the File Server role and create the department share structure."
-              command={[
-                "# Install File Services",
-                "Install-WindowsFeature FS-FileServer, FS-DFS-Namespace -IncludeManagementTools",
-                "",
-                "# Create directories",
-                "'IT','Finance','HR','All Staff' | ForEach-Object {",
-                "    New-Item -Path \"C:\\Shares\\$_\" -ItemType Directory -Force | Out-Null",
-                "    Write-Host \"Created: C:\\Shares\\$_\"",
-                "}",
-                "",
-                "# Create the All Staff share with simple permissions",
-                "New-SmbShare -Name 'AllStaff' -Path 'C:\\Shares\\All Staff' ``",
-                "  -FullAccess 'Domain Admins' ``",
-                "  -ChangeAccess 'Domain Users' ``",
-                "  -Description 'Company-wide file share'",
-                "",
-                "Write-Host 'File Server configured' -ForegroundColor Green"
-              ].join('\n')}
-              output={[
-                "Created: C:\\Shares\\IT",
-                "Created: C:\\Shares\\Finance",
-                "Created: C:\\Shares\\HR",
-                "Created: C:\\Shares\\All Staff",
-                "File Server configured"
-              ].join('\n')}
+              command={CODE_WS2025FILESERVICES_3}
+              output={CODE_WS2025FILESERVICES_4}
             />
             <LabStep number={2}
               description="Test share access from the Ubuntu VM using smbclient."
-              command={[
-                "# On Ubuntu VM",
-                "sudo apt install smbclient -y",
-                "",
-                "# List shares on DC01",
-                "smbclient -L //192.168.100.10 -U 'LAB\\Administrator'",
-                "",
-                "# Connect to the AllStaff share",
-                "smbclient //192.168.100.10/AllStaff -U 'LAB\\Administrator'",
-                "# Inside smbclient: ls, put testfile.txt, get testfile.txt, exit"
-              ].join('\n')}
+              command={CODE_WS2025FILESERVICES_5}
               language="bash"
-              output={[
-                "Sharename   Type  Comment",
-                "---------   ----  -------",
-                "AllStaff    Disk  Company-wide file share",
-                "NETLOGON    Disk  Logon server share",
-                "SYSVOL      Disk  Logon server share",
-                "IPC$        IPC   Remote IPC"
-              ].join('\n')}
+              output={CODE_WS2025FILESERVICES_6}
             />
           </div>
         </div>

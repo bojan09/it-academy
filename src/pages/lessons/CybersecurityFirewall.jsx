@@ -3,6 +3,98 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYFIREWALL_1 = `# ── Initial secure setup ─────────────────────────────────────
+sudo ufw default deny incoming      # Block everything in by default
+sudo ufw default allow outgoing     # Allow all outbound (tighten later)
+sudo ufw default deny forward       # Not a router
+
+# ── Allow specific services ──────────────────────────────────
+# SSH — restrict to management network only (best practice)
+sudo ufw allow from 192.168.100.0/24 to any port 22 proto tcp
+
+# Web server (open to internet)
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Allow a range of ports
+sudo ufw allow 8000:8100/tcp
+
+# ── Enable and verify ────────────────────────────────────────
+sudo ufw enable
+sudo ufw status verbose
+sudo ufw status numbered    # Numbered list for easy deletion
+
+# ── Manage rules ─────────────────────────────────────────────
+sudo ufw delete 3            # Delete rule number 3
+sudo ufw delete allow 80     # Delete by rule specification
+sudo ufw reload              # Reload after changes
+sudo ufw reset               # Remove all rules (dangerous!)
+
+# ── Logging ──────────────────────────────────────────────────
+sudo ufw logging on          # Enable logging
+sudo ufw logging high        # Log all packets (verbose)
+tail -f /var/log/ufw.log     # Watch blocked attempts in real time`
+const CODE_CYBERSECURITYFIREWALL_2 = `# ── View current rules ───────────────────────────────────────
+sudo iptables -L -v -n --line-numbers    # Filter table
+sudo iptables -t nat -L -v -n            # NAT table
+
+# ── Basic rule management ────────────────────────────────────
+# Allow SSH from specific subnet
+sudo iptables -A INPUT -s 192.168.100.0/24 -p tcp --dport 22 -j ACCEPT
+
+# Allow established/related connections (stateful — critical)
+sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Allow loopback
+sudo iptables -A INPUT -i lo -j ACCEPT
+
+# Allow ICMP (ping) from internal only
+sudo iptables -A INPUT -s 192.168.0.0/16 -p icmp -j ACCEPT
+
+# DROP everything else at the end
+sudo iptables -A INPUT -j DROP
+
+# ── Save and restore ─────────────────────────────────────────
+sudo iptables-save > /etc/iptables/rules.v4
+sudo iptables-restore < /etc/iptables/rules.v4
+
+# Persist across reboots:
+sudo apt install iptables-persistent
+sudo netfilter-persistent save`
+const CODE_CYBERSECURITYFIREWALL_3 = `sudo ufw status verbose
+
+# Apply hardened defaults
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow SSH from lab management subnet only
+sudo ufw allow from 192.168.100.0/24 to any port 22 proto tcp comment 'SSH from lab'
+
+sudo ufw --force enable
+sudo ufw status numbered`
+const CODE_CYBERSECURITYFIREWALL_4 = `Status: inactive
+
+Status: active
+     To                     Action    From
+     --                     ------    ----
+[ 1] 22/tcp                 ALLOW IN  192.168.100.0/24  # SSH from lab`
+const CODE_CYBERSECURITYFIREWALL_5 = `# From Ubuntu VM — test SSH to localhost (should work from 192.168.100.x)
+ssh -o ConnectTimeout=3 user@127.0.0.1 'echo connected'
+
+# Check UFW log for blocked connection attempts
+sudo ufw logging on
+sudo tail -5 /var/log/ufw.log
+
+# Show what iptables rules UFW created
+sudo iptables -L INPUT -v -n | head -20`
+const CODE_CYBERSECURITYFIREWALL_6 = `connected
+
+Jan 15 11:00:00 srv01 kernel: [UFW BLOCK] IN=ens33 OUT=
+  SRC=10.0.2.2 DST=192.168.100.20 PROTO=TCP DPT=22
+  <- blocked connection attempt from outside the allowed subnet`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -142,73 +234,13 @@ export default function CybersecurityFirewall() {
       <section>
         <h2>UFW — Ubuntu's Firewall Interface</h2>
         <CodeBlock title="UFW configuration — production hardening" language="bash"
-          code={[
-            "# ── Initial secure setup ─────────────────────────────────────",
-            "sudo ufw default deny incoming      # Block everything in by default",
-            "sudo ufw default allow outgoing     # Allow all outbound (tighten later)",
-            "sudo ufw default deny forward       # Not a router",
-            "",
-            "# ── Allow specific services ──────────────────────────────────",
-            "# SSH — restrict to management network only (best practice)",
-            "sudo ufw allow from 192.168.100.0/24 to any port 22 proto tcp",
-            "",
-            "# Web server (open to internet)",
-            "sudo ufw allow 80/tcp",
-            "sudo ufw allow 443/tcp",
-            "",
-            "# Allow a range of ports",
-            "sudo ufw allow 8000:8100/tcp",
-            "",
-            "# ── Enable and verify ────────────────────────────────────────",
-            "sudo ufw enable",
-            "sudo ufw status verbose",
-            "sudo ufw status numbered    # Numbered list for easy deletion",
-            "",
-            "# ── Manage rules ─────────────────────────────────────────────",
-            "sudo ufw delete 3            # Delete rule number 3",
-            "sudo ufw delete allow 80     # Delete by rule specification",
-            "sudo ufw reload              # Reload after changes",
-            "sudo ufw reset               # Remove all rules (dangerous!)",
-            "",
-            "# ── Logging ──────────────────────────────────────────────────",
-            "sudo ufw logging on          # Enable logging",
-            "sudo ufw logging high        # Log all packets (verbose)",
-            "tail -f /var/log/ufw.log     # Watch blocked attempts in real time"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYFIREWALL_1} />
       </section>
 
       <section>
         <h2>iptables — Direct Rule Management</h2>
         <CodeBlock title="iptables — understand what UFW does under the hood" language="bash"
-          code={[
-            "# ── View current rules ───────────────────────────────────────",
-            "sudo iptables -L -v -n --line-numbers    # Filter table",
-            "sudo iptables -t nat -L -v -n            # NAT table",
-            "",
-            "# ── Basic rule management ────────────────────────────────────",
-            "# Allow SSH from specific subnet",
-            "sudo iptables -A INPUT -s 192.168.100.0/24 -p tcp --dport 22 -j ACCEPT",
-            "",
-            "# Allow established/related connections (stateful — critical)",
-            "sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
-            "",
-            "# Allow loopback",
-            "sudo iptables -A INPUT -i lo -j ACCEPT",
-            "",
-            "# Allow ICMP (ping) from internal only",
-            "sudo iptables -A INPUT -s 192.168.0.0/16 -p icmp -j ACCEPT",
-            "",
-            "# DROP everything else at the end",
-            "sudo iptables -A INPUT -j DROP",
-            "",
-            "# ── Save and restore ─────────────────────────────────────────",
-            "sudo iptables-save > /etc/iptables/rules.v4",
-            "sudo iptables-restore < /etc/iptables/rules.v4",
-            "",
-            "# Persist across reboots:",
-            "sudo apt install iptables-persistent",
-            "sudo netfilter-persistent save"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYFIREWALL_2} />
       </section>
 
       <section>
@@ -222,48 +254,13 @@ export default function CybersecurityFirewall() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Check current firewall state and apply default-deny policy."
-              command={[
-                "sudo ufw status verbose",
-                "",
-                "# Apply hardened defaults",
-                "sudo ufw default deny incoming",
-                "sudo ufw default allow outgoing",
-                "",
-                "# Allow SSH from lab management subnet only",
-                "sudo ufw allow from 192.168.100.0/24 to any port 22 proto tcp comment 'SSH from lab'",
-                "",
-                "sudo ufw --force enable",
-                "sudo ufw status numbered"
-              ].join('\n')}
-              output={[
-                "Status: inactive",
-                "",
-                "Status: active",
-                "     To                     Action    From",
-                "     --                     ------    ----",
-                "[ 1] 22/tcp                 ALLOW IN  192.168.100.0/24  # SSH from lab"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYFIREWALL_3}
+              output={CODE_CYBERSECURITYFIREWALL_4}
             />
             <LabStep number={2}
               description="Test the firewall is working — verify SSH still works from the lab, and blocked from outside."
-              command={[
-                "# From Ubuntu VM — test SSH to localhost (should work from 192.168.100.x)",
-                "ssh -o ConnectTimeout=3 user@127.0.0.1 'echo connected'",
-                "",
-                "# Check UFW log for blocked connection attempts",
-                "sudo ufw logging on",
-                "sudo tail -5 /var/log/ufw.log",
-                "",
-                "# Show what iptables rules UFW created",
-                "sudo iptables -L INPUT -v -n | head -20"
-              ].join('\n')}
-              output={[
-                "connected",
-                "",
-                "Jan 15 11:00:00 srv01 kernel: [UFW BLOCK] IN=ens33 OUT=",
-                "  SRC=10.0.2.2 DST=192.168.100.20 PROTO=TCP DPT=22",
-                "  <- blocked connection attempt from outside the allowed subnet"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYFIREWALL_5}
+              output={CODE_CYBERSECURITYFIREWALL_6}
             />
           </div>
         </div>

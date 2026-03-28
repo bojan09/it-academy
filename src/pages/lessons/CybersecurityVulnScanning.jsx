@@ -3,6 +3,69 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_CYBERSECURITYVULNSCANNING_1 = `# ── Discovery ────────────────────────────────────────────────
+# Find live hosts on the lab network
+sudo nmap -sn 192.168.100.0/24
+
+# ── Service scanning ─────────────────────────────────────────
+# Top 1000 ports with version detection
+sudo nmap -sV 192.168.100.10
+
+# All ports + version + default scripts
+sudo nmap -sV -sC -p- 192.168.100.10
+
+# ── OS detection ─────────────────────────────────────────────
+sudo nmap -O 192.168.100.10
+
+# ── Vulnerability scripts ────────────────────────────────────
+# Run vulnerability NSE scripts
+sudo nmap --script vuln 192.168.100.10
+
+# Check for specific vulnerabilities
+sudo nmap --script smb-vuln-* 192.168.100.10
+sudo nmap --script ssl-cert,ssl-enum-ciphers -p 443 192.168.100.10
+
+# ── Output formats ───────────────────────────────────────────
+sudo nmap -sV -oA scan-results 192.168.100.0/24
+# Creates: scan-results.nmap (text), .xml (for parsers), .gnmap (grepable)`
+const CODE_CYBERSECURITYVULNSCANNING_2 = `sudo apt install nmap -y
+
+# Discover live hosts
+sudo nmap -sn 192.168.100.0/24
+
+# Quick scan of DC01
+sudo nmap -sV --top-ports 20 192.168.100.10`
+const CODE_CYBERSECURITYVULNSCANNING_3 = `Starting Nmap 7.94
+Nmap scan report for 192.168.100.10
+Host is up (0.00041s latency).
+
+PORT     STATE SERVICE       VERSION
+53/tcp   open  domain        (generic dns response: SERVFAIL)
+88/tcp   open  kerberos-sec  Microsoft Windows Kerberos
+135/tcp  open  msrpc         Microsoft Windows RPC
+389/tcp  open  ldap          Microsoft Windows Active Directory LDAP
+445/tcp  open  microsoft-ds  Windows Server 2025
+3389/tcp open  ms-wbt-server Microsoft Terminal Services`
+const CODE_CYBERSECURITYVULNSCANNING_4 = `# Check for SSL/TLS issues on any HTTPS services
+sudo nmap --script ssl-cert,ssl-enum-ciphers -p 443 192.168.100.20 2>/dev/null
+
+# Check SMB configuration
+sudo nmap --script smb-security-mode -p 445 192.168.100.10
+
+# Save results for review
+sudo nmap -sV -oX /tmp/lab-scan.xml 192.168.100.0/24 2>/dev/null
+echo 'Scan saved to /tmp/lab-scan.xml'`
+const CODE_CYBERSECURITYVULNSCANNING_5 = `Host script results:
+|  smb-security-mode:
+|    account_used: guest
+|    authentication_level: user
+|    challenge_response: supported
+|_   message_signing: required  <- good security posture
+
+Scan saved to /tmp/lab-scan.xml`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -170,33 +233,7 @@ export default function CybersecurityVulnScanning() {
       <section>
         <h2>nmap — Network Reconnaissance</h2>
         <CodeBlock title="nmap scanning reference" language="bash"
-          code={[
-            "# ── Discovery ────────────────────────────────────────────────",
-            "# Find live hosts on the lab network",
-            "sudo nmap -sn 192.168.100.0/24",
-            "",
-            "# ── Service scanning ─────────────────────────────────────────",
-            "# Top 1000 ports with version detection",
-            "sudo nmap -sV 192.168.100.10",
-            "",
-            "# All ports + version + default scripts",
-            "sudo nmap -sV -sC -p- 192.168.100.10",
-            "",
-            "# ── OS detection ─────────────────────────────────────────────",
-            "sudo nmap -O 192.168.100.10",
-            "",
-            "# ── Vulnerability scripts ────────────────────────────────────",
-            "# Run vulnerability NSE scripts",
-            "sudo nmap --script vuln 192.168.100.10",
-            "",
-            "# Check for specific vulnerabilities",
-            "sudo nmap --script smb-vuln-* 192.168.100.10",
-            "sudo nmap --script ssl-cert,ssl-enum-ciphers -p 443 192.168.100.10",
-            "",
-            "# ── Output formats ───────────────────────────────────────────",
-            "sudo nmap -sV -oA scan-results 192.168.100.0/24",
-            "# Creates: scan-results.nmap (text), .xml (for parsers), .gnmap (grepable)"
-          ].join('\n')} />
+          code={CODE_CYBERSECURITYVULNSCANNING_1} />
       </section>
 
       <section>
@@ -210,52 +247,13 @@ export default function CybersecurityVulnScanning() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install nmap and perform a network discovery scan."
-              command={[
-                "sudo apt install nmap -y",
-                "",
-                "# Discover live hosts",
-                "sudo nmap -sn 192.168.100.0/24",
-                "",
-                "# Quick scan of DC01",
-                "sudo nmap -sV --top-ports 20 192.168.100.10"
-              ].join('\n')}
-              output={[
-                "Starting Nmap 7.94",
-                "Nmap scan report for 192.168.100.10",
-                "Host is up (0.00041s latency).",
-                "",
-                "PORT     STATE SERVICE       VERSION",
-                "53/tcp   open  domain        (generic dns response: SERVFAIL)",
-                "88/tcp   open  kerberos-sec  Microsoft Windows Kerberos",
-                "135/tcp  open  msrpc         Microsoft Windows RPC",
-                "389/tcp  open  ldap          Microsoft Windows Active Directory LDAP",
-                "445/tcp  open  microsoft-ds  Windows Server 2025",
-                "3389/tcp open  ms-wbt-server Microsoft Terminal Services"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYVULNSCANNING_2}
+              output={CODE_CYBERSECURITYVULNSCANNING_3}
             />
             <LabStep number={2}
               description="Run vulnerability scripts against the Ubuntu server and review findings."
-              command={[
-                "# Check for SSL/TLS issues on any HTTPS services",
-                "sudo nmap --script ssl-cert,ssl-enum-ciphers -p 443 192.168.100.20 2>/dev/null",
-                "",
-                "# Check SMB configuration",
-                "sudo nmap --script smb-security-mode -p 445 192.168.100.10",
-                "",
-                "# Save results for review",
-                "sudo nmap -sV -oX /tmp/lab-scan.xml 192.168.100.0/24 2>/dev/null",
-                "echo 'Scan saved to /tmp/lab-scan.xml'"
-              ].join('\n')}
-              output={[
-                "Host script results:",
-                "|  smb-security-mode:",
-                "|    account_used: guest",
-                "|    authentication_level: user",
-                "|    challenge_response: supported",
-                "|_   message_signing: required  <- good security posture",
-                "",
-                "Scan saved to /tmp/lab-scan.xml"
-              ].join('\n')}
+              command={CODE_CYBERSECURITYVULNSCANNING_4}
+              output={CODE_CYBERSECURITYVULNSCANNING_5}
             />
           </div>
         </div>

@@ -3,6 +3,87 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WINDOWSPERMISSIONS_1 = `# ── View accounts ────────────────────────────────────────────
+Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordRequired
+Get-LocalGroup | Select-Object Name, Description
+Get-LocalGroupMember -Group 'Administrators'
+
+# ── Create a standard user ───────────────────────────────────
+$pass = Read-Host 'Password' -AsSecureString
+New-LocalUser -Name 'alice' -FullName 'Alice Smith' \`\`
+  -Password $pass -PasswordNeverExpires $false \`\`
+  -AccountNeverExpires
+
+# Add to a group
+Add-LocalGroupMember -Group 'Users' -Member 'alice'
+
+# ── Disable built-in Administrator (security hardening) ───────
+Disable-LocalUser -Name 'Administrator'
+
+# ── Check current user's groups and privileges ────────────────
+whoami /groups
+whoami /priv`
+const CODE_WINDOWSPERMISSIONS_2 = `# ── View current permissions ─────────────────────────────────
+icacls C:\\Data
+
+# PowerShell equivalent
+(Get-Acl C:\\Data).Access | Select-Object IdentityReference,
+  FileSystemRights, AccessControlType | Format-Table -AutoSize
+
+# ── Grant permissions ────────────────────────────────────────
+# Grant Users Modify on folder + contents
+icacls C:\\Data /grant 'BUILTIN\\Users:(OI)(CI)M'
+
+# Grant a specific user Read-only
+icacls C:\\Reports /grant 'alice:R'
+
+# ── Remove permissions ───────────────────────────────────────
+icacls C:\\Data /remove alice
+
+# ── Reset to inherited permissions ───────────────────────────
+icacls C:\\Data /reset /T
+
+# ── Audit effective permissions ──────────────────────────────
+# Who can access this file and how?
+(Get-Acl C:\\Data\\report.xlsx).Access |
+  Where-Object { $_.AccessControlType -eq 'Allow' } |
+  Select-Object IdentityReference, FileSystemRights`
+const CODE_WINDOWSPERMISSIONS_3 = `# Create a standard user
+$pass = ConvertTo-SecureString 'Lab@2025!' -AsPlainText -Force
+New-LocalUser -Name 'testuser' -Password $pass -FullName 'Test User'
+Add-LocalGroupMember -Group 'Users' -Member 'testuser'
+
+# Create a department folder
+New-Item -Path 'C:\\Departments\\IT' -ItemType Directory -Force
+
+# Grant IT staff Modify access
+icacls 'C:\\Departments\\IT' /grant 'BUILTIN\\Users:(OI)(CI)M'
+
+# Verify
+icacls 'C:\\Departments\\IT'`
+const CODE_WINDOWSPERMISSIONS_4 = `C:\\Departments\\IT BUILTIN\\Administrators:(OI)(CI)(F)
+                  NT AUTHORITY\\SYSTEM:(OI)(CI)(F)
+                  BUILTIN\\Users:(OI)(CI)(M)
+Successfully processed 1 files`
+const CODE_WINDOWSPERMISSIONS_5 = `# Check UAC configuration
+Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' |
+  Select-Object EnableLUA, ConsentPromptBehaviorAdmin, ConsentPromptBehaviorUser
+
+# List local admins
+Get-LocalGroupMember -Group Administrators |
+  Select-Object Name, ObjectClass, PrincipalSource`
+const CODE_WINDOWSPERMISSIONS_6 = `EnableLUA ConsentPromptBehaviorAdmin ConsentPromptBehaviorUser
+--------- --------------------------- --------------------------
+1         5                           3
+# 1=UAC enabled, 5=prompt for creds, 3=prompt for standard
+
+Name                   ObjectClass PrincipalSource
+----                   ----------- ---------------
+DC01\\Administrator     User        Local
+LAB\\Domain Admins      Group       ActiveDirectory`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -136,28 +217,7 @@ export default function WindowsPermissions() {
       <section>
         <h2>Local User & Group Management</h2>
         <CodeBlock title="Manage local accounts with PowerShell" language="powershell"
-          code={[
-            "# ── View accounts ────────────────────────────────────────────",
-            "Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordRequired",
-            "Get-LocalGroup | Select-Object Name, Description",
-            "Get-LocalGroupMember -Group 'Administrators'",
-            "",
-            "# ── Create a standard user ───────────────────────────────────",
-            "$pass = Read-Host 'Password' -AsSecureString",
-            "New-LocalUser -Name 'alice' -FullName 'Alice Smith' ``",
-            "  -Password $pass -PasswordNeverExpires $false ``",
-            "  -AccountNeverExpires",
-            "",
-            "# Add to a group",
-            "Add-LocalGroupMember -Group 'Users' -Member 'alice'",
-            "",
-            "# ── Disable built-in Administrator (security hardening) ───────",
-            "Disable-LocalUser -Name 'Administrator'",
-            "",
-            "# ── Check current user's groups and privileges ────────────────",
-            "whoami /groups",
-            "whoami /priv"
-          ].join('\n')} />
+          code={CODE_WINDOWSPERMISSIONS_1} />
       </section>
 
       <section>
@@ -194,33 +254,7 @@ export default function WindowsPermissions() {
           </div>
         </div>
         <CodeBlock className="mt-4" title="View and set permissions with icacls and PowerShell" language="powershell"
-          code={[
-            "# ── View current permissions ─────────────────────────────────",
-            "icacls C:\\Data",
-            "",
-            "# PowerShell equivalent",
-            "(Get-Acl C:\\Data).Access | Select-Object IdentityReference,",
-            "  FileSystemRights, AccessControlType | Format-Table -AutoSize",
-            "",
-            "# ── Grant permissions ────────────────────────────────────────",
-            "# Grant Users Modify on folder + contents",
-            "icacls C:\\Data /grant 'BUILTIN\\Users:(OI)(CI)M'",
-            "",
-            "# Grant a specific user Read-only",
-            "icacls C:\\Reports /grant 'alice:R'",
-            "",
-            "# ── Remove permissions ───────────────────────────────────────",
-            "icacls C:\\Data /remove alice",
-            "",
-            "# ── Reset to inherited permissions ───────────────────────────",
-            "icacls C:\\Data /reset /T",
-            "",
-            "# ── Audit effective permissions ──────────────────────────────",
-            "# Who can access this file and how?",
-            "(Get-Acl C:\\Data\\report.xlsx).Access |",
-            "  Where-Object { $_.AccessControlType -eq 'Allow' } |",
-            "  Select-Object IdentityReference, FileSystemRights"
-          ].join('\n')} />
+          code={CODE_WINDOWSPERMISSIONS_2} />
       </section>
 
       <section>
@@ -234,50 +268,13 @@ export default function WindowsPermissions() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Create test users and a department folder with correct permissions."
-              command={[
-                "# Create a standard user",
-                "$pass = ConvertTo-SecureString 'Lab@2025!' -AsPlainText -Force",
-                "New-LocalUser -Name 'testuser' -Password $pass -FullName 'Test User'",
-                "Add-LocalGroupMember -Group 'Users' -Member 'testuser'",
-                "",
-                "# Create a department folder",
-                "New-Item -Path 'C:\\Departments\\IT' -ItemType Directory -Force",
-                "",
-                "# Grant IT staff Modify access",
-                "icacls 'C:\\Departments\\IT' /grant 'BUILTIN\\Users:(OI)(CI)M'",
-                "",
-                "# Verify",
-                "icacls 'C:\\Departments\\IT'"
-              ].join('\n')}
-              output={[
-                "C:\\Departments\\IT BUILTIN\\Administrators:(OI)(CI)(F)",
-                "                  NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                "                  BUILTIN\\Users:(OI)(CI)(M)",
-                "Successfully processed 1 files"
-              ].join('\n')}
+              command={CODE_WINDOWSPERMISSIONS_3}
+              output={CODE_WINDOWSPERMISSIONS_4}
             />
             <LabStep number={2}
               description="Check effective permissions and UAC status."
-              command={[
-                "# Check UAC configuration",
-                "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' |",
-                "  Select-Object EnableLUA, ConsentPromptBehaviorAdmin, ConsentPromptBehaviorUser",
-                "",
-                "# List local admins",
-                "Get-LocalGroupMember -Group Administrators |",
-                "  Select-Object Name, ObjectClass, PrincipalSource"
-              ].join('\n')}
-              output={[
-                "EnableLUA ConsentPromptBehaviorAdmin ConsentPromptBehaviorUser",
-                "--------- --------------------------- --------------------------",
-                "1         5                           3",
-                "# 1=UAC enabled, 5=prompt for creds, 3=prompt for standard",
-                "",
-                "Name                   ObjectClass PrincipalSource",
-                "----                   ----------- ---------------",
-                "DC01\\Administrator     User        Local",
-                "LAB\\Domain Admins      Group       ActiveDirectory"
-              ].join('\n')}
+              command={CODE_WINDOWSPERMISSIONS_5}
+              output={CODE_WINDOWSPERMISSIONS_6}
             />
           </div>
         </div>

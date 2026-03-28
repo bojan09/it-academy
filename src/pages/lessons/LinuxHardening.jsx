@@ -3,6 +3,198 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXHARDENING_1 = `# Apply immediately: sudo sysctl -p /etc/sysctl.d/99-hardening.conf
+# Persist across reboots: saved in /etc/sysctl.d/
+
+# ── Network hardening ────────────────────────────────────────
+# SYN flood protection
+net.ipv4.tcp_syncookies = 1
+
+# Ignore ICMP broadcast (Smurf attack mitigation)
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+
+# Ignore bogus ICMP errors
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+
+# Disable IP source routing (attacker-controlled routing)
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+
+# Disable ICMP redirect acceptance (prevents routing table poisoning)
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.secure_redirects = 0
+
+# Log suspicious packets (martian packets)
+net.ipv4.conf.all.log_martians = 1
+
+# Reverse path filtering (anti-spoofing)
+net.ipv4.conf.all.rp_filter = 1
+
+# Disable IPv6 if not used
+net.ipv6.conf.all.disable_ipv6 = 1
+
+# ── Kernel hardening ──────────────────────────────────────────
+# Restrict kernel pointer exposure (prevents info leaks to attackers)
+kernel.kptr_restrict = 2
+
+# Restrict dmesg access to root only
+kernel.dmesg_restrict = 1
+
+# Prevent core dumps from SUID programs (can contain secrets)
+fs.suid_dumpable = 0
+
+# Randomise memory layout (ASLR) — 2 = full randomisation
+kernel.randomize_va_space = 2
+
+# Restrict ptrace (prevents process inspection by non-privileged users)
+kernel.yama.ptrace_scope = 1`
+const CODE_LINUXHARDENING_2 = `# Write the config
+sudo tee /etc/sysctl.d/99-hardening.conf << 'EOF'
+net.ipv4.tcp_syncookies = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.all.rp_filter = 1
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+fs.suid_dumpable = 0
+kernel.randomize_va_space = 2
+EOF
+
+# Apply immediately (no reboot needed)
+sudo sysctl -p /etc/sysctl.d/99-hardening.conf
+
+# Verify specific setting
+sysctl net.ipv4.tcp_syncookies`
+const CODE_LINUXHARDENING_3 = `sudo apt install fail2ban -y
+
+# Create local config (NEVER edit /etc/fail2ban/jail.conf directly)
+sudo tee /etc/fail2ban/jail.d/local.conf << 'EOF'
+[DEFAULT]
+bantime  = 3600       # 1 hour ban
+findtime = 600        # 10 minute observation window
+maxretry = 5          # 5 failures before ban
+banaction = iptables-multiport
+
+[sshd]
+enabled  = true
+port     = ssh
+logpath  = /var/log/auth.log
+maxretry = 3          # Stricter for SSH
+bantime  = 86400      # 24 hour ban for SSH failures
+
+[nginx-http-auth]
+enabled  = true
+logpath  = /var/log/nginx/error.log
+EOF
+
+sudo systemctl enable fail2ban --now
+
+# Monitor bans
+sudo fail2ban-client status
+sudo fail2ban-client status sshd
+
+# Unban an IP
+sudo fail2ban-client set sshd unbanip 192.168.100.50`
+const CODE_LINUXHARDENING_4 = `# Current /tmp entry (probably just defaults):
+# UUID=xxx  /tmp  ext4  defaults  0 2
+
+# Hardened /tmp — noexec nosuid nodev
+# Option 1: tmpfs (RAM-based, faster, auto-cleared on reboot)
+# Add to /etc/fstab:
+# tmpfs  /tmp  tmpfs  rw,nosuid,nodev,noexec,relatime,size=2G  0 0
+
+# Option 2: bind-mount if /tmp is on root partition
+sudo mount --bind /tmp /tmp
+sudo mount --make-private /tmp
+sudo mount -o remount,noexec,nosuid,nodev /tmp
+
+# Verify
+mount | grep /tmp
+
+# Also harden /var/tmp
+# /var/tmp  tmpfs  tmpfs  rw,nosuid,nodev,noexec  0 0
+
+# Remove world-writable permissions on shared directories
+sudo chmod 1777 /tmp          # Sticky bit — only owner can delete their files
+sudo chmod 1777 /var/tmp
+
+# Find world-writable files (security audit)
+sudo find / -xdev -type f -perm -0002 -not -path '/proc/*' 2>/dev/null`
+const CODE_LINUXHARDENING_5 = `# Check AppArmor status
+sudo apparmor_status
+
+# List all profiles and their modes
+sudo aa-status | grep -E 'enforce|complain'
+
+# Switch a profile to enforce mode
+sudo aa-enforce /etc/apparmor.d/usr.sbin.nginx
+
+# Switch to complain mode (log violations but don't block — use for testing)
+sudo aa-complain /etc/apparmor.d/usr.sbin.nginx
+
+# Check AppArmor violations in logs
+sudo dmesg | grep apparmor
+sudo journalctl -k | grep apparmor
+
+# Generate a profile for a new program
+sudo apt install apparmor-utils
+sudo aa-genprof /opt/myapp/server
+# Run the application, let it do its normal operations
+# Then press S to scan and generate the profile`
+const CODE_LINUXHARDENING_6 = `sudo apt install lynis -y
+
+# Run full audit
+sudo lynis audit system --quiet
+
+# Check the hardening index (before hardening)
+grep 'Hardening index' /var/log/lynis.log | tail -1`
+const CODE_LINUXHARDENING_7 = `# Apply sysctl hardening
+sudo tee /etc/sysctl.d/99-hardening.conf << 'EOF'
+net.ipv4.tcp_syncookies = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.all.rp_filter = 1
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+fs.suid_dumpable = 0
+kernel.randomize_va_space = 2
+EOF
+sudo sysctl -p /etc/sysctl.d/99-hardening.conf
+
+# Install and configure fail2ban
+sudo apt install fail2ban -y
+sudo systemctl enable fail2ban --now
+
+# Re-run Lynis and compare
+sudo lynis audit system --quiet
+grep 'Hardening index' /var/log/lynis.log | tail -1`
+const CODE_LINUXHARDENING_8 = `# See all warnings
+sudo lynis show warnings
+
+# See all suggestions (prioritised)
+sudo lynis show suggestions | head -30
+
+# Common quick win: disable root SSH login (if not already done)
+grep PermitRootLogin /etc/ssh/sshd_config
+
+# Quick win: set UMASK to 027 for new files
+grep UMASK /etc/login.defs`
+const CODE_LINUXHARDENING_9 = `! Found shell without timeout [AUTH-9328]
+! No logging server configured [LOGG-2154]
+
+# Suggestions:
+* Install a file integrity tool (AIDE)
+* Enable automatic security updates (unattended-upgrades)
+* Set a password on GRUB bootloader
+* Configure /tmp with noexec option`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -148,173 +340,27 @@ export default function LinuxHardening() {
           on servers.
         </p>
         <CodeBlock title="/etc/sysctl.d/99-hardening.conf — production kernel settings" language="bash"
-          code={[
-            "# Apply immediately: sudo sysctl -p /etc/sysctl.d/99-hardening.conf",
-            "# Persist across reboots: saved in /etc/sysctl.d/",
-            "",
-            "# ── Network hardening ────────────────────────────────────────",
-            "# SYN flood protection",
-            "net.ipv4.tcp_syncookies = 1",
-            "",
-            "# Ignore ICMP broadcast (Smurf attack mitigation)",
-            "net.ipv4.icmp_echo_ignore_broadcasts = 1",
-            "",
-            "# Ignore bogus ICMP errors",
-            "net.ipv4.icmp_ignore_bogus_error_responses = 1",
-            "",
-            "# Disable IP source routing (attacker-controlled routing)",
-            "net.ipv4.conf.all.accept_source_route = 0",
-            "net.ipv4.conf.default.accept_source_route = 0",
-            "",
-            "# Disable ICMP redirect acceptance (prevents routing table poisoning)",
-            "net.ipv4.conf.all.accept_redirects = 0",
-            "net.ipv4.conf.default.accept_redirects = 0",
-            "net.ipv4.conf.all.secure_redirects = 0",
-            "",
-            "# Log suspicious packets (martian packets)",
-            "net.ipv4.conf.all.log_martians = 1",
-            "",
-            "# Reverse path filtering (anti-spoofing)",
-            "net.ipv4.conf.all.rp_filter = 1",
-            "",
-            "# Disable IPv6 if not used",
-            "net.ipv6.conf.all.disable_ipv6 = 1",
-            "",
-            "# ── Kernel hardening ──────────────────────────────────────────",
-            "# Restrict kernel pointer exposure (prevents info leaks to attackers)",
-            "kernel.kptr_restrict = 2",
-            "",
-            "# Restrict dmesg access to root only",
-            "kernel.dmesg_restrict = 1",
-            "",
-            "# Prevent core dumps from SUID programs (can contain secrets)",
-            "fs.suid_dumpable = 0",
-            "",
-            "# Randomise memory layout (ASLR) — 2 = full randomisation",
-            "kernel.randomize_va_space = 2",
-            "",
-            "# Restrict ptrace (prevents process inspection by non-privileged users)",
-            "kernel.yama.ptrace_scope = 1"
-          ].join('\n')} />
+          code={CODE_LINUXHARDENING_1} />
         <CodeBlock className="mt-4" title="Apply and verify sysctl settings" language="bash"
-          code={[
-            "# Write the config",
-            "sudo tee /etc/sysctl.d/99-hardening.conf << 'EOF'",
-            "net.ipv4.tcp_syncookies = 1",
-            "net.ipv4.icmp_echo_ignore_broadcasts = 1",
-            "net.ipv4.conf.all.accept_source_route = 0",
-            "net.ipv4.conf.all.accept_redirects = 0",
-            "net.ipv4.conf.all.log_martians = 1",
-            "net.ipv4.conf.all.rp_filter = 1",
-            "kernel.kptr_restrict = 2",
-            "kernel.dmesg_restrict = 1",
-            "fs.suid_dumpable = 0",
-            "kernel.randomize_va_space = 2",
-            "EOF",
-            "",
-            "# Apply immediately (no reboot needed)",
-            "sudo sysctl -p /etc/sysctl.d/99-hardening.conf",
-            "",
-            "# Verify specific setting",
-            "sysctl net.ipv4.tcp_syncookies"
-          ].join('\n')} />
+          code={CODE_LINUXHARDENING_2} />
       </section>
 
       <section>
         <h2>fail2ban — Brute-Force Protection</h2>
         <CodeBlock title="fail2ban setup and configuration" language="bash"
-          code={[
-            "sudo apt install fail2ban -y",
-            "",
-            "# Create local config (NEVER edit /etc/fail2ban/jail.conf directly)",
-            "sudo tee /etc/fail2ban/jail.d/local.conf << 'EOF'",
-            "[DEFAULT]",
-            "bantime  = 3600       # 1 hour ban",
-            "findtime = 600        # 10 minute observation window",
-            "maxretry = 5          # 5 failures before ban",
-            "banaction = iptables-multiport",
-            "",
-            "[sshd]",
-            "enabled  = true",
-            "port     = ssh",
-            "logpath  = /var/log/auth.log",
-            "maxretry = 3          # Stricter for SSH",
-            "bantime  = 86400      # 24 hour ban for SSH failures",
-            "",
-            "[nginx-http-auth]",
-            "enabled  = true",
-            "logpath  = /var/log/nginx/error.log",
-            "EOF",
-            "",
-            "sudo systemctl enable fail2ban --now",
-            "",
-            "# Monitor bans",
-            "sudo fail2ban-client status",
-            "sudo fail2ban-client status sshd",
-            "",
-            "# Unban an IP",
-            "sudo fail2ban-client set sshd unbanip 192.168.100.50"
-          ].join('\n')} />
+          code={CODE_LINUXHARDENING_3} />
       </section>
 
       <section>
         <h2>Filesystem Hardening</h2>
         <CodeBlock title="/etc/fstab — secure mount options" language="bash"
-          code={[
-            "# Current /tmp entry (probably just defaults):",
-            "# UUID=xxx  /tmp  ext4  defaults  0 2",
-            "",
-            "# Hardened /tmp — noexec nosuid nodev",
-            "# Option 1: tmpfs (RAM-based, faster, auto-cleared on reboot)",
-            "# Add to /etc/fstab:",
-            "# tmpfs  /tmp  tmpfs  rw,nosuid,nodev,noexec,relatime,size=2G  0 0",
-            "",
-            "# Option 2: bind-mount if /tmp is on root partition",
-            "sudo mount --bind /tmp /tmp",
-            "sudo mount --make-private /tmp",
-            "sudo mount -o remount,noexec,nosuid,nodev /tmp",
-            "",
-            "# Verify",
-            "mount | grep /tmp",
-            "",
-            "# Also harden /var/tmp",
-            "# /var/tmp  tmpfs  tmpfs  rw,nosuid,nodev,noexec  0 0",
-            "",
-            "# Remove world-writable permissions on shared directories",
-            "sudo chmod 1777 /tmp          # Sticky bit — only owner can delete their files",
-            "sudo chmod 1777 /var/tmp",
-            "",
-            "# Find world-writable files (security audit)",
-            "sudo find / -xdev -type f -perm -0002 -not -path '/proc/*' 2>/dev/null"
-          ].join('\n')} />
+          code={CODE_LINUXHARDENING_4} />
       </section>
 
       <section>
         <h2>AppArmor — Mandatory Access Control</h2>
         <CodeBlock title="AppArmor basics" language="bash"
-          code={[
-            "# Check AppArmor status",
-            "sudo apparmor_status",
-            "",
-            "# List all profiles and their modes",
-            "sudo aa-status | grep -E 'enforce|complain'",
-            "",
-            "# Switch a profile to enforce mode",
-            "sudo aa-enforce /etc/apparmor.d/usr.sbin.nginx",
-            "",
-            "# Switch to complain mode (log violations but don't block — use for testing)",
-            "sudo aa-complain /etc/apparmor.d/usr.sbin.nginx",
-            "",
-            "# Check AppArmor violations in logs",
-            "sudo dmesg | grep apparmor",
-            "sudo journalctl -k | grep apparmor",
-            "",
-            "# Generate a profile for a new program",
-            "sudo apt install apparmor-utils",
-            "sudo aa-genprof /opt/myapp/server",
-            "# Run the application, let it do its normal operations",
-            "# Then press S to scan and generate the profile"
-          ].join('\n')} />
+          code={CODE_LINUXHARDENING_5} />
       </section>
 
       <section>
@@ -328,70 +374,18 @@ export default function LinuxHardening() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install Lynis and run a baseline audit before hardening."
-              command={[
-                "sudo apt install lynis -y",
-                "",
-                "# Run full audit",
-                "sudo lynis audit system --quiet",
-                "",
-                "# Check the hardening index (before hardening)",
-                "grep 'Hardening index' /var/log/lynis.log | tail -1"
-              ].join('\n')}
+              command={CODE_LINUXHARDENING_6}
               output="[+] Hardening index : 54 [##########          ]"
             />
             <LabStep number={2}
               description="Apply kernel hardening and fail2ban, then re-audit."
-              command={[
-                "# Apply sysctl hardening",
-                "sudo tee /etc/sysctl.d/99-hardening.conf << 'EOF'",
-                "net.ipv4.tcp_syncookies = 1",
-                "net.ipv4.icmp_echo_ignore_broadcasts = 1",
-                "net.ipv4.conf.all.accept_source_route = 0",
-                "net.ipv4.conf.all.accept_redirects = 0",
-                "net.ipv4.conf.all.log_martians = 1",
-                "net.ipv4.conf.all.rp_filter = 1",
-                "kernel.kptr_restrict = 2",
-                "kernel.dmesg_restrict = 1",
-                "fs.suid_dumpable = 0",
-                "kernel.randomize_va_space = 2",
-                "EOF",
-                "sudo sysctl -p /etc/sysctl.d/99-hardening.conf",
-                "",
-                "# Install and configure fail2ban",
-                "sudo apt install fail2ban -y",
-                "sudo systemctl enable fail2ban --now",
-                "",
-                "# Re-run Lynis and compare",
-                "sudo lynis audit system --quiet",
-                "grep 'Hardening index' /var/log/lynis.log | tail -1"
-              ].join('\n')}
+              command={CODE_LINUXHARDENING_7}
               output="[+] Hardening index : 67 [#############       ]"
             />
             <LabStep number={3}
               description="Review top Lynis findings and apply quick wins."
-              command={[
-                "# See all warnings",
-                "sudo lynis show warnings",
-                "",
-                "# See all suggestions (prioritised)",
-                "sudo lynis show suggestions | head -30",
-                "",
-                "# Common quick win: disable root SSH login (if not already done)",
-                "grep PermitRootLogin /etc/ssh/sshd_config",
-                "",
-                "# Quick win: set UMASK to 027 for new files",
-                "grep UMASK /etc/login.defs"
-              ].join('\n')}
-              output={[
-                "! Found shell without timeout [AUTH-9328]",
-                "! No logging server configured [LOGG-2154]",
-                "",
-                "# Suggestions:",
-                "* Install a file integrity tool (AIDE)",
-                "* Enable automatic security updates (unattended-upgrades)",
-                "* Set a password on GRUB bootloader",
-                "* Configure /tmp with noexec option"
-              ].join('\n')}
+              command={CODE_LINUXHARDENING_8}
+              output={CODE_LINUXHARDENING_9}
             />
           </div>
         </div>

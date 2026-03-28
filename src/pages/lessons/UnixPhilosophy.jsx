@@ -3,6 +3,93 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_UNIXPHILOSOPHY_1 = `# ── Devices ──────────────────────────────────────────────────
+cat /dev/urandom | head -c 16 | xxd   # Read random bytes
+dd if=/dev/zero of=/tmp/empty bs=1M count=10  # Create empty file
+echo 'test' > /dev/null                # Discard output
+
+# ── Kernel data via /proc (Linux) ────────────────────────────
+cat /proc/cpuinfo | grep 'model name' | head -1  # CPU info
+cat /proc/meminfo | grep MemTotal               # RAM total
+cat /proc/loadavg                                # Load average
+cat /proc/version                               # Kernel version
+cat /proc/$$/status | head -10                  # Current shell's info
+
+# ── Network sockets are files ─────────────────────────────────
+# Each open socket has a file descriptor
+ls -la /proc/$$/fd | head -10   # File descriptors of current shell
+# 0 = stdin, 1 = stdout, 2 = stderr, 3+ = open files/sockets
+
+# ── Hardware via /sys ─────────────────────────────────────────
+cat /sys/class/net/eth0/address    # NIC MAC address
+cat /sys/class/net/eth0/speed      # Link speed in Mbps
+cat /sys/block/sda/size            # Disk size in 512-byte sectors`
+const CODE_UNIXPHILOSOPHY_2 = `# What is the default system shell? (should be POSIX sh)
+ls -la /bin/sh
+
+# What shell are you using interactively?
+echo $SHELL
+echo $0
+
+# Check POSIX compliance of a simple script
+# This should work on any POSIX system:
+#!/bin/sh
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    echo "OS: $NAME"
+fi`
+const CODE_UNIXPHILOSOPHY_3 = `/bin/sh -> dash    <- Ubuntu uses dash (POSIX sh) as /bin/sh
+/bin/bash          <- Interactive shell is bash
+bash`
+const CODE_UNIXPHILOSOPHY_4 = `# Count how many unique users are defined on this system
+# Each tool does ONE thing:
+cut -d: -f1 /etc/passwd |   # extract username field
+  sort |                     # sort alphabetically
+  uniq |                     # deduplicate
+  wc -l                      # count lines
+
+# Find the 5 largest files under /usr (everything-is-a-file + pipes)
+find /usr -type f -printf '%s %p\\
+' 2>/dev/null |
+  sort -rn |
+  head -5 |
+  awk '{printf "%-10s %s\\
+", $1, $2}'`
+const CODE_UNIXPHILOSOPHY_5 = `34
+
+183185920  /usr/lib/x86_64-linux-gnu/libicudata.so.70.1
+43978792   /usr/bin/snap
+30543488   /usr/lib/snapd/snapd
+26918944   /usr/lib/x86_64-linux-gnu/libLLVM-14.so.1
+24813992   /usr/lib/x86_64-linux-gnu/libclang-14.so.1`
+const CODE_UNIXPHILOSOPHY_6 = `# System info from /proc
+echo '=== Kernel version ==='
+cat /proc/version
+
+echo '=== Load average (1min, 5min, 15min, running/total, last PID) ==='
+cat /proc/loadavg
+
+echo '=== Memory summary ==='
+grep -E 'MemTotal|MemAvailable|SwapTotal' /proc/meminfo
+
+echo '=== CPU count ==='
+grep -c processor /proc/cpuinfo`
+const CODE_UNIXPHILOSOPHY_7 = `=== Kernel version ===
+Linux version 5.15.0-91-generic (Ubuntu) #101-Ubuntu SMP
+
+=== Load average ===
+0.08 0.05 0.01 1/312 4521
+
+=== Memory summary ===
+MemTotal:    3997584 kB
+MemAvailable:2847392 kB
+SwapTotal:   2097148 kB
+
+=== CPU count ===
+2`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -215,29 +302,7 @@ export default function UnixPhilosophy() {
           are all exposed as files you can read, write, and manipulate with standard tools.
         </p>
         <CodeBlock title="The 'everything is a file' abstraction in practice" language="bash"
-          code={[
-            "# ── Devices ──────────────────────────────────────────────────",
-            "cat /dev/urandom | head -c 16 | xxd   # Read random bytes",
-            "dd if=/dev/zero of=/tmp/empty bs=1M count=10  # Create empty file",
-            "echo 'test' > /dev/null                # Discard output",
-            "",
-            "# ── Kernel data via /proc (Linux) ────────────────────────────",
-            "cat /proc/cpuinfo | grep 'model name' | head -1  # CPU info",
-            "cat /proc/meminfo | grep MemTotal               # RAM total",
-            "cat /proc/loadavg                                # Load average",
-            "cat /proc/version                               # Kernel version",
-            "cat /proc/$$/status | head -10                  # Current shell's info",
-            "",
-            "# ── Network sockets are files ─────────────────────────────────",
-            "# Each open socket has a file descriptor",
-            "ls -la /proc/$$/fd | head -10   # File descriptors of current shell",
-            "# 0 = stdin, 1 = stdout, 2 = stderr, 3+ = open files/sockets",
-            "",
-            "# ── Hardware via /sys ─────────────────────────────────────────",
-            "cat /sys/class/net/eth0/address    # NIC MAC address",
-            "cat /sys/class/net/eth0/speed      # Link speed in Mbps",
-            "cat /sys/block/sda/size            # Disk size in 512-byte sectors"
-          ].join('\n')} />
+          code={CODE_UNIXPHILOSOPHY_1} />
       </section>
 
       <section>
@@ -251,85 +316,18 @@ export default function UnixPhilosophy() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Verify POSIX compliance and check what shell you're running."
-              command={[
-                "# What is the default system shell? (should be POSIX sh)",
-                "ls -la /bin/sh",
-                "",
-                "# What shell are you using interactively?",
-                "echo $SHELL",
-                "echo $0",
-                "",
-                "# Check POSIX compliance of a simple script",
-                "# This should work on any POSIX system:",
-                "#!/bin/sh",
-                "if [ -f /etc/os-release ]; then",
-                "    . /etc/os-release",
-                "    echo \"OS: $NAME\"",
-                "fi"
-              ].join('\n')}
-              output={[
-                "/bin/sh -> dash    <- Ubuntu uses dash (POSIX sh) as /bin/sh",
-                "/bin/bash          <- Interactive shell is bash",
-                "bash"
-              ].join('\n')}
+              command={CODE_UNIXPHILOSOPHY_2}
+              output={CODE_UNIXPHILOSOPHY_3}
             />
             <LabStep number={2}
               description="Practise the Unix philosophy — build a pipeline from single-purpose tools."
-              command={[
-                "# Count how many unique users are defined on this system",
-                "# Each tool does ONE thing:",
-                "cut -d: -f1 /etc/passwd |   # extract username field",
-                "  sort |                     # sort alphabetically",
-                "  uniq |                     # deduplicate",
-                "  wc -l                      # count lines",
-                "",
-                "# Find the 5 largest files under /usr (everything-is-a-file + pipes)",
-                "find /usr -type f -printf '%s %p\\n' 2>/dev/null |",
-                "  sort -rn |",
-                "  head -5 |",
-                "  awk '{printf \"%-10s %s\\n\", $1, $2}'"
-              ].join('\n')}
-              output={[
-                "34",
-                "",
-                "183185920  /usr/lib/x86_64-linux-gnu/libicudata.so.70.1",
-                "43978792   /usr/bin/snap",
-                "30543488   /usr/lib/snapd/snapd",
-                "26918944   /usr/lib/x86_64-linux-gnu/libLLVM-14.so.1",
-                "24813992   /usr/lib/x86_64-linux-gnu/libclang-14.so.1"
-              ].join('\n')}
+              command={CODE_UNIXPHILOSOPHY_4}
+              output={CODE_UNIXPHILOSOPHY_5}
             />
             <LabStep number={3}
               description="Explore /proc — the virtual filesystem exposing kernel state."
-              command={[
-                "# System info from /proc",
-                "echo '=== Kernel version ==='",
-                "cat /proc/version",
-                "",
-                "echo '=== Load average (1min, 5min, 15min, running/total, last PID) ==='",
-                "cat /proc/loadavg",
-                "",
-                "echo '=== Memory summary ==='",
-                "grep -E 'MemTotal|MemAvailable|SwapTotal' /proc/meminfo",
-                "",
-                "echo '=== CPU count ==='",
-                "grep -c processor /proc/cpuinfo"
-              ].join('\n')}
-              output={[
-                "=== Kernel version ===",
-                "Linux version 5.15.0-91-generic (Ubuntu) #101-Ubuntu SMP",
-                "",
-                "=== Load average ===",
-                "0.08 0.05 0.01 1/312 4521",
-                "",
-                "=== Memory summary ===",
-                "MemTotal:    3997584 kB",
-                "MemAvailable:2847392 kB",
-                "SwapTotal:   2097148 kB",
-                "",
-                "=== CPU count ===",
-                "2"
-              ].join('\n')}
+              command={CODE_UNIXPHILOSOPHY_6}
+              output={CODE_UNIXPHILOSOPHY_7}
             />
           </div>
         </div>

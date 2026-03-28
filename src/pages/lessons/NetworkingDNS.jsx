@@ -3,6 +3,73 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_NETWORKINGDNS_1 = `# ── Basic queries ────────────────────────────────────────────
+dig dc01.lab.local              # A record (default)
+dig dc01.lab.local A            # Explicit A record
+dig lab.local MX                # Mail exchanger
+dig lab.local NS                # Nameservers
+dig lab.local SOA               # Zone authority record
+dig lab.local TXT               # Text records (SPF, DKIM)
+
+# ── Query a specific DNS server ──────────────────────────────
+dig @192.168.100.10 dc01.lab.local    # Ask DC01's DNS
+dig @8.8.8.8 google.com               # Ask Google directly
+
+# ── Reverse DNS lookup ───────────────────────────────────────
+dig -x 192.168.100.10                 # PTR record for IP
+
+# ── SRV records (Active Directory discovery) ─────────────────
+dig @192.168.100.10 _ldap._tcp.lab.local SRV
+dig @192.168.100.10 _kerberos._tcp.lab.local SRV
+
+# ── Useful flags ─────────────────────────────────────────────
+dig dc01.lab.local +short          # IP only, no details
+dig dc01.lab.local +noall +answer  # Answer section only
+dig dc01.lab.local +trace          # Full resolution path
+dig dc01.lab.local +dnssec         # Include DNSSEC records
+
+# ── Equivalent Windows commands ──────────────────────────────
+# Resolve-DnsName dc01.lab.local -Type A
+# Resolve-DnsName 192.168.100.10  (reverse)`
+const CODE_NETWORKINGDNS_2 = `# Install dig if needed
+sudo apt install dnsutils -y
+
+# Query DC01's DNS for the lab domain
+dig @192.168.100.10 lab.local SOA +noall +answer
+dig @192.168.100.10 lab.local NS  +short
+dig @192.168.100.10 dc01.lab.local A +short
+
+# Discover AD services via SRV records
+dig @192.168.100.10 _ldap._tcp.lab.local SRV +short
+dig @192.168.100.10 _kerberos._tcp.lab.local SRV +short`
+const CODE_NETWORKINGDNS_3 = `lab.local. 3600 IN SOA dc01.lab.local. hostmaster.lab.local. 4 900 600 86400 3600
+
+dc01.lab.local.
+
+192.168.100.10
+
+0 100 389 dc01.lab.local.
+0 100 88 dc01.lab.local.`
+const CODE_NETWORKINGDNS_4 = `# On DC01 — create additional DNS records
+Add-DnsServerResourceRecordA -ZoneName 'lab.local' \`\`
+  -Name 'webserver' -IPv4Address '192.168.100.30'
+
+Add-DnsServerResourceRecordCName -ZoneName 'lab.local' \`\`
+  -Name 'www' -HostNameAlias 'webserver.lab.local'
+
+# Create PTR record
+Add-DnsServerResourceRecordPtr -ZoneName '100.168.192.in-addr.arpa' \`\`
+  -Name '30' -PtrDomainName 'webserver.lab.local'
+
+# Verify from Ubuntu
+# dig @192.168.100.10 www.lab.local CNAME +short
+# dig @192.168.100.10 -x 192.168.100.30 +short`
+const CODE_NETWORKINGDNS_5 = `# From Ubuntu after creating records:
+webserver.lab.local.   <- CNAME target
+webserver.lab.local.   <- PTR result`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -178,36 +245,7 @@ export default function NetworkingDNS() {
       <section>
         <h2>dig — The DNS Diagnostic Tool</h2>
         <CodeBlock title="dig reference — query every record type" language="bash"
-          code={[
-            "# ── Basic queries ────────────────────────────────────────────",
-            "dig dc01.lab.local              # A record (default)",
-            "dig dc01.lab.local A            # Explicit A record",
-            "dig lab.local MX                # Mail exchanger",
-            "dig lab.local NS                # Nameservers",
-            "dig lab.local SOA               # Zone authority record",
-            "dig lab.local TXT               # Text records (SPF, DKIM)",
-            "",
-            "# ── Query a specific DNS server ──────────────────────────────",
-            "dig @192.168.100.10 dc01.lab.local    # Ask DC01's DNS",
-            "dig @8.8.8.8 google.com               # Ask Google directly",
-            "",
-            "# ── Reverse DNS lookup ───────────────────────────────────────",
-            "dig -x 192.168.100.10                 # PTR record for IP",
-            "",
-            "# ── SRV records (Active Directory discovery) ─────────────────",
-            "dig @192.168.100.10 _ldap._tcp.lab.local SRV",
-            "dig @192.168.100.10 _kerberos._tcp.lab.local SRV",
-            "",
-            "# ── Useful flags ─────────────────────────────────────────────",
-            "dig dc01.lab.local +short          # IP only, no details",
-            "dig dc01.lab.local +noall +answer  # Answer section only",
-            "dig dc01.lab.local +trace          # Full resolution path",
-            "dig dc01.lab.local +dnssec         # Include DNSSEC records",
-            "",
-            "# ── Equivalent Windows commands ──────────────────────────────",
-            "# Resolve-DnsName dc01.lab.local -Type A",
-            "# Resolve-DnsName 192.168.100.10  (reverse)"
-          ].join('\n')} />
+          code={CODE_NETWORKINGDNS_1} />
       </section>
 
       <section>
@@ -221,54 +259,14 @@ export default function NetworkingDNS() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Query all DNS record types for the lab domain from Ubuntu."
-              command={[
-                "# Install dig if needed",
-                "sudo apt install dnsutils -y",
-                "",
-                "# Query DC01's DNS for the lab domain",
-                "dig @192.168.100.10 lab.local SOA +noall +answer",
-                "dig @192.168.100.10 lab.local NS  +short",
-                "dig @192.168.100.10 dc01.lab.local A +short",
-                "",
-                "# Discover AD services via SRV records",
-                "dig @192.168.100.10 _ldap._tcp.lab.local SRV +short",
-                "dig @192.168.100.10 _kerberos._tcp.lab.local SRV +short"
-              ].join('\n')}
-              output={[
-                "lab.local. 3600 IN SOA dc01.lab.local. hostmaster.lab.local. 4 900 600 86400 3600",
-                "",
-                "dc01.lab.local.",
-                "",
-                "192.168.100.10",
-                "",
-                "0 100 389 dc01.lab.local.",
-                "0 100 88 dc01.lab.local."
-              ].join('\n')}
+              command={CODE_NETWORKINGDNS_2}
+              output={CODE_NETWORKINGDNS_3}
             />
             <LabStep number={2}
               description="Create DNS records on DC01 using PowerShell."
               language="powershell"
-              command={[
-                "# On DC01 — create additional DNS records",
-                "Add-DnsServerResourceRecordA -ZoneName 'lab.local' ``",
-                "  -Name 'webserver' -IPv4Address '192.168.100.30'",
-                "",
-                "Add-DnsServerResourceRecordCName -ZoneName 'lab.local' ``",
-                "  -Name 'www' -HostNameAlias 'webserver.lab.local'",
-                "",
-                "# Create PTR record",
-                "Add-DnsServerResourceRecordPtr -ZoneName '100.168.192.in-addr.arpa' ``",
-                "  -Name '30' -PtrDomainName 'webserver.lab.local'",
-                "",
-                "# Verify from Ubuntu",
-                "# dig @192.168.100.10 www.lab.local CNAME +short",
-                "# dig @192.168.100.10 -x 192.168.100.30 +short"
-              ].join('\n')}
-              output={[
-                "# From Ubuntu after creating records:",
-                "webserver.lab.local.   <- CNAME target",
-                "webserver.lab.local.   <- PTR result"
-              ].join('\n')}
+              command={CODE_NETWORKINGDNS_4}
+              output={CODE_NETWORKINGDNS_5}
             />
           </div>
         </div>

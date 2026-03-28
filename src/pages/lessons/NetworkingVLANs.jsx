@@ -3,6 +3,52 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_NETWORKINGVLANS_1 = `sudo apt install vlan -y
+sudo modprobe 8021q
+
+# Make it persist across reboots
+echo '8021q' | sudo tee -a /etc/modules
+
+# Confirm module is loaded
+lsmod | grep 8021q`
+const CODE_NETWORKINGVLANS_2 = `# Create VLAN 10 subinterface
+sudo ip link add link ens33 name ens33.10 type vlan id 10
+sudo ip addr add 10.10.10.1/24 dev ens33.10
+sudo ip link set ens33.10 up
+
+# Create VLAN 20 subinterface
+sudo ip link add link ens33 name ens33.20 type vlan id 20
+sudo ip addr add 10.10.20.1/24 dev ens33.20
+sudo ip link set ens33.20 up
+
+# Verify
+ip addr show | grep ens33`
+const CODE_NETWORKINGVLANS_3 = `2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500
+    inet 192.168.100.20/24
+3: ens33.10@ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500
+    inet 10.10.10.1/24   ← VLAN 10
+4: ens33.20@ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500
+    inet 10.10.20.1/24   ← VLAN 20`
+const CODE_NETWORKINGVLANS_4 = `sudo tee /etc/netplan/10-vlans.yaml << 'EOF'
+network:
+  version: 2
+  vlans:
+    ens33.10:
+      id: 10
+      link: ens33
+      addresses: [10.10.10.1/24]
+    ens33.20:
+      id: 20
+      link: ens33
+      addresses: [10.10.20.1/24]
+EOF
+sudo netplan apply
+ip route show | grep 10.10`
+const CODE_NETWORKINGVLANS_5 = `10.10.10.0/24 dev ens33.10 proto kernel scope link src 10.10.10.1
+10.10.20.0/24 dev ens33.20 proto kernel scope link src 10.10.20.1`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -269,66 +315,18 @@ export default function NetworkingVLANs() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install the VLAN package and load the 802.1Q kernel module."
-              command={[
-                "sudo apt install vlan -y",
-                "sudo modprobe 8021q",
-                "",
-                "# Make it persist across reboots",
-                "echo '8021q' | sudo tee -a /etc/modules",
-                "",
-                "# Confirm module is loaded",
-                "lsmod | grep 8021q"
-              ].join('\n')}
+              command={CODE_NETWORKINGVLANS_1}
               output="8021q                  32768  0"
             />
             <LabStep number={2}
               description="Create VLAN subinterfaces on ens33 to simulate trunk port behaviour."
-              command={[
-                "# Create VLAN 10 subinterface",
-                "sudo ip link add link ens33 name ens33.10 type vlan id 10",
-                "sudo ip addr add 10.10.10.1/24 dev ens33.10",
-                "sudo ip link set ens33.10 up",
-                "",
-                "# Create VLAN 20 subinterface",
-                "sudo ip link add link ens33 name ens33.20 type vlan id 20",
-                "sudo ip addr add 10.10.20.1/24 dev ens33.20",
-                "sudo ip link set ens33.20 up",
-                "",
-                "# Verify",
-                "ip addr show | grep ens33"
-              ].join('\n')}
-              output={[
-                "2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500",
-                "    inet 192.168.100.20/24",
-                "3: ens33.10@ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500",
-                "    inet 10.10.10.1/24   ← VLAN 10",
-                "4: ens33.20@ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500",
-                "    inet 10.10.20.1/24   ← VLAN 20"
-              ].join('\n')}
+              command={CODE_NETWORKINGVLANS_2}
+              output={CODE_NETWORKINGVLANS_3}
             />
             <LabStep number={3}
               description="Make VLAN configuration persistent with Netplan."
-              command={[
-                "sudo tee /etc/netplan/10-vlans.yaml << 'EOF'",
-                "network:",
-                "  version: 2",
-                "  vlans:",
-                "    ens33.10:",
-                "      id: 10",
-                "      link: ens33",
-                "      addresses: [10.10.10.1/24]",
-                "    ens33.20:",
-                "      id: 20",
-                "      link: ens33",
-                "      addresses: [10.10.20.1/24]",
-                "EOF",
-                "sudo netplan apply",
-                "ip route show | grep 10.10"
-              ].join('\n')}
-              output={[
-                "10.10.10.0/24 dev ens33.10 proto kernel scope link src 10.10.10.1",
-                "10.10.20.0/24 dev ens33.20 proto kernel scope link src 10.10.20.1"
-              ].join('\n')}
+              command={CODE_NETWORKINGVLANS_4}
+              output={CODE_NETWORKINGVLANS_5}
             />
           </div>
         </div>

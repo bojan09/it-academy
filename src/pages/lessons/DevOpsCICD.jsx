@@ -3,6 +3,171 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_DEVOPSCICD_1 = `name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:    # Manual trigger button in GitHub UI
+
+env:
+  PYTHON_VERSION: '3.11'
+  APP_NAME: my-sysadmin-tool
+
+jobs:
+  # ── Job 1: Lint & Test ───────────────────────────────────
+  test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: \${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flake8 pytest
+
+      - name: Lint with flake8
+        run: flake8 . --max-line-length=100 --exclude=venv/
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # ── Job 2: Build ─────────────────────────────────────────
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test]     # Only runs after test succeeds
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t \${{ env.APP_NAME }}:\${{ github.sha }} .
+
+      - name: Push to registry
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo \${{ secrets.REGISTRY_TOKEN }} | docker login ghcr.io -u \${{ github.actor }} --password-stdin
+          docker push ghcr.io/\${{ github.repository }}/\${{ env.APP_NAME }}:\${{ github.sha }}
+
+  # ── Job 3: Deploy to Production ──────────────────────────
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production   # Requires manual approval (configured in GitHub Settings)
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: \${{ secrets.PROD_SERVER_IP }}
+          username: deploy
+          key: \${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/myapp
+            docker pull ghcr.io/\${{ github.repository }}/\${{ env.APP_NAME }}:\${{ github.sha }}
+            docker compose up -d
+            docker system prune -f`
+const CODE_DEVOPSCICD_2 = `name: Infrastructure Validation
+
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - 'terraform/**'
+
+jobs:
+  validate-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck (lint bash scripts)
+        run: |
+          sudo apt install shellcheck -y
+          find scripts/ -name '*.sh' -exec shellcheck {} +
+
+      - name: Test scripts run without errors
+        run: |
+          bash scripts/health-check.sh
+
+  validate-terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform -chdir=terraform fmt -check
+
+      - name: Terraform Validate
+        run: |
+          terraform -chdir=terraform init -backend=false
+          terraform -chdir=terraform validate`
+const CODE_DEVOPSCICD_3 = `cd ~/lab-scripts
+mkdir -p .github/workflows
+
+# Create a simple health check test
+mkdir -p tests
+cat > tests/test_health.sh << 'EOF'
+#!/bin/bash
+# Simple smoke test
+bash health-check.sh
+if [ $? -eq 0 ]; then
+    echo 'PASS: health-check.sh exited successfully'
+    exit 0
+else
+    echo 'FAIL: health-check.sh exited with error'
+    exit 1
+fi
+EOF
+chmod +x tests/test_health.sh`
+const CODE_DEVOPSCICD_4 = `cat > .github/workflows/ci.yml << 'EOF'
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck - lint all shell scripts
+        run: |
+          sudo apt install shellcheck -y
+          find . -name '*.sh' -not -path './.git/*' -exec shellcheck {} +
+
+      - name: Run smoke tests
+        run: bash tests/test_health.sh
+EOF
+
+git add .github/ tests/
+git commit -m 'ci: add GitHub Actions CI pipeline'
+echo 'Push to GitHub to trigger the workflow!'`
+const CODE_DEVOPSCICD_5 = `[main abc1234] ci: add GitHub Actions CI pipeline
+ 2 files changed, 25 insertions(+)
+Push to GitHub to trigger the workflow!`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -161,129 +326,13 @@ export default function DevOpsCICD() {
       <section>
         <h2>Complete CI/CD Pipeline Example</h2>
         <CodeBlock title=".github/workflows/deploy.yml — production-ready pipeline" language="yaml"
-          code={[
-            "name: CI/CD Pipeline",
-            "",
-            "on:",
-            "  push:",
-            "    branches: [main]",
-            "  pull_request:",
-            "    branches: [main]",
-            "  workflow_dispatch:    # Manual trigger button in GitHub UI",
-            "",
-            "env:",
-            "  PYTHON_VERSION: '3.11'",
-            "  APP_NAME: my-sysadmin-tool",
-            "",
-            "jobs:",
-            "  # ── Job 1: Lint & Test ───────────────────────────────────",
-            "  test:",
-            "    name: Lint and Test",
-            "    runs-on: ubuntu-latest",
-            "    steps:",
-            "      - name: Checkout code",
-            "        uses: actions/checkout@v4",
-            "",
-            "      - name: Set up Python",
-            "        uses: actions/setup-python@v5",
-            "        with:",
-            "          python-version: ${{ env.PYTHON_VERSION }}",
-            "          cache: 'pip'",
-            "",
-            "      - name: Install dependencies",
-            "        run: |",
-            "          pip install -r requirements.txt",
-            "          pip install flake8 pytest",
-            "",
-            "      - name: Lint with flake8",
-            "        run: flake8 . --max-line-length=100 --exclude=venv/",
-            "",
-            "      - name: Run tests",
-            "        run: pytest tests/ -v --tb=short",
-            "",
-            "  # ── Job 2: Build ─────────────────────────────────────────",
-            "  build:",
-            "    name: Build Docker Image",
-            "    runs-on: ubuntu-latest",
-            "    needs: [test]     # Only runs after test succeeds",
-            "    steps:",
-            "      - uses: actions/checkout@v4",
-            "",
-            "      - name: Build image",
-            "        run: docker build -t ${{ env.APP_NAME }}:${{ github.sha }} .",
-            "",
-            "      - name: Push to registry",
-            "        if: github.ref == 'refs/heads/main'",
-            "        run: |",
-            "          echo ${{ secrets.REGISTRY_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin",
-            "          docker push ghcr.io/${{ github.repository }}/${{ env.APP_NAME }}:${{ github.sha }}",
-            "",
-            "  # ── Job 3: Deploy to Production ──────────────────────────",
-            "  deploy:",
-            "    name: Deploy to Production",
-            "    runs-on: ubuntu-latest",
-            "    needs: [build]",
-            "    if: github.ref == 'refs/heads/main'",
-            "    environment:",
-            "      name: production   # Requires manual approval (configured in GitHub Settings)",
-            "    steps:",
-            "      - name: Deploy via SSH",
-            "        uses: appleboy/ssh-action@v1",
-            "        with:",
-            "          host: ${{ secrets.PROD_SERVER_IP }}",
-            "          username: deploy",
-            "          key: ${{ secrets.PROD_SSH_KEY }}",
-            "          script: |",
-            "            cd /opt/myapp",
-            "            docker pull ghcr.io/${{ github.repository }}/${{ env.APP_NAME }}:${{ github.sha }}",
-            "            docker compose up -d",
-            "            docker system prune -f"
-          ].join('\n')} />
+          code={CODE_DEVOPSCICD_1} />
       </section>
 
       <section>
         <h2>Pipeline for Infrastructure Scripts</h2>
         <CodeBlock title=".github/workflows/infra-validate.yml — validate shell scripts and Terraform" language="yaml"
-          code={[
-            "name: Infrastructure Validation",
-            "",
-            "on:",
-            "  push:",
-            "    paths:",
-            "      - 'scripts/**'",
-            "      - 'terraform/**'",
-            "",
-            "jobs:",
-            "  validate-scripts:",
-            "    runs-on: ubuntu-latest",
-            "    steps:",
-            "      - uses: actions/checkout@v4",
-            "",
-            "      - name: ShellCheck (lint bash scripts)",
-            "        run: |",
-            "          sudo apt install shellcheck -y",
-            "          find scripts/ -name '*.sh' -exec shellcheck {} +",
-            "",
-            "      - name: Test scripts run without errors",
-            "        run: |",
-            "          bash scripts/health-check.sh",
-            "",
-            "  validate-terraform:",
-            "    runs-on: ubuntu-latest",
-            "    steps:",
-            "      - uses: actions/checkout@v4",
-            "",
-            "      - name: Setup Terraform",
-            "        uses: hashicorp/setup-terraform@v3",
-            "",
-            "      - name: Terraform Format Check",
-            "        run: terraform -chdir=terraform fmt -check",
-            "",
-            "      - name: Terraform Validate",
-            "        run: |",
-            "          terraform -chdir=terraform init -backend=false",
-            "          terraform -chdir=terraform validate"
-          ].join('\n')} />
+          code={CODE_DEVOPSCICD_2} />
       </section>
 
       <section>
@@ -297,65 +346,14 @@ export default function DevOpsCICD() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Create the GitHub Actions workflow directory in your lab-scripts repo."
-              command={[
-                "cd ~/lab-scripts",
-                "mkdir -p .github/workflows",
-                "",
-                "# Create a simple health check test",
-                "mkdir -p tests",
-                "cat > tests/test_health.sh << 'EOF'",
-                "#!/bin/bash",
-                "# Simple smoke test",
-                "bash health-check.sh",
-                "if [ $? -eq 0 ]; then",
-                "    echo 'PASS: health-check.sh exited successfully'",
-                "    exit 0",
-                "else",
-                "    echo 'FAIL: health-check.sh exited with error'",
-                "    exit 1",
-                "fi",
-                "EOF",
-                "chmod +x tests/test_health.sh"
-              ].join('\n')}
+              command={CODE_DEVOPSCICD_3}
               language="bash"
             />
             <LabStep number={2}
               description="Write the CI workflow YAML file."
-              command={[
-                "cat > .github/workflows/ci.yml << 'EOF'",
-                "name: CI",
-                "",
-                "on:",
-                "  push:",
-                "    branches: [ main ]",
-                "  pull_request:",
-                "    branches: [ main ]",
-                "",
-                "jobs:",
-                "  lint-and-test:",
-                "    runs-on: ubuntu-latest",
-                "    steps:",
-                "      - uses: actions/checkout@v4",
-                "",
-                "      - name: ShellCheck - lint all shell scripts",
-                "        run: |",
-                "          sudo apt install shellcheck -y",
-                "          find . -name '*.sh' -not -path './.git/*' -exec shellcheck {} +",
-                "",
-                "      - name: Run smoke tests",
-                "        run: bash tests/test_health.sh",
-                "EOF",
-                "",
-                "git add .github/ tests/",
-                "git commit -m 'ci: add GitHub Actions CI pipeline'",
-                "echo 'Push to GitHub to trigger the workflow!'"
-              ].join('\n')}
+              command={CODE_DEVOPSCICD_4}
               language="bash"
-              output={[
-                "[main abc1234] ci: add GitHub Actions CI pipeline",
-                " 2 files changed, 25 insertions(+)",
-                "Push to GitHub to trigger the workflow!"
-              ].join('\n')}
+              output={CODE_DEVOPSCICD_5}
             />
           </div>
         </div>

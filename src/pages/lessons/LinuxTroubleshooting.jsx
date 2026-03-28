@@ -3,6 +3,119 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXTROUBLESHOOTING_1 = `# Step 1: Get status and recent logs in one shot
+systemctl status nginx
+
+# Step 2: Check full logs
+journalctl -u nginx -n 100 --no-pager
+journalctl -u nginx --since '10 minutes ago'
+journalctl -u nginx -p err
+
+# Step 3: Check if port is already in use (common cause)
+ss -tlnp | grep :80
+fuser 80/tcp
+
+# Step 4: Test config syntax (nginx example)
+nginx -t
+# apache2 -t
+# sshd -t
+
+# Step 5: Check file permissions
+ls -la /etc/nginx/nginx.conf
+ls -la /var/log/nginx/
+
+# Step 6: Try starting with verbose output
+sudo /usr/sbin/nginx -g 'daemon off;'  # foreground mode`
+const CODE_LINUXTROUBLESHOOTING_2 = `# ── CPU ─────────────────────────────────────────────────────
+top -b -n 1 | head -20              # One-shot top output
+ps aux --sort=-%cpu | head -10       # Top CPU consumers
+mpstat -P ALL 1 3                   # Per-CPU utilisation (3 samples)
+vmstat 1 5                           # System-wide stats (5 samples)
+
+# ── Memory ───────────────────────────────────────────────────
+free -h                             # RAM and swap usage
+ps aux --sort=-%mem | head -10       # Top memory consumers
+cat /proc/meminfo | grep -E 'MemTotal|MemFree|Cached|SwapUsed'
+
+# ── OOM Killer (Out of Memory) ───────────────────────────────
+dmesg | grep -i 'oom\\|killed process'
+journalctl -k | grep -i oom
+
+# ── I/O ──────────────────────────────────────────────────────
+iostat -xz 1 3                      # Disk I/O per device
+iotop -b -n 3                       # I/O by process
+df -h && df -ih                     # Space and inodes`
+const CODE_LINUXTROUBLESHOOTING_3 = `# ── Find what a process is doing ────────────────────────────
+strace -p PID                       # Attach to running process
+strace -p PID -e trace=network      # Network calls only
+strace -p PID -e trace=file         # File operations only
+strace -c -p PID                    # Summary after Ctrl+C
+
+# ── Open files and connections ───────────────────────────────
+lsof -p PID                         # All files opened by process
+lsof -i :80                         # What is using port 80
+lsof -i tcp                         # All TCP connections
+lsof /var/log/nginx/error.log       # Who has this file open
+
+# ── Zombie and orphan processes ──────────────────────────────
+ps aux | awk '{print $8, $2, $11}' | grep '^Z'  # Zombie processes
+
+# ── Disk space freed by deleted-but-open files ───────────────
+lsof | grep '(deleted)'             # Files deleted but still open
+lsof | grep '(deleted)' | awk '{print $7, $9}' | sort -rn | head -10
+# Fix: restart the service holding the file open`
+const CODE_LINUXTROUBLESHOOTING_4 = `# Create a service that fails (wrong path)
+sudo tee /etc/systemd/system/broken-app.service << 'EOF'
+[Unit]
+Description=Broken Test App
+
+[Service]
+Type=simple
+ExecStart=/opt/nonexistent/app --port 9090
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl start broken-app
+sleep 2`
+const CODE_LINUXTROUBLESHOOTING_5 = `# Step 1: status
+systemctl status broken-app
+
+# Step 2: full journal
+journalctl -u broken-app -n 20 --no-pager
+
+# The error should be clear: 'No such file or directory'
+# Root cause: ExecStart path does not exist`
+const CODE_LINUXTROUBLESHOOTING_6 = `broken-app.service - Broken Test App
+  Loaded: loaded (/etc/systemd/system/broken-app.service)
+  Active: failed (Result: exit-code)
+
+Jan 15 11:00:00 srv01 systemd[1]: broken-app.service: Control process
+  exited, code=exited, status=203/EXEC
+Jan 15 11:00:00 srv01 systemd[1]: Failed to start Broken Test App.
+
+Root cause: /opt/nonexistent/app does not exist`
+const CODE_LINUXTROUBLESHOOTING_7 = `echo '=== UPTIME ===' && uptime
+echo '=== TOP PROCESSES ===' && ps aux --sort=-%cpu | head -5
+echo '=== MEMORY ===' && free -h
+echo '=== DISK ===' && df -h / /var
+echo '=== FAILED SERVICES ===' && systemctl list-units --state=failed
+echo '=== RECENT ERRORS ===' && journalctl -p err -b --no-pager | tail -5`
+const CODE_LINUXTROUBLESHOOTING_8 = `=== UPTIME ===
+ 11:00:00 up 4:20,  1 user,  load average: 0.08, 0.04, 0.01
+=== MEMORY ===
+              total  used  free
+Mem:           3.8G  1.2G  2.3G
+=== FAILED SERVICES ===
+  UNIT              LOAD    ACTIVE  SUB
+  broken-app.service loaded  failed  failed`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -139,83 +252,19 @@ export default function LinuxTroubleshooting() {
       <section>
         <h2>Service Failure Diagnosis</h2>
         <CodeBlock title="Service troubleshooting workflow" language="bash"
-          code={[
-            "# Step 1: Get status and recent logs in one shot",
-            "systemctl status nginx",
-            "",
-            "# Step 2: Check full logs",
-            "journalctl -u nginx -n 100 --no-pager",
-            "journalctl -u nginx --since '10 minutes ago'",
-            "journalctl -u nginx -p err",
-            "",
-            "# Step 3: Check if port is already in use (common cause)",
-            "ss -tlnp | grep :80",
-            "fuser 80/tcp",
-            "",
-            "# Step 4: Test config syntax (nginx example)",
-            "nginx -t",
-            "# apache2 -t",
-            "# sshd -t",
-            "",
-            "# Step 5: Check file permissions",
-            "ls -la /etc/nginx/nginx.conf",
-            "ls -la /var/log/nginx/",
-            "",
-            "# Step 6: Try starting with verbose output",
-            "sudo /usr/sbin/nginx -g 'daemon off;'  # foreground mode"
-          ].join('\n')} />
+          code={CODE_LINUXTROUBLESHOOTING_1} />
       </section>
 
       <section>
         <h2>CPU & Memory Analysis</h2>
         <CodeBlock title="Performance diagnosis toolkit" language="bash"
-          code={[
-            "# ── CPU ─────────────────────────────────────────────────────",
-            "top -b -n 1 | head -20              # One-shot top output",
-            "ps aux --sort=-%cpu | head -10       # Top CPU consumers",
-            "mpstat -P ALL 1 3                   # Per-CPU utilisation (3 samples)",
-            "vmstat 1 5                           # System-wide stats (5 samples)",
-            "",
-            "# ── Memory ───────────────────────────────────────────────────",
-            "free -h                             # RAM and swap usage",
-            "ps aux --sort=-%mem | head -10       # Top memory consumers",
-            "cat /proc/meminfo | grep -E 'MemTotal|MemFree|Cached|SwapUsed'",
-            "",
-            "# ── OOM Killer (Out of Memory) ───────────────────────────────",
-            "dmesg | grep -i 'oom\\|killed process'",
-            "journalctl -k | grep -i oom",
-            "",
-            "# ── I/O ──────────────────────────────────────────────────────",
-            "iostat -xz 1 3                      # Disk I/O per device",
-            "iotop -b -n 3                       # I/O by process",
-            "df -h && df -ih                     # Space and inodes"
-          ].join('\n')} />
+          code={CODE_LINUXTROUBLESHOOTING_2} />
       </section>
 
       <section>
         <h2>Process & File Investigation</h2>
         <CodeBlock title="strace, lsof, and process tools" language="bash"
-          code={[
-            "# ── Find what a process is doing ────────────────────────────",
-            "strace -p PID                       # Attach to running process",
-            "strace -p PID -e trace=network      # Network calls only",
-            "strace -p PID -e trace=file         # File operations only",
-            "strace -c -p PID                    # Summary after Ctrl+C",
-            "",
-            "# ── Open files and connections ───────────────────────────────",
-            "lsof -p PID                         # All files opened by process",
-            "lsof -i :80                         # What is using port 80",
-            "lsof -i tcp                         # All TCP connections",
-            "lsof /var/log/nginx/error.log       # Who has this file open",
-            "",
-            "# ── Zombie and orphan processes ──────────────────────────────",
-            "ps aux | awk '{print $8, $2, $11}' | grep '^Z'  # Zombie processes",
-            "",
-            "# ── Disk space freed by deleted-but-open files ───────────────",
-            "lsof | grep '(deleted)'             # Files deleted but still open",
-            "lsof | grep '(deleted)' | awk '{print $7, $9}' | sort -rn | head -10",
-            "# Fix: restart the service holding the file open"
-          ].join('\n')} />
+          code={CODE_LINUXTROUBLESHOOTING_3} />
       </section>
 
       <section>
@@ -229,71 +278,17 @@ export default function LinuxTroubleshooting() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Create a deliberately broken service to practice diagnosing."
-              command={[
-                "# Create a service that fails (wrong path)",
-                "sudo tee /etc/systemd/system/broken-app.service << 'EOF'",
-                "[Unit]",
-                "Description=Broken Test App",
-                "",
-                "[Service]",
-                "Type=simple",
-                "ExecStart=/opt/nonexistent/app --port 9090",
-                "Restart=on-failure",
-                "RestartSec=5",
-                "",
-                "[Install]",
-                "WantedBy=multi-user.target",
-                "EOF",
-                "",
-                "sudo systemctl daemon-reload",
-                "sudo systemctl start broken-app",
-                "sleep 2"
-              ].join('\n')}
+              command={CODE_LINUXTROUBLESHOOTING_4}
             />
             <LabStep number={2}
               description="Apply the diagnosis workflow to find the root cause."
-              command={[
-                "# Step 1: status",
-                "systemctl status broken-app",
-                "",
-                "# Step 2: full journal",
-                "journalctl -u broken-app -n 20 --no-pager",
-                "",
-                "# The error should be clear: 'No such file or directory'",
-                "# Root cause: ExecStart path does not exist"
-              ].join('\n')}
-              output={[
-                "broken-app.service - Broken Test App",
-                "  Loaded: loaded (/etc/systemd/system/broken-app.service)",
-                "  Active: failed (Result: exit-code)",
-                "",
-                "Jan 15 11:00:00 srv01 systemd[1]: broken-app.service: Control process",
-                "  exited, code=exited, status=203/EXEC",
-                "Jan 15 11:00:00 srv01 systemd[1]: Failed to start Broken Test App.",
-                "",
-                "Root cause: /opt/nonexistent/app does not exist"
-              ].join('\n')}
+              command={CODE_LINUXTROUBLESHOOTING_5}
+              output={CODE_LINUXTROUBLESHOOTING_6}
             />
             <LabStep number={3}
               description="Run the full 60-second checklist to capture a system snapshot."
-              command={[
-                "echo '=== UPTIME ===' && uptime",
-                "echo '=== TOP PROCESSES ===' && ps aux --sort=-%cpu | head -5",
-                "echo '=== MEMORY ===' && free -h",
-                "echo '=== DISK ===' && df -h / /var",
-                "echo '=== FAILED SERVICES ===' && systemctl list-units --state=failed",
-                "echo '=== RECENT ERRORS ===' && journalctl -p err -b --no-pager | tail -5"
-              ].join('\n')}
-              output={[
-                "=== UPTIME ===",
-                " 11:00:00 up 4:20,  1 user,  load average: 0.08, 0.04, 0.01",
-                "=== MEMORY ===",
-                "              total  used  free",
-                "Mem:           3.8G  1.2G  2.3G",
-                "=== FAILED SERVICES ===",
-                "  UNIT              LOAD    ACTIVE  SUB",
-                "  broken-app.service loaded  failed  failed"
-              ].join('\n')}
+              command={CODE_LINUXTROUBLESHOOTING_7}
+              output={CODE_LINUXTROUBLESHOOTING_8}
             />
           </div>
         </div>

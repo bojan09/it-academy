@@ -3,6 +3,141 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_DEVOPSANSIBLE_1 = `# /etc/ansible/hosts or project-local inventory.ini
+
+[all:vars]
+ansible_user=sysadmin
+ansible_ssh_private_key_file=~/.ssh/id_ed25519_lab
+
+[webservers]
+web01 ansible_host=192.168.100.30
+web02 ansible_host=192.168.100.31
+
+[databases]
+db01 ansible_host=192.168.100.40
+
+[lab]
+ubuntu01 ansible_host=192.168.100.20
+
+[lab:vars]
+ansible_python_interpreter=/usr/bin/python3
+
+# ── Test connectivity ─────────────────────────────────────────
+ansible all -i inventory.ini -m ping
+
+# ── Ad-hoc commands ──────────────────────────────────────────
+ansible all -i inventory.ini -m command -a 'uptime'
+ansible webservers -i inventory.ini -m apt -a 'name=nginx state=present' --become
+ansible all -i inventory.ini -m gather_facts | grep ansible_hostname`
+const CODE_DEVOPSANSIBLE_2 = `---
+- name: Configure web servers
+  hosts: webservers
+  become: true          # sudo elevation
+  vars:
+    nginx_port: 80
+    site_root: /var/www/html
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+      notify: restart nginx
+
+    - name: Create web root directory
+      file:
+        path: "{{ site_root }}"
+        state: directory
+        owner: www-data
+        mode: '0755'
+
+    - name: Deploy index page from template
+      template:
+        src: templates/index.html.j2
+        dest: "{{ site_root }}/index.html"
+        owner: www-data
+      notify: restart nginx
+
+    - name: Ensure nginx is started and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Open port {{ nginx_port }} in firewall
+      ufw:
+        rule: allow
+        port: "{{ nginx_port }}"
+        proto: tcp`
+const CODE_DEVOPSANSIBLE_3 = `sudo apt install ansible -y
+ansible --version | head -1
+
+# Test against localhost
+ansible localhost -m ping`
+const CODE_DEVOPSANSIBLE_4 = `ansible [core 2.15.0]
+localhost | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}`
+const CODE_DEVOPSANSIBLE_5 = `cat > harden.yml << 'EOF'
+---
+- name: Basic server hardening
+  hosts: localhost
+  connection: local
+  become: true
+  tasks:
+    - name: Ensure fail2ban is installed
+      apt:
+        name: fail2ban
+        state: present
+        update_cache: true
+
+    - name: Ensure fail2ban is running
+      service:
+        name: fail2ban
+        state: started
+        enabled: true
+
+    - name: Set kernel hardening sysctl values
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: true
+      loop:
+        - { key: net.ipv4.tcp_syncookies,              value: '1' }
+        - { key: net.ipv4.conf.all.accept_redirects,   value: '0' }
+        - { key: kernel.randomize_va_space,            value: '2' }
+EOF
+
+ansible-playbook harden.yml`
+const CODE_DEVOPSANSIBLE_6 = `PLAY [Basic server hardening] ****
+
+TASK [Ensure fail2ban is installed] ****
+ok: [localhost]
+
+TASK [Ensure fail2ban is running] ****
+ok: [localhost]
+
+TASK [Set kernel hardening sysctl values] ****
+ok: [localhost] => (item={'key': 'net.ipv4.tcp_syncookies', ...})
+
+PLAY RECAP ****
+localhost : ok=3  changed=0  unreachable=0  failed=0`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -136,92 +271,13 @@ export default function DevOpsAnsible() {
       <section>
         <h2>Inventory & Connectivity</h2>
         <CodeBlock title="inventory.ini — defining your managed hosts" language="bash"
-          code={[
-            "# /etc/ansible/hosts or project-local inventory.ini",
-            "",
-            "[all:vars]",
-            "ansible_user=sysadmin",
-            "ansible_ssh_private_key_file=~/.ssh/id_ed25519_lab",
-            "",
-            "[webservers]",
-            "web01 ansible_host=192.168.100.30",
-            "web02 ansible_host=192.168.100.31",
-            "",
-            "[databases]",
-            "db01 ansible_host=192.168.100.40",
-            "",
-            "[lab]",
-            "ubuntu01 ansible_host=192.168.100.20",
-            "",
-            "[lab:vars]",
-            "ansible_python_interpreter=/usr/bin/python3",
-            "",
-            "# ── Test connectivity ─────────────────────────────────────────",
-            "ansible all -i inventory.ini -m ping",
-            "",
-            "# ── Ad-hoc commands ──────────────────────────────────────────",
-            "ansible all -i inventory.ini -m command -a 'uptime'",
-            "ansible webservers -i inventory.ini -m apt -a 'name=nginx state=present' --become",
-            "ansible all -i inventory.ini -m gather_facts | grep ansible_hostname"
-          ].join('\n')} />
+          code={CODE_DEVOPSANSIBLE_1} />
       </section>
 
       <section>
         <h2>Writing Playbooks</h2>
         <CodeBlock title="web-server.yml — production playbook structure" language="yaml"
-          code={[
-            "---",
-            "- name: Configure web servers",
-            "  hosts: webservers",
-            "  become: true          # sudo elevation",
-            "  vars:",
-            "    nginx_port: 80",
-            "    site_root: /var/www/html",
-            "",
-            "  handlers:",
-            "    - name: restart nginx",
-            "      service:",
-            "        name: nginx",
-            "        state: restarted",
-            "",
-            "  tasks:",
-            "    - name: Update apt cache",
-            "      apt:",
-            "        update_cache: true",
-            "        cache_valid_time: 3600",
-            "",
-            "    - name: Install nginx",
-            "      apt:",
-            "        name: nginx",
-            "        state: present",
-            "      notify: restart nginx",
-            "",
-            "    - name: Create web root directory",
-            "      file:",
-            "        path: \"{{ site_root }}\"",
-            "        state: directory",
-            "        owner: www-data",
-            "        mode: '0755'",
-            "",
-            "    - name: Deploy index page from template",
-            "      template:",
-            "        src: templates/index.html.j2",
-            "        dest: \"{{ site_root }}/index.html\"",
-            "        owner: www-data",
-            "      notify: restart nginx",
-            "",
-            "    - name: Ensure nginx is started and enabled",
-            "      service:",
-            "        name: nginx",
-            "        state: started",
-            "        enabled: true",
-            "",
-            "    - name: Open port {{ nginx_port }} in firewall",
-            "      ufw:",
-            "        rule: allow",
-            "        port: \"{{ nginx_port }}\"",
-            "        proto: tcp"
-          ].join('\n')} />
+          code={CODE_DEVOPSANSIBLE_2} />
       </section>
 
       <section>
@@ -235,73 +291,14 @@ export default function DevOpsAnsible() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Install Ansible on the Ubuntu VM (acts as both controller and managed node)."
-              command={[
-                "sudo apt install ansible -y",
-                "ansible --version | head -1",
-                "",
-                "# Test against localhost",
-                "ansible localhost -m ping"
-              ].join('\n')}
+              command={CODE_DEVOPSANSIBLE_3}
               language="bash"
-              output={[
-                "ansible [core 2.15.0]",
-                "localhost | SUCCESS => {",
-                "    \"changed\": false,",
-                "    \"ping\": \"pong\"",
-                "}"
-              ].join('\n')}
+              output={CODE_DEVOPSANSIBLE_4}
             />
             <LabStep number={2}
               description="Write and run a hardening playbook against localhost."
-              command={[
-                "cat > harden.yml << 'EOF'",
-                "---",
-                "- name: Basic server hardening",
-                "  hosts: localhost",
-                "  connection: local",
-                "  become: true",
-                "  tasks:",
-                "    - name: Ensure fail2ban is installed",
-                "      apt:",
-                "        name: fail2ban",
-                "        state: present",
-                "        update_cache: true",
-                "",
-                "    - name: Ensure fail2ban is running",
-                "      service:",
-                "        name: fail2ban",
-                "        state: started",
-                "        enabled: true",
-                "",
-                "    - name: Set kernel hardening sysctl values",
-                "      sysctl:",
-                "        name: \"{{ item.key }}\"",
-                "        value: \"{{ item.value }}\"",
-                "        state: present",
-                "        reload: true",
-                "      loop:",
-                "        - { key: net.ipv4.tcp_syncookies,              value: '1' }",
-                "        - { key: net.ipv4.conf.all.accept_redirects,   value: '0' }",
-                "        - { key: kernel.randomize_va_space,            value: '2' }",
-                "EOF",
-                "",
-                "ansible-playbook harden.yml"
-              ].join('\n')}
-              output={[
-                "PLAY [Basic server hardening] ****",
-                "",
-                "TASK [Ensure fail2ban is installed] ****",
-                "ok: [localhost]",
-                "",
-                "TASK [Ensure fail2ban is running] ****",
-                "ok: [localhost]",
-                "",
-                "TASK [Set kernel hardening sysctl values] ****",
-                "ok: [localhost] => (item={'key': 'net.ipv4.tcp_syncookies', ...})",
-                "",
-                "PLAY RECAP ****",
-                "localhost : ok=3  changed=0  unreachable=0  failed=0"
-              ].join('\n')}
+              command={CODE_DEVOPSANSIBLE_5}
+              output={CODE_DEVOPSANSIBLE_6}
             />
           </div>
         </div>

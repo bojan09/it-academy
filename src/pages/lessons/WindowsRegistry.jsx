@@ -3,6 +3,76 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WINDOWSREGISTRY_1 = `# ── Read values ──────────────────────────────────────────────
+reg query 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' /v ProductName
+
+# PowerShell — read all values in a key
+Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' |
+  Select-Object ProductName, DisplayVersion, CurrentBuild
+
+# ── Write values ─────────────────────────────────────────────
+# Create a key and set a string value
+New-Item -Path 'HKCU:\\Software\\MyApp' -Force | Out-Null
+Set-ItemProperty -Path 'HKCU:\\Software\\MyApp' -Name 'Theme' -Value 'Dark'
+Set-ItemProperty -Path 'HKCU:\\Software\\MyApp' -Name 'MaxItems' -Value 50 -Type DWord
+
+# ── Export and import (backup/restore) ───────────────────────
+reg export 'HKCU\\Software\\MyApp' C:\\backup-myapp.reg
+reg import C:\\backup-myapp.reg
+
+# ── Audit startup entries ────────────────────────────────────
+$runKeys = @(
+    'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
+    'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'
+)
+foreach ($key in $runKeys) {
+    Write-Host "\`n[$key]"
+    Get-ItemProperty $key -ErrorAction SilentlyContinue |
+        Select-Object * -ExcludeProperty PS* |
+        Format-List
+}`
+const CODE_WINDOWSREGISTRY_2 = `# Windows version details from registry
+Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' |
+  Select-Object ProductName, DisplayVersion, CurrentBuild, UBR
+
+# Check all startup entries
+$keys = @(
+  'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
+  'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'
+)
+foreach ($k in $keys) {
+    Write-Host "--- $k ---"
+    (Get-ItemProperty $k).PSObject.Properties |
+        Where-Object Name -notlike 'PS*' |
+        Select-Object Name, Value | Format-Table -AutoSize
+}`
+const CODE_WINDOWSREGISTRY_3 = `ProductName    : Windows Server 2025 Standard Evaluation
+DisplayVersion : 24H2
+CurrentBuild   : 26100
+UBR            : 2033
+
+--- HKLM:\\...\\Run ---
+Name            Value
+SecurityHealth  C:\\Windows\\System32\\SecurityHealthSystray.exe`
+const CODE_WINDOWSREGISTRY_4 = `# Create a custom app registry key
+New-Item 'HKLM:\\SOFTWARE\\SysAdminPro' -Force | Out-Null
+Set-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro' -Name 'Version' -Value '1.0'
+Set-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro' -Name 'InstallDate' -Value (Get-Date -Format 'yyyy-MM-dd')
+Set-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro' -Name 'Enabled' -Value 1 -Type DWord
+
+# Export as backup
+reg export 'HKLM\\SOFTWARE\\SysAdminPro' C:\\reg-backup.reg /y
+Write-Host 'Exported to C:\\reg-backup.reg'
+
+# Verify
+Get-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro'`
+const CODE_WINDOWSREGISTRY_5 = `Exported to C:\\reg-backup.reg
+Version     : 1.0
+InstallDate : 2025-01-15
+Enabled     : 1`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -149,36 +219,7 @@ export default function WindowsRegistry() {
       <section>
         <h2>Registry Operations</h2>
         <CodeBlock title="reg.exe and PowerShell registry reference" language="powershell"
-          code={[
-            "# ── Read values ──────────────────────────────────────────────",
-            "reg query 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' /v ProductName",
-            "",
-            "# PowerShell — read all values in a key",
-            "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' |",
-            "  Select-Object ProductName, DisplayVersion, CurrentBuild",
-            "",
-            "# ── Write values ─────────────────────────────────────────────",
-            "# Create a key and set a string value",
-            "New-Item -Path 'HKCU:\\Software\\MyApp' -Force | Out-Null",
-            "Set-ItemProperty -Path 'HKCU:\\Software\\MyApp' -Name 'Theme' -Value 'Dark'",
-            "Set-ItemProperty -Path 'HKCU:\\Software\\MyApp' -Name 'MaxItems' -Value 50 -Type DWord",
-            "",
-            "# ── Export and import (backup/restore) ───────────────────────",
-            "reg export 'HKCU\\Software\\MyApp' C:\\backup-myapp.reg",
-            "reg import C:\\backup-myapp.reg",
-            "",
-            "# ── Audit startup entries ────────────────────────────────────",
-            "$runKeys = @(",
-            "    'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',",
-            "    'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'",
-            ")",
-            "foreach ($key in $runKeys) {",
-            "    Write-Host \"`n[$key]\"",
-            "    Get-ItemProperty $key -ErrorAction SilentlyContinue |",
-            "        Select-Object * -ExcludeProperty PS* |",
-            "        Format-List",
-            "}"
-          ].join('\n')} />
+          code={CODE_WINDOWSREGISTRY_1} />
       </section>
 
       <section>
@@ -192,56 +233,13 @@ export default function WindowsRegistry() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Read key system information from the registry."
-              command={[
-                "# Windows version details from registry",
-                "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' |",
-                "  Select-Object ProductName, DisplayVersion, CurrentBuild, UBR",
-                "",
-                "# Check all startup entries",
-                "$keys = @(",
-                "  'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',",
-                "  'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'",
-                ")",
-                "foreach ($k in $keys) {",
-                "    Write-Host \"--- $k ---\"",
-                "    (Get-ItemProperty $k).PSObject.Properties |",
-                "        Where-Object Name -notlike 'PS*' |",
-                "        Select-Object Name, Value | Format-Table -AutoSize",
-                "}"
-              ].join('\n')}
-              output={[
-                "ProductName    : Windows Server 2025 Standard Evaluation",
-                "DisplayVersion : 24H2",
-                "CurrentBuild   : 26100",
-                "UBR            : 2033",
-                "",
-                "--- HKLM:\\...\\Run ---",
-                "Name            Value",
-                "SecurityHealth  C:\\Windows\\System32\\SecurityHealthSystray.exe"
-              ].join('\n')}
+              command={CODE_WINDOWSREGISTRY_2}
+              output={CODE_WINDOWSREGISTRY_3}
             />
             <LabStep number={2}
               description="Create and export an application configuration key."
-              command={[
-                "# Create a custom app registry key",
-                "New-Item 'HKLM:\\SOFTWARE\\SysAdminPro' -Force | Out-Null",
-                "Set-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro' -Name 'Version' -Value '1.0'",
-                "Set-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro' -Name 'InstallDate' -Value (Get-Date -Format 'yyyy-MM-dd')",
-                "Set-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro' -Name 'Enabled' -Value 1 -Type DWord",
-                "",
-                "# Export as backup",
-                "reg export 'HKLM\\SOFTWARE\\SysAdminPro' C:\\reg-backup.reg /y",
-                "Write-Host 'Exported to C:\\reg-backup.reg'",
-                "",
-                "# Verify",
-                "Get-ItemProperty 'HKLM:\\SOFTWARE\\SysAdminPro'"
-              ].join('\n')}
-              output={[
-                "Exported to C:\\reg-backup.reg",
-                "Version     : 1.0",
-                "InstallDate : 2025-01-15",
-                "Enabled     : 1"
-              ].join('\n')}
+              command={CODE_WINDOWSREGISTRY_4}
+              output={CODE_WINDOWSREGISTRY_5}
             />
           </div>
         </div>

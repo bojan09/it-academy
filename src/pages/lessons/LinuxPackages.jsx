@@ -3,6 +3,111 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXPACKAGES_1 = `# ── Package index ────────────────────────────────────────────
+sudo apt update                    # Refresh package lists (always first)
+sudo apt list --upgradable         # Show packages with updates available
+
+# ── Install / remove ─────────────────────────────────────────
+sudo apt install nginx             # Install a package
+sudo apt install nginx=1.24.0-1    # Install specific version
+sudo apt install -y nginx          # Non-interactive (no prompts)
+sudo apt remove nginx              # Remove (keep config files)
+sudo apt purge nginx               # Remove + delete config files
+sudo apt autoremove                # Remove orphaned dependencies
+
+# ── Upgrade ──────────────────────────────────────────────────
+sudo apt upgrade                   # Upgrade installed packages
+sudo apt full-upgrade              # Upgrade + remove obsolete packages
+sudo apt dist-upgrade              # Handle dependency changes (use carefully)
+
+# ── Search & info ────────────────────────────────────────────
+apt search nginx                   # Search package names/descriptions
+apt show nginx                     # Package details, version, deps
+apt list --installed               # All installed packages
+apt list --installed | grep nginx  # Check if specific package is installed
+
+# ── Version pinning ──────────────────────────────────────────
+sudo apt-mark hold nginx           # Prevent upgrades/removal
+sudo apt-mark unhold nginx         # Release the hold
+apt-mark showhold                  # List held packages
+
+# ── Cache management ─────────────────────────────────────────
+sudo apt clean                     # Remove downloaded .deb files
+sudo apt autoclean                 # Remove outdated .deb files only`
+const CODE_LINUXPACKAGES_2 = `# View configured repositories
+cat /etc/apt/sources.list
+ls /etc/apt/sources.list.d/
+
+# Format of a sources.list entry:
+# deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main restricted universe
+# |   |            |                               |     |    components
+# |   options      repository URL                  |     suite (release name)
+# type (deb=binary, deb-src=source)
+
+# Add a PPA (Personal Package Archive)
+sudo add-apt-repository ppa:ondrej/php
+sudo apt update
+sudo apt install php8.3
+
+# Add a third-party repo (e.g. Docker official)
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt update
+
+# Remove a PPA
+sudo add-apt-repository --remove ppa:ondrej/php`
+const CODE_LINUXPACKAGES_3 = `# Install a .deb file directly
+sudo dpkg -i package.deb
+sudo apt install -f             # Fix broken deps after dpkg install
+
+# Query installed packages
+dpkg -l                         # List all installed packages
+dpkg -l nginx                   # Is nginx installed?
+dpkg -L nginx                   # Files installed by nginx
+dpkg -S /usr/bin/nmap           # Which package owns this file?
+
+# Package info
+dpkg -p nginx                   # Show package info from apt cache
+dpkg --print-architecture       # System architecture
+
+# Fix broken packages
+sudo dpkg --configure -a        # Configure any partially-installed packages
+sudo apt install -f             # Fix dependency problems`
+const CODE_LINUXPACKAGES_4 = `sudo apt update
+apt list --upgradable 2>/dev/null | head -10
+
+# Count upgradable packages
+apt list --upgradable 2>/dev/null | grep -c upgradable`
+const CODE_LINUXPACKAGES_5 = `Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease
+Reading package lists... Done
+Building dependency tree... Done
+3 packages can be upgraded.`
+const CODE_LINUXPACKAGES_6 = `sudo apt install -y htop ncdu tree nmap net-tools
+
+# Verify installed
+dpkg -l htop ncdu tree | grep ^ii
+
+# Find what package owns a binary
+dpkg -S $(which nmap)`
+const CODE_LINUXPACKAGES_7 = `ii  htop  3.2.2-1  amd64  interactive processes viewer
+ii  ncdu  1.17-1   amd64  ncurses disk usage viewer
+ii  tree  2.0.2-1  amd64  displays directory tree
+nmap: /usr/bin/nmap`
+const CODE_LINUXPACKAGES_8 = `# Pin nginx to current version (useful for production)
+sudo apt install -y nginx
+sudo apt-mark hold nginx
+
+# Verify the hold
+apt-mark showhold
+
+# Try to upgrade — it will skip nginx
+sudo apt upgrade --dry-run 2>&1 | grep -E 'hold|nginx'`
+const CODE_LINUXPACKAGES_9 = `nginx
+The following packages have been kept back:
+  nginx`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -140,92 +245,19 @@ export default function LinuxPackages() {
       <section>
         <h2>APT — The Daily Driver</h2>
         <CodeBlock title="apt — complete reference" language="bash"
-          code={[
-            "# ── Package index ────────────────────────────────────────────",
-            "sudo apt update                    # Refresh package lists (always first)",
-            "sudo apt list --upgradable         # Show packages with updates available",
-            "",
-            "# ── Install / remove ─────────────────────────────────────────",
-            "sudo apt install nginx             # Install a package",
-            "sudo apt install nginx=1.24.0-1    # Install specific version",
-            "sudo apt install -y nginx          # Non-interactive (no prompts)",
-            "sudo apt remove nginx              # Remove (keep config files)",
-            "sudo apt purge nginx               # Remove + delete config files",
-            "sudo apt autoremove                # Remove orphaned dependencies",
-            "",
-            "# ── Upgrade ──────────────────────────────────────────────────",
-            "sudo apt upgrade                   # Upgrade installed packages",
-            "sudo apt full-upgrade              # Upgrade + remove obsolete packages",
-            "sudo apt dist-upgrade              # Handle dependency changes (use carefully)",
-            "",
-            "# ── Search & info ────────────────────────────────────────────",
-            "apt search nginx                   # Search package names/descriptions",
-            "apt show nginx                     # Package details, version, deps",
-            "apt list --installed               # All installed packages",
-            "apt list --installed | grep nginx  # Check if specific package is installed",
-            "",
-            "# ── Version pinning ──────────────────────────────────────────",
-            "sudo apt-mark hold nginx           # Prevent upgrades/removal",
-            "sudo apt-mark unhold nginx         # Release the hold",
-            "apt-mark showhold                  # List held packages",
-            "",
-            "# ── Cache management ─────────────────────────────────────────",
-            "sudo apt clean                     # Remove downloaded .deb files",
-            "sudo apt autoclean                 # Remove outdated .deb files only"
-          ].join('\n')} />
+          code={CODE_LINUXPACKAGES_1} />
       </section>
 
       <section>
         <h2>Repositories & sources.list</h2>
         <CodeBlock title="Managing repositories" language="bash"
-          code={[
-            "# View configured repositories",
-            "cat /etc/apt/sources.list",
-            "ls /etc/apt/sources.list.d/",
-            "",
-            "# Format of a sources.list entry:",
-            "# deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main restricted universe",
-            "# |   |            |                               |     |    components",
-            "# |   options      repository URL                  |     suite (release name)",
-            "# type (deb=binary, deb-src=source)",
-            "",
-            "# Add a PPA (Personal Package Archive)",
-            "sudo add-apt-repository ppa:ondrej/php",
-            "sudo apt update",
-            "sudo apt install php8.3",
-            "",
-            "# Add a third-party repo (e.g. Docker official)",
-            "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker.gpg",
-            "echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list",
-            "sudo apt update",
-            "",
-            "# Remove a PPA",
-            "sudo add-apt-repository --remove ppa:ondrej/php"
-          ].join('\n')} />
+          code={CODE_LINUXPACKAGES_2} />
       </section>
 
       <section>
         <h2>dpkg — Under the Hood</h2>
         <CodeBlock title="dpkg — low-level package tool" language="bash"
-          code={[
-            "# Install a .deb file directly",
-            "sudo dpkg -i package.deb",
-            "sudo apt install -f             # Fix broken deps after dpkg install",
-            "",
-            "# Query installed packages",
-            "dpkg -l                         # List all installed packages",
-            "dpkg -l nginx                   # Is nginx installed?",
-            "dpkg -L nginx                   # Files installed by nginx",
-            "dpkg -S /usr/bin/nmap           # Which package owns this file?",
-            "",
-            "# Package info",
-            "dpkg -p nginx                   # Show package info from apt cache",
-            "dpkg --print-architecture       # System architecture",
-            "",
-            "# Fix broken packages",
-            "sudo dpkg --configure -a        # Configure any partially-installed packages",
-            "sudo apt install -f             # Fix dependency problems"
-          ].join('\n')} />
+          code={CODE_LINUXPACKAGES_3} />
       </section>
 
       <section>
@@ -263,56 +295,18 @@ export default function LinuxPackages() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Update the package index and check what needs upgrading."
-              command={[
-                "sudo apt update",
-                "apt list --upgradable 2>/dev/null | head -10",
-                "",
-                "# Count upgradable packages",
-                "apt list --upgradable 2>/dev/null | grep -c upgradable"
-              ].join('\n')}
-              output={[
-                "Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease",
-                "Reading package lists... Done",
-                "Building dependency tree... Done",
-                "3 packages can be upgraded."
-              ].join('\n')}
+              command={CODE_LINUXPACKAGES_4}
+              output={CODE_LINUXPACKAGES_5}
             />
             <LabStep number={2}
               description="Install useful sysadmin tools and verify with dpkg."
-              command={[
-                "sudo apt install -y htop ncdu tree nmap net-tools",
-                "",
-                "# Verify installed",
-                "dpkg -l htop ncdu tree | grep ^ii",
-                "",
-                "# Find what package owns a binary",
-                "dpkg -S $(which nmap)"
-              ].join('\n')}
-              output={[
-                "ii  htop  3.2.2-1  amd64  interactive processes viewer",
-                "ii  ncdu  1.17-1   amd64  ncurses disk usage viewer",
-                "ii  tree  2.0.2-1  amd64  displays directory tree",
-                "nmap: /usr/bin/nmap"
-              ].join('\n')}
+              command={CODE_LINUXPACKAGES_6}
+              output={CODE_LINUXPACKAGES_7}
             />
             <LabStep number={3}
               description="Pin a package version to prevent accidental upgrades."
-              command={[
-                "# Pin nginx to current version (useful for production)",
-                "sudo apt install -y nginx",
-                "sudo apt-mark hold nginx",
-                "",
-                "# Verify the hold",
-                "apt-mark showhold",
-                "",
-                "# Try to upgrade — it will skip nginx",
-                "sudo apt upgrade --dry-run 2>&1 | grep -E 'hold|nginx'"
-              ].join('\n')}
-              output={[
-                "nginx",
-                "The following packages have been kept back:",
-                "  nginx"
-              ].join('\n')}
+              command={CODE_LINUXPACKAGES_8}
+              output={CODE_LINUXPACKAGES_9}
             />
           </div>
         </div>

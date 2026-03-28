@@ -3,6 +3,190 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_POWERSHELLPIPELINE_1 = `# Basic comparison filter
+Get-Service | Where-Object { $_.Status -eq 'Running' }
+Get-Process | Where-Object { $_.CPU -gt 10 }
+Get-ChildItem C:\\Windows | Where-Object { $_.Length -gt 1MB }
+
+# String matching
+Get-Service | Where-Object { $_.DisplayName -like '*SQL*' }
+Get-Service | Where-Object { $_.Name -match '^W' }       # regex: starts with W
+
+# Simplified syntax (PowerShell 3+) — no $_ needed for single property
+Get-Service | Where-Object Status -eq 'Stopped'
+Get-Process | Where-Object CPU -gt 100
+
+# Multiple conditions
+Get-Process | Where-Object { $_.CPU -gt 10 -and $_.WorkingSet64 -gt 100MB }
+Get-ChildItem C:\\Logs | Where-Object { $_.Extension -eq '.log' -and
+                                        $_.LastWriteTime -lt (Get-Date).AddDays(-30) }
+
+# Negation
+Get-Service | Where-Object { $_.StartType -ne 'Disabled' }
+Get-Process | Where-Object { $_.Name -notlike 'idle*' }`
+const CODE_POWERSHELLPIPELINE_2 = `# Pick specific properties
+Get-Process | Select-Object Name, Id, CPU, WorkingSet64
+
+# Rename + calculated properties with hashtable syntax
+Get-Process | Select-Object Name, Id,
+  @{N='CPU(s)';    E={[math]::Round($_.CPU, 2)}},
+  @{N='RAM(MB)';   E={[math]::Round($_.WorkingSet64 / 1MB, 1)}},
+  @{N='Threads';   E={$_.Threads.Count}}
+
+# Limit results
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 10
+Get-EventLog System | Select-Object -Last 20
+
+# Extract raw values (no object wrapper)
+Get-Process | Select-Object -ExpandProperty Name      # Returns string[]
+(Get-Service Spooler).DependentServices | Select-Object -ExpandProperty Name
+
+# Unique values (deduplicate)
+Get-Process | Select-Object -Property Name -Unique
+
+# Skip and First for pagination
+Get-ChildItem C:\\ | Select-Object -Skip 5 -First 10`
+const CODE_POWERSHELLPIPELINE_3 = `# Basic transformation
+Get-Service | ForEach-Object { "Service: $($_.Name) — $($_.Status)" }
+
+# With Begin, Process, End blocks (for setup/teardown)
+Get-ChildItem C:\\Scripts -Filter *.ps1 |
+  ForEach-Object -Begin   { $count = 0; "Starting scan..." }  
+                 -Process { $count++; Write-Verbose $_.Name }  
+                 -End      { "Found $count scripts" }
+
+# Multi-step transformation — restart stopped services
+Get-Service |
+  Where-Object  { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |
+  ForEach-Object { Start-Service $_.Name; "$($_.Name) started" }
+
+# Parallel execution (PowerShell 7+) — run on 5 hosts simultaneously
+$servers = 'DC01','SRV01','SRV02','WEB01','WEB02'
+$servers | ForEach-Object -Parallel {
+  $result = Test-Connection $_ -Count 1 -Quiet
+  [PSCustomObject]@{ Server=$_; Online=$result }
+} -ThrottleLimit 5`
+const CODE_POWERSHELLPIPELINE_4 = `# ── Sort-Object ────────────────────────────────────────────
+Get-Process | Sort-Object CPU -Descending
+Get-ChildItem C:\\Logs | Sort-Object LastWriteTime
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 5
+
+# Multi-property sort
+Get-ADUser -Filter * -Properties Department |
+  Sort-Object Department, Surname
+
+# ── Group-Object ────────────────────────────────────────────
+# Group services by status — quick tally
+Get-Service | Group-Object Status
+
+# Group processes by company — count per vendor
+Get-Process | Group-Object Company | Sort-Object Count -Descending |
+  Select-Object Name, Count | Format-Table -AutoSize
+
+# Group files by extension
+Get-ChildItem C:\\Windows\\System32 -File |
+  Group-Object Extension | Sort-Object Count -Descending |
+  Select-Object -First 10
+
+# ── Measure-Object ──────────────────────────────────────────
+# Count files
+Get-ChildItem C:\\Windows -Recurse -File | Measure-Object
+
+# Total disk usage of a folder
+Get-ChildItem C:\\Users -Recurse -File |
+  Measure-Object Length -Sum |
+  ForEach-Object { "$([math]::Round($_.Sum/1GB, 2)) GB" }
+
+# CPU stats across all processes
+Get-Process | Measure-Object CPU -Average -Maximum -Sum
+
+# Count event log errors in the last hour
+Get-EventLog System -EntryType Error -After (Get-Date).AddHours(-1) |
+  Measure-Object | Select-Object Count`
+const CODE_POWERSHELLPIPELINE_5 = `# ── Display formatting ──────────────────────────────────────
+Get-Service | Format-Table -AutoSize                # Auto-fit columns
+Get-Process | Format-Table Name, CPU -Wrap          # Wrap long values
+Get-Service | Format-List *                         # All properties as list
+Get-Process | Format-Wide Name -Column 4            # 4-column grid
+
+# ── Export ──────────────────────────────────────────────────
+# CSV (best for Excel / data analysis)
+Get-Service | Export-Csv C:\\services.csv -NoTypeInformation
+
+# JSON (best for APIs / automation)
+Get-Service | Select-Object Name, Status, StartType |
+  ConvertTo-Json | Out-File C:\\services.json
+
+# HTML report
+Get-Process | Select-Object Name, CPU, Id |
+  Sort-Object CPU -Descending | Select-Object -First 20 |
+  ConvertTo-Html -Title "Process Report" -PreContent "<h1>Top Processes</h1>" |
+  Out-File C:\\report.html
+
+# Grid view (interactive GUI table — perfect for quick analysis)
+Get-Process | Out-GridView -Title "Running Processes" -PassThru |
+  Stop-Process -WhatIf      # Select rows, pipe to another cmdlet!`
+const CODE_POWERSHELLPIPELINE_6 = `# Top 5 processes by RAM
+Get-Process | Sort-Object WorkingSet64 -Descending |
+  Select-Object -First 5 Name,
+    @{N='RAM(MB)';  E={[math]::Round($_.WorkingSet64/1MB,1)}},
+    @{N='CPU(s)';   E={[math]::Round($_.CPU,2)}},
+    @{N='Threads';  E={$_.Threads.Count}} |
+  Format-Table -AutoSize`
+const CODE_POWERSHELLPIPELINE_7 = `Name       RAM(MB)  CPU(s)  Threads
+----       -------  ------  -------
+lsass       156.2    12.4    28
+svchost      98.7     4.1    42
+dns          74.3     2.8    14
+explorer     68.1     1.2    36
+powershell   62.4     0.9    18`
+const CODE_POWERSHELLPIPELINE_8 = `Get-Service |
+  Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |
+  Select-Object Name, DisplayName, StartType |
+  Sort-Object Name |
+  Format-Table -AutoSize`
+const CODE_POWERSHELLPIPELINE_9 = `# Combine multiple data sources into one report object
+$report = [PSCustomObject]@{
+  ComputerName  = $env:COMPUTERNAME
+  Timestamp     = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+  TotalRAM_GB   = [math]::Round((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)
+  FreeRAM_GB    = [math]::Round((Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)
+  CPULoad_Pct   = (Get-WmiObject Win32_Processor | Measure-Object LoadPercentage -Average).Average
+  FreeDisk_GB   = [math]::Round((Get-PSDrive C).Free / 1GB, 2)
+  RunningServices = (Get-Service | Where-Object Status -eq 'Running' | Measure-Object).Count
+  StoppedAuto   = (Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } | Measure-Object).Count
+}
+
+# Export to CSV
+$report | Export-Csv "C:\\HealthReport-$(Get-Date -Format yyyyMMdd).csv" -NoTypeInformation
+
+# Display nicely
+$report | Format-List
+Write-Host "✔ Report saved" -ForegroundColor Green`
+const CODE_POWERSHELLPIPELINE_10 = `ComputerName     : DC01
+Timestamp        : 2025-01-15 10:45:22
+TotalRAM_GB      : 4
+FreeRAM_GB       : 1.82
+CPULoad_Pct      : 8
+FreeDisk_GB      : 42.7
+RunningServices  : 67
+StoppedAuto      : 3
+
+✔ Report saved`
+const CODE_POWERSHELLPIPELINE_11 = `# Service inventory grouped by start type
+Get-Service |
+  Group-Object StartType |
+  Sort-Object Count -Descending |
+  Select-Object @{N='StartType'; E={$_.Name}}, Count |
+  Format-Table -AutoSize
+
+# Then group running services by whether they have dependencies
+Get-Service | Where-Object Status -eq 'Running' |
+  Group-Object { if ($_.DependentServices.Count -gt 0) {'Has Dependents'} else {'No Dependents'} } |
+  Select-Object Name, Count`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -173,129 +357,25 @@ export default function PowerShellPipeline() {
       {/* ── WHERE-OBJECT ── */}
       <section>
         <h2>Where-Object — Filtering the Pipeline</h2>
-        <CodeBlock title="Where-Object patterns" language="powershell" code={[
-    "# Basic comparison filter",
-    "Get-Service | Where-Object { $_.Status -eq 'Running' }",
-    "Get-Process | Where-Object { $_.CPU -gt 10 }",
-    "Get-ChildItem C:\\Windows | Where-Object { $_.Length -gt 1MB }",
-    "",
-    "# String matching",
-    "Get-Service | Where-Object { $_.DisplayName -like '*SQL*' }",
-    "Get-Service | Where-Object { $_.Name -match '^W' }       # regex: starts with W",
-    "",
-    "# Simplified syntax (PowerShell 3+) — no $_ needed for single property",
-    "Get-Service | Where-Object Status -eq 'Stopped'",
-    "Get-Process | Where-Object CPU -gt 100",
-    "",
-    "# Multiple conditions",
-    "Get-Process | Where-Object { $_.CPU -gt 10 -and $_.WorkingSet64 -gt 100MB }",
-    "Get-ChildItem C:\\Logs | Where-Object { $_.Extension -eq '.log' -and",
-    "                                        $_.LastWriteTime -lt (Get-Date).AddDays(-30) }",
-    "",
-    "# Negation",
-    "Get-Service | Where-Object { $_.StartType -ne 'Disabled' }",
-    "Get-Process | Where-Object { $_.Name -notlike 'idle*' }"
-  ].join('\n')} />
+        <CodeBlock title="Where-Object patterns" language="powershell" code={CODE_POWERSHELLPIPELINE_1} />
       </section>
 
       {/* ── SELECT-OBJECT ── */}
       <section>
         <h2>Select-Object — Shaping the Output</h2>
-        <CodeBlock title="Select-Object patterns — including calculated properties" language="powershell" code={[
-    "# Pick specific properties",
-    "Get-Process | Select-Object Name, Id, CPU, WorkingSet64",
-    "",
-    "# Rename + calculated properties with hashtable syntax",
-    "Get-Process | Select-Object Name, Id,",
-    "  @{N='CPU(s)';    E={[math]::Round($_.CPU, 2)}},",
-    "  @{N='RAM(MB)';   E={[math]::Round($_.WorkingSet64 / 1MB, 1)}},",
-    "  @{N='Threads';   E={$_.Threads.Count}}",
-    "",
-    "# Limit results",
-    "Get-Process | Sort-Object CPU -Descending | Select-Object -First 10",
-    "Get-EventLog System | Select-Object -Last 20",
-    "",
-    "# Extract raw values (no object wrapper)",
-    "Get-Process | Select-Object -ExpandProperty Name      # Returns string[]",
-    "(Get-Service Spooler).DependentServices | Select-Object -ExpandProperty Name",
-    "",
-    "# Unique values (deduplicate)",
-    "Get-Process | Select-Object -Property Name -Unique",
-    "",
-    "# Skip and First for pagination",
-    "Get-ChildItem C:\\ | Select-Object -Skip 5 -First 10"
-  ].join('\n')} />
+        <CodeBlock title="Select-Object patterns — including calculated properties" language="powershell" code={CODE_POWERSHELLPIPELINE_2} />
       </section>
 
       {/* ── FOREACH-OBJECT ── */}
       <section>
         <h2>ForEach-Object — Transforming Every Item</h2>
-        <CodeBlock title="ForEach-Object patterns" language="powershell" code={[
-    "# Basic transformation",
-    "Get-Service | ForEach-Object { \"Service: $($_.Name) — $($_.Status)\" }",
-    "",
-    "# With Begin, Process, End blocks (for setup/teardown)",
-    "Get-ChildItem C:\\Scripts -Filter *.ps1 |",
-    "  ForEach-Object -Begin   { $count = 0; \"Starting scan...\" }  ",
-    "                 -Process { $count++; Write-Verbose $_.Name }  ",
-    "                 -End      { \"Found $count scripts\" }",
-    "",
-    "# Multi-step transformation — restart stopped services",
-    "Get-Service |",
-    "  Where-Object  { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |",
-    "  ForEach-Object { Start-Service $_.Name; \"$($_.Name) started\" }",
-    "",
-    "# Parallel execution (PowerShell 7+) — run on 5 hosts simultaneously",
-    "$servers = 'DC01','SRV01','SRV02','WEB01','WEB02'",
-    "$servers | ForEach-Object -Parallel {",
-    "  $result = Test-Connection $_ -Count 1 -Quiet",
-    "  [PSCustomObject]@{ Server=$_; Online=$result }",
-    "} -ThrottleLimit 5"
-  ].join('\n')} />
+        <CodeBlock title="ForEach-Object patterns" language="powershell" code={CODE_POWERSHELLPIPELINE_3} />
       </section>
 
       {/* ── SORT + GROUP + MEASURE ── */}
       <section>
         <h2>Sort, Group & Measure</h2>
-        <CodeBlock title="Aggregation pipeline patterns" language="powershell" code={[
-    "# ── Sort-Object ────────────────────────────────────────────",
-    "Get-Process | Sort-Object CPU -Descending",
-    "Get-ChildItem C:\\Logs | Sort-Object LastWriteTime",
-    "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5",
-    "",
-    "# Multi-property sort",
-    "Get-ADUser -Filter * -Properties Department |",
-    "  Sort-Object Department, Surname",
-    "",
-    "# ── Group-Object ────────────────────────────────────────────",
-    "# Group services by status — quick tally",
-    "Get-Service | Group-Object Status",
-    "",
-    "# Group processes by company — count per vendor",
-    "Get-Process | Group-Object Company | Sort-Object Count -Descending |",
-    "  Select-Object Name, Count | Format-Table -AutoSize",
-    "",
-    "# Group files by extension",
-    "Get-ChildItem C:\\Windows\\System32 -File |",
-    "  Group-Object Extension | Sort-Object Count -Descending |",
-    "  Select-Object -First 10",
-    "",
-    "# ── Measure-Object ──────────────────────────────────────────",
-    "# Count files",
-    "Get-ChildItem C:\\Windows -Recurse -File | Measure-Object",
-    "",
-    "# Total disk usage of a folder",
-    "Get-ChildItem C:\\Users -Recurse -File |",
-    "  Measure-Object Length -Sum |",
-    "  ForEach-Object { \"$([math]::Round($_.Sum/1GB, 2)) GB\" }",
-    "",
-    "# CPU stats across all processes",
-    "Get-Process | Measure-Object CPU -Average -Maximum -Sum",
-    "",
-    "# Count event log errors in the last hour",
-    "Get-EventLog System -EntryType Error -After (Get-Date).AddHours(-1) |",
-    "  Measure-Object | Select-Object Count"
-  ].join('\n')} />
+        <CodeBlock title="Aggregation pipeline patterns" language="powershell" code={CODE_POWERSHELLPIPELINE_4} />
       </section>
 
       {/* ── REAL-WORLD PIPELINES ── */}
@@ -360,31 +440,7 @@ Write-Host "Report saved" -ForegroundColor Green`,
       {/* ── OUTPUT FORMATTING ── */}
       <section>
         <h2>Formatting & Exporting Output</h2>
-        <CodeBlock title="Output destinations" language="powershell" code={[
-    "# ── Display formatting ──────────────────────────────────────",
-    "Get-Service | Format-Table -AutoSize                # Auto-fit columns",
-    "Get-Process | Format-Table Name, CPU -Wrap          # Wrap long values",
-    "Get-Service | Format-List *                         # All properties as list",
-    "Get-Process | Format-Wide Name -Column 4            # 4-column grid",
-    "",
-    "# ── Export ──────────────────────────────────────────────────",
-    "# CSV (best for Excel / data analysis)",
-    "Get-Service | Export-Csv C:\\services.csv -NoTypeInformation",
-    "",
-    "# JSON (best for APIs / automation)",
-    "Get-Service | Select-Object Name, Status, StartType |",
-    "  ConvertTo-Json | Out-File C:\\services.json",
-    "",
-    "# HTML report",
-    "Get-Process | Select-Object Name, CPU, Id |",
-    "  Sort-Object CPU -Descending | Select-Object -First 20 |",
-    "  ConvertTo-Html -Title \"Process Report\" -PreContent \"<h1>Top Processes</h1>\" |",
-    "  Out-File C:\\report.html",
-    "",
-    "# Grid view (interactive GUI table — perfect for quick analysis)",
-    "Get-Process | Out-GridView -Title \"Running Processes\" -PassThru |",
-    "  Stop-Process -WhatIf      # Select rows, pipe to another cmdlet!"
-  ].join('\n')} />
+        <CodeBlock title="Output destinations" language="powershell" code={CODE_POWERSHELLPIPELINE_5} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -399,85 +455,21 @@ Write-Host "Report saved" -ForegroundColor Green`,
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Run pipeline queries to understand DC01's resource usage."
-              command={[
-    "# Top 5 processes by RAM",
-    "Get-Process | Sort-Object WorkingSet64 -Descending |",
-    "  Select-Object -First 5 Name,",
-    "    @{N='RAM(MB)';  E={[math]::Round($_.WorkingSet64/1MB,1)}},",
-    "    @{N='CPU(s)';   E={[math]::Round($_.CPU,2)}},",
-    "    @{N='Threads';  E={$_.Threads.Count}} |",
-    "  Format-Table -AutoSize"
-  ].join('\n')}
-              output={[
-    "Name       RAM(MB)  CPU(s)  Threads",
-    "----       -------  ------  -------",
-    "lsass       156.2    12.4    28",
-    "svchost      98.7     4.1    42",
-    "dns          74.3     2.8    14",
-    "explorer     68.1     1.2    36",
-    "powershell   62.4     0.9    18"
-  ].join('\n')}
+              command={CODE_POWERSHELLPIPELINE_6}
+              output={CODE_POWERSHELLPIPELINE_7}
             />
             <LabStep number={2}
               description="Find all automatic services that are stopped — a key health check."
-              command={[
-    "Get-Service |",
-    "  Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } |",
-    "  Select-Object Name, DisplayName, StartType |",
-    "  Sort-Object Name |",
-    "  Format-Table -AutoSize"
-  ].join('\n')}
+              command={CODE_POWERSHELLPIPELINE_8}
             />
             <LabStep number={3}
               description="Build a full server health report and export it as CSV and HTML."
-              command={[
-    "# Combine multiple data sources into one report object",
-    "$report = [PSCustomObject]@{",
-    "  ComputerName  = $env:COMPUTERNAME",
-    "  Timestamp     = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'",
-    "  TotalRAM_GB   = [math]::Round((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)",
-    "  FreeRAM_GB    = [math]::Round((Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)",
-    "  CPULoad_Pct   = (Get-WmiObject Win32_Processor | Measure-Object LoadPercentage -Average).Average",
-    "  FreeDisk_GB   = [math]::Round((Get-PSDrive C).Free / 1GB, 2)",
-    "  RunningServices = (Get-Service | Where-Object Status -eq 'Running' | Measure-Object).Count",
-    "  StoppedAuto   = (Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } | Measure-Object).Count",
-    "}",
-    "",
-    "# Export to CSV",
-    "$report | Export-Csv \"C:\\HealthReport-$(Get-Date -Format yyyyMMdd).csv\" -NoTypeInformation",
-    "",
-    "# Display nicely",
-    "$report | Format-List",
-    "Write-Host \"✔ Report saved\" -ForegroundColor Green"
-  ].join('\n')}
-              output={[
-    "ComputerName     : DC01",
-    "Timestamp        : 2025-01-15 10:45:22",
-    "TotalRAM_GB      : 4",
-    "FreeRAM_GB       : 1.82",
-    "CPULoad_Pct      : 8",
-    "FreeDisk_GB      : 42.7",
-    "RunningServices  : 67",
-    "StoppedAuto      : 3",
-    "",
-    "✔ Report saved"
-  ].join('\n')}
+              command={CODE_POWERSHELLPIPELINE_9}
+              output={CODE_POWERSHELLPIPELINE_10}
             />
             <LabStep number={4}
               description="Use Group-Object to get a breakdown of services by start type."
-              command={[
-    "# Service inventory grouped by start type",
-    "Get-Service |",
-    "  Group-Object StartType |",
-    "  Sort-Object Count -Descending |",
-    "  Select-Object @{N='StartType'; E={$_.Name}}, Count |",
-    "  Format-Table -AutoSize",
-    "",
-    "# Then group running services by whether they have dependencies",
-    "Get-Service | Where-Object Status -eq 'Running' |",
-    "  Group-Object { if ($_.DependentServices.Count -gt 0) {'Has Dependents'} else {'No Dependents'} } |",
-    "  Select-Object Name, Count"
-  ].join('\n')}
+              command={CODE_POWERSHELLPIPELINE_11}
             />
           </div>
         </div>

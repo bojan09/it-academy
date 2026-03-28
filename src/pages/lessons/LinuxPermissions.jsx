@@ -3,6 +3,129 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_LINUXPERMISSIONS_1 = `# ── Octal notation (recommended for scripts) ─────────────────
+chmod 755 script.sh      # rwxr-xr-x  — standard executable
+chmod 644 config.conf    # rw-r--r--  — standard file
+chmod 600 private.key    # rw-------  — private key/secrets
+chmod 700 ~/.ssh         # rwx------  — private directory
+chmod 777 /tmp/shared    # rwxrwxrwx  — world-writable (avoid in prod)
+
+# ── Symbolic notation (readable, good for targeted changes) ──
+chmod u+x script.sh      # Add execute for owner
+chmod g-w file.txt       # Remove write from group
+chmod o= file.txt        # Remove ALL permissions for others
+chmod a+r public.txt     # Add read for all (a = ugo)
+chmod u=rwx,g=rx,o=r file  # Set exact permissions
+
+# ── Recursive ─────────────────────────────────────────────────
+chmod -R 750 /var/app    # Apply to directory and all contents
+find /var/app -type f -exec chmod 640 {} \\;   # Files only
+find /var/app -type d -exec chmod 750 {} \\;   # Dirs only`
+const CODE_LINUXPERMISSIONS_2 = `# ── Create users ─────────────────────────────────────────────
+sudo useradd -m -s /bin/bash -c 'Alice Smith' alice
+# -m  create home directory
+# -s  login shell
+# -c  comment (full name)
+
+sudo passwd alice           # Set password interactively
+
+# Modern alternative (interactive)
+sudo adduser alice          # Debian/Ubuntu friendly wizard
+
+# ── Modify users ─────────────────────────────────────────────
+sudo usermod -aG sudo alice         # Add to sudo group
+sudo usermod -aG docker,www-data alice  # Add to multiple groups
+sudo usermod -s /bin/zsh alice      # Change shell
+sudo usermod -L alice               # Lock account
+sudo usermod -U alice               # Unlock account
+sudo usermod -e 2025-12-31 alice    # Set account expiry
+
+# ── Delete users ─────────────────────────────────────────────
+sudo userdel alice          # Delete user (keep home dir)
+sudo userdel -r alice       # Delete user AND home directory
+
+# ── Groups ───────────────────────────────────────────────────
+sudo groupadd developers
+sudo groupadd -g 1500 ops   # Specify GID
+sudo groupdel developers
+
+# ── Inspect ──────────────────────────────────────────────────
+id alice                    # UID, GID, all groups
+groups alice               # Just group list
+getent passwd alice        # Full /etc/passwd entry
+getent group sudo          # Members of sudo group
+who                        # Logged-in users
+last | head -10            # Login history`
+const CODE_LINUXPERMISSIONS_3 = `# Edit with: sudo visudo
+# Or add a file: sudo visudo -f /etc/sudoers.d/sysadmins
+
+# Allow alice full sudo (requires password)
+alice ALL=(ALL:ALL) ALL
+
+# Allow the 'ops' group full sudo
+%ops ALL=(ALL:ALL) ALL
+
+# Allow alice to restart specific services only (no password)
+alice ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx, /bin/systemctl restart sshd
+
+# Allow the 'deploy' group to run deployment script only
+%deploy ALL=(www-data) NOPASSWD: /opt/scripts/deploy.sh
+
+# Deny a specific user sudo even if they're in a sudo group
+Cmnd_Alias DANGEROUS = /bin/rm, /sbin/mkfs, /sbin/fdisk
+badactor ALL=(ALL) !DANGEROUS
+
+# View current sudo permissions
+sudo -l                    # Your own sudo rights
+sudo -l -U alice           # Another user's sudo rights (requires root)`
+const CODE_LINUXPERMISSIONS_4 = `# Create groups
+sudo groupadd webteam
+sudo groupadd ops
+
+# Create users
+sudo useradd -m -s /bin/bash -G webteam alice
+sudo useradd -m -s /bin/bash -G webteam,ops bob
+sudo passwd alice   # Set password
+sudo passwd bob
+
+# Verify group memberships
+id alice
+id bob`
+const CODE_LINUXPERMISSIONS_5 = `uid=1001(alice) gid=1001(alice) groups=1001(alice),1003(webteam)
+uid=1002(bob)   gid=1002(bob)   groups=1002(bob),1003(webteam),1004(ops)`
+const CODE_LINUXPERMISSIONS_6 = `sudo mkdir -p /var/project/web
+sudo chown root:webteam /var/project/web
+sudo chmod 2775 /var/project/web    # SGID + rwxrwxr-x
+
+# Test as alice
+sudo -u alice touch /var/project/web/test.html
+ls -la /var/project/web/
+
+# New file inherits 'webteam' group thanks to SGID`
+const CODE_LINUXPERMISSIONS_7 = `total 0
+drwxrwsr-x 2 root    webteam 20 Jan 15 10:00 .      <- s = SGID set
+-rw-r--r-- 1 alice   webteam  0 Jan 15 10:00 test.html  <- inherited group`
+const CODE_LINUXPERMISSIONS_8 = `# Find all SUID binaries (run as file owner)
+echo '=== SUID Binaries ==='
+find /usr /bin /sbin -perm -4000 -type f 2>/dev/null | sort
+
+# Find world-writable files (security risk)
+echo '=== World-Writable Files in /etc ==='
+find /etc -perm -o+w -type f 2>/dev/null
+
+# Check sudoers
+sudo cat /etc/sudoers | grep -v '^#' | grep -v '^$'`
+const CODE_LINUXPERMISSIONS_9 = `=== SUID Binaries ===
+/usr/bin/mount
+/usr/bin/passwd   <- expected SUID root
+/usr/bin/su
+/usr/bin/sudo
+
+=== World-Writable Files in /etc ===
+  (none — this is correct)`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -177,68 +300,13 @@ export default function LinuxPermissions() {
         </div>
 
         <CodeBlock className="mt-4" title="chmod — both notations" language="bash"
-          code={[
-            "# ── Octal notation (recommended for scripts) ─────────────────",
-            "chmod 755 script.sh      # rwxr-xr-x  — standard executable",
-            "chmod 644 config.conf    # rw-r--r--  — standard file",
-            "chmod 600 private.key    # rw-------  — private key/secrets",
-            "chmod 700 ~/.ssh         # rwx------  — private directory",
-            "chmod 777 /tmp/shared    # rwxrwxrwx  — world-writable (avoid in prod)",
-            "",
-            "# ── Symbolic notation (readable, good for targeted changes) ──",
-            "chmod u+x script.sh      # Add execute for owner",
-            "chmod g-w file.txt       # Remove write from group",
-            "chmod o= file.txt        # Remove ALL permissions for others",
-            "chmod a+r public.txt     # Add read for all (a = ugo)",
-            "chmod u=rwx,g=rx,o=r file  # Set exact permissions",
-            "",
-            "# ── Recursive ─────────────────────────────────────────────────",
-            "chmod -R 750 /var/app    # Apply to directory and all contents",
-            "find /var/app -type f -exec chmod 640 {} \\;   # Files only",
-            "find /var/app -type d -exec chmod 750 {} \\;   # Dirs only"
-          ].join('\n')} />
+          code={CODE_LINUXPERMISSIONS_1} />
       </section>
 
       <section>
         <h2>User & Group Management</h2>
         <CodeBlock title="Creating and managing users" language="bash"
-          code={[
-            "# ── Create users ─────────────────────────────────────────────",
-            "sudo useradd -m -s /bin/bash -c 'Alice Smith' alice",
-            "# -m  create home directory",
-            "# -s  login shell",
-            "# -c  comment (full name)",
-            "",
-            "sudo passwd alice           # Set password interactively",
-            "",
-            "# Modern alternative (interactive)",
-            "sudo adduser alice          # Debian/Ubuntu friendly wizard",
-            "",
-            "# ── Modify users ─────────────────────────────────────────────",
-            "sudo usermod -aG sudo alice         # Add to sudo group",
-            "sudo usermod -aG docker,www-data alice  # Add to multiple groups",
-            "sudo usermod -s /bin/zsh alice      # Change shell",
-            "sudo usermod -L alice               # Lock account",
-            "sudo usermod -U alice               # Unlock account",
-            "sudo usermod -e 2025-12-31 alice    # Set account expiry",
-            "",
-            "# ── Delete users ─────────────────────────────────────────────",
-            "sudo userdel alice          # Delete user (keep home dir)",
-            "sudo userdel -r alice       # Delete user AND home directory",
-            "",
-            "# ── Groups ───────────────────────────────────────────────────",
-            "sudo groupadd developers",
-            "sudo groupadd -g 1500 ops   # Specify GID",
-            "sudo groupdel developers",
-            "",
-            "# ── Inspect ──────────────────────────────────────────────────",
-            "id alice                    # UID, GID, all groups",
-            "groups alice               # Just group list",
-            "getent passwd alice        # Full /etc/passwd entry",
-            "getent group sudo          # Members of sudo group",
-            "who                        # Logged-in users",
-            "last | head -10            # Login history"
-          ].join('\n')} />
+          code={CODE_LINUXPERMISSIONS_2} />
       </section>
 
       <section>
@@ -250,30 +318,7 @@ export default function LinuxPermissions() {
           syntax before saving.
         </Callout>
         <CodeBlock title="/etc/sudoers — production patterns" language="bash"
-          code={[
-            "# Edit with: sudo visudo",
-            "# Or add a file: sudo visudo -f /etc/sudoers.d/sysadmins",
-            "",
-            "# Allow alice full sudo (requires password)",
-            "alice ALL=(ALL:ALL) ALL",
-            "",
-            "# Allow the 'ops' group full sudo",
-            "%ops ALL=(ALL:ALL) ALL",
-            "",
-            "# Allow alice to restart specific services only (no password)",
-            "alice ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx, /bin/systemctl restart sshd",
-            "",
-            "# Allow the 'deploy' group to run deployment script only",
-            "%deploy ALL=(www-data) NOPASSWD: /opt/scripts/deploy.sh",
-            "",
-            "# Deny a specific user sudo even if they're in a sudo group",
-            "Cmnd_Alias DANGEROUS = /bin/rm, /sbin/mkfs, /sbin/fdisk",
-            "badactor ALL=(ALL) !DANGEROUS",
-            "",
-            "# View current sudo permissions",
-            "sudo -l                    # Your own sudo rights",
-            "sudo -l -U alice           # Another user's sudo rights (requires root)"
-          ].join('\n')} />
+          code={CODE_LINUXPERMISSIONS_3} />
       </section>
 
       <section>
@@ -330,69 +375,18 @@ export default function LinuxPermissions() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Create users and groups for a simulated team environment."
-              command={[
-                "# Create groups",
-                "sudo groupadd webteam",
-                "sudo groupadd ops",
-                "",
-                "# Create users",
-                "sudo useradd -m -s /bin/bash -G webteam alice",
-                "sudo useradd -m -s /bin/bash -G webteam,ops bob",
-                "sudo passwd alice   # Set password",
-                "sudo passwd bob",
-                "",
-                "# Verify group memberships",
-                "id alice",
-                "id bob"
-              ].join('\n')}
-              output={[
-                "uid=1001(alice) gid=1001(alice) groups=1001(alice),1003(webteam)",
-                "uid=1002(bob)   gid=1002(bob)   groups=1002(bob),1003(webteam),1004(ops)"
-              ].join('\n')}
+              command={CODE_LINUXPERMISSIONS_4}
+              output={CODE_LINUXPERMISSIONS_5}
             />
             <LabStep number={2}
               description="Create a shared project directory with SGID so all files inherit the group."
-              command={[
-                "sudo mkdir -p /var/project/web",
-                "sudo chown root:webteam /var/project/web",
-                "sudo chmod 2775 /var/project/web    # SGID + rwxrwxr-x",
-                "",
-                "# Test as alice",
-                "sudo -u alice touch /var/project/web/test.html",
-                "ls -la /var/project/web/",
-                "",
-                "# New file inherits 'webteam' group thanks to SGID"
-              ].join('\n')}
-              output={[
-                "total 0",
-                "drwxrwsr-x 2 root    webteam 20 Jan 15 10:00 .      <- s = SGID set",
-                "-rw-r--r-- 1 alice   webteam  0 Jan 15 10:00 test.html  <- inherited group"
-              ].join('\n')}
+              command={CODE_LINUXPERMISSIONS_6}
+              output={CODE_LINUXPERMISSIONS_7}
             />
             <LabStep number={3}
               description="Audit the system for dangerous SUID/SGID binaries — a key security check."
-              command={[
-                "# Find all SUID binaries (run as file owner)",
-                "echo '=== SUID Binaries ==='",
-                "find /usr /bin /sbin -perm -4000 -type f 2>/dev/null | sort",
-                "",
-                "# Find world-writable files (security risk)",
-                "echo '=== World-Writable Files in /etc ==='",
-                "find /etc -perm -o+w -type f 2>/dev/null",
-                "",
-                "# Check sudoers",
-                "sudo cat /etc/sudoers | grep -v '^#' | grep -v '^$'"
-              ].join('\n')}
-              output={[
-                "=== SUID Binaries ===",
-                "/usr/bin/mount",
-                "/usr/bin/passwd   <- expected SUID root",
-                "/usr/bin/su",
-                "/usr/bin/sudo",
-                "",
-                "=== World-Writable Files in /etc ===",
-                "  (none — this is correct)"
-              ].join('\n')}
+              command={CODE_LINUXPERMISSIONS_8}
+              output={CODE_LINUXPERMISSIONS_9}
             />
           </div>
         </div>

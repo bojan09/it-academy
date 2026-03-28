@@ -3,6 +3,71 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_WINDOWSEVENTVIEWER_1 = `# ── Recent errors (server-side filtered — fast) ───────────────
+Get-WinEvent -FilterHashtable @{
+    LogName   = 'System'
+    Level     = 1, 2          # Critical and Error
+    StartTime = (Get-Date).AddHours(-24)
+} | Select-Object TimeCreated, Id, ProviderName, Message |
+  Format-Table -AutoSize
+
+# ── Security: failed logins in last hour ─────────────────────
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Security'
+    Id      = 4625
+    StartTime = (Get-Date).AddHours(-1)
+} | Select-Object TimeCreated,
+    @{N='Account'; E={$_.Properties[5].Value}},
+    @{N='Source';  E={$_.Properties[19].Value}}
+
+# ── Service Control Manager events (service failures) ─────────
+Get-WinEvent -FilterHashtable @{
+    LogName      = 'System'
+    ProviderName = 'Service Control Manager'
+    Level        = 1, 2
+} -MaxEvents 20 | Select-Object TimeCreated, Message
+
+# ── Count events by ID — find the noisy ones ─────────────────
+Get-WinEvent -LogName System -MaxEvents 1000 |
+    Group-Object Id |
+    Sort-Object Count -Descending |
+    Select-Object -First 10 |
+    Select-Object Name, Count`
+const CODE_WINDOWSEVENTVIEWER_2 = `# Recent successful logons
+Get-WinEvent -FilterHashtable @{
+    LogName = 'Security'; Id = 4624
+    StartTime = (Get-Date).AddHours(-24)
+} -MaxEvents 20 |
+ForEach-Object {
+    [PSCustomObject]@{
+        Time    = $_.TimeCreated
+        Account = $_.Properties[5].Value
+        Type    = switch($_.Properties[8].Value) {
+            2 {'Interactive'} 3 {'Network'} 10 {'Remote'} default {'Other'}
+        }
+        Source = $_.Properties[18].Value
+    }
+} | Where-Object Account -ne '-' |
+  Format-Table -AutoSize`
+const CODE_WINDOWSEVENTVIEWER_3 = `Time                Account        Type          Source
+----                -------        ----          ------
+01/15/2025 10:00    Administrator  Interactive   -
+01/15/2025 09:55    Administrator  Remote        192.168.100.20
+01/15/2025 09:50    SYSTEM         Network       -`
+const CODE_WINDOWSEVENTVIEWER_4 = `# Check if audit log has been tampered with
+$cleared = Get-WinEvent -FilterHashtable @{
+    LogName = 'Security'; Id = 1102
+} -MaxEvents 5 -ErrorAction SilentlyContinue
+
+if ($cleared) {
+    Write-Host 'WARNING: Audit log was cleared!' -ForegroundColor Red
+    $cleared | Select-Object TimeCreated, Message
+} else {
+    Write-Host 'OK: Audit log intact (no clearing events found)' -ForegroundColor Green
+}`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -163,38 +228,7 @@ export default function WindowsEventViewer() {
       <section>
         <h2>Querying Logs with PowerShell</h2>
         <CodeBlock title="Get-WinEvent — efficient log querying" language="powershell"
-          code={[
-            "# ── Recent errors (server-side filtered — fast) ───────────────",
-            "Get-WinEvent -FilterHashtable @{",
-            "    LogName   = 'System'",
-            "    Level     = 1, 2          # Critical and Error",
-            "    StartTime = (Get-Date).AddHours(-24)",
-            "} | Select-Object TimeCreated, Id, ProviderName, Message |",
-            "  Format-Table -AutoSize",
-            "",
-            "# ── Security: failed logins in last hour ─────────────────────",
-            "Get-WinEvent -FilterHashtable @{",
-            "    LogName = 'Security'",
-            "    Id      = 4625",
-            "    StartTime = (Get-Date).AddHours(-1)",
-            "} | Select-Object TimeCreated,",
-            "    @{N='Account'; E={$_.Properties[5].Value}},",
-            "    @{N='Source';  E={$_.Properties[19].Value}}",
-            "",
-            "# ── Service Control Manager events (service failures) ─────────",
-            "Get-WinEvent -FilterHashtable @{",
-            "    LogName      = 'System'",
-            "    ProviderName = 'Service Control Manager'",
-            "    Level        = 1, 2",
-            "} -MaxEvents 20 | Select-Object TimeCreated, Message",
-            "",
-            "# ── Count events by ID — find the noisy ones ─────────────────",
-            "Get-WinEvent -LogName System -MaxEvents 1000 |",
-            "    Group-Object Id |",
-            "    Sort-Object Count -Descending |",
-            "    Select-Object -First 10 |",
-            "    Select-Object Name, Count"
-          ].join('\n')} />
+          code={CODE_WINDOWSEVENTVIEWER_1} />
       </section>
 
       <section>
@@ -208,47 +242,12 @@ export default function WindowsEventViewer() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Query the Security log for logon events and build an activity report."
-              command={[
-                "# Recent successful logons",
-                "Get-WinEvent -FilterHashtable @{",
-                "    LogName = 'Security'; Id = 4624",
-                "    StartTime = (Get-Date).AddHours(-24)",
-                "} -MaxEvents 20 |",
-                "ForEach-Object {",
-                "    [PSCustomObject]@{",
-                "        Time    = $_.TimeCreated",
-                "        Account = $_.Properties[5].Value",
-                "        Type    = switch($_.Properties[8].Value) {",
-                "            2 {'Interactive'} 3 {'Network'} 10 {'Remote'} default {'Other'}",
-                "        }",
-                "        Source = $_.Properties[18].Value",
-                "    }",
-                "} | Where-Object Account -ne '-' |",
-                "  Format-Table -AutoSize"
-              ].join('\n')}
-              output={[
-                "Time                Account        Type          Source",
-                "----                -------        ----          ------",
-                "01/15/2025 10:00    Administrator  Interactive   -",
-                "01/15/2025 09:55    Administrator  Remote        192.168.100.20",
-                "01/15/2025 09:50    SYSTEM         Network       -"
-              ].join('\n')}
+              command={CODE_WINDOWSEVENTVIEWER_2}
+              output={CODE_WINDOWSEVENTVIEWER_3}
             />
             <LabStep number={2}
               description="Check for any audit log cleared events (serious security indicator)."
-              command={[
-                "# Check if audit log has been tampered with",
-                "$cleared = Get-WinEvent -FilterHashtable @{",
-                "    LogName = 'Security'; Id = 1102",
-                "} -MaxEvents 5 -ErrorAction SilentlyContinue",
-                "",
-                "if ($cleared) {",
-                "    Write-Host 'WARNING: Audit log was cleared!' -ForegroundColor Red",
-                "    $cleared | Select-Object TimeCreated, Message",
-                "} else {",
-                "    Write-Host 'OK: Audit log intact (no clearing events found)' -ForegroundColor Green",
-                "}"
-              ].join('\n')}
+              command={CODE_WINDOWSEVENTVIEWER_4}
               output="OK: Audit log intact (no clearing events found)"
             />
           </div>

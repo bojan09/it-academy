@@ -3,6 +3,209 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_PYTHONBASICS_1 = `# Check Python version
+python3 --version
+
+# Create a virtual environment
+python3 -m venv ~/sysadmin-scripts/venv
+
+# Activate it
+source ~/sysadmin-scripts/venv/bin/activate
+# Windows: .\\venv\\Scripts\\Activate.ps1
+
+# Your prompt changes: (venv) user@host:~$
+
+# Install packages
+pip install requests paramiko psutil python-dotenv
+
+# Save dependencies for reproducibility
+pip freeze > requirements.txt
+
+# Recreate elsewhere
+pip install -r requirements.txt
+
+# Deactivate when done
+deactivate`
+const CODE_PYTHONBASICS_2 = `# ── Strings ─────────────────────────────────────────────────
+hostname  = "dc01.lab.local"
+ip        = "192.168.100.10"
+log_entry = f"[INFO] Connected to {hostname} at {ip}"  # f-string
+
+# Useful string methods
+hostname.upper()           # "DC01.LAB.LOCAL"
+hostname.split(".")        # ["dc01", "lab", "local"]
+ip.replace("192", "10")    # "10.168.100.10"
+"error" in log_entry       # False — case sensitive
+log_entry.startswith("[INFO]")  # True
+
+# ── Numbers ─────────────────────────────────────────────────
+port    = 3389
+ram_gb  = 4.5
+disk_pct = 78
+
+free_pct = 100 - disk_pct          # 22
+ram_mb   = int(ram_gb * 1024)      # 4608
+is_full  = disk_pct > 90           # False
+
+# ── Lists (ordered, mutable) ─────────────────────────────────
+servers = ["dc01", "srv01", "web01"]
+servers.append("db01")             # Add to end
+servers.remove("web01")            # Remove by value
+servers[0]                         # "dc01"
+servers[-1]                        # Last item
+servers[1:3]                       # Slice: ["srv01", "db01"]
+len(servers)                       # Count
+sorted(servers)                    # Sorted copy
+"dc01" in servers                  # True
+
+# ── Dictionaries (key-value, like JSON) ─────────────────────
+server = {
+    "hostname": "dc01",
+    "ip": "192.168.100.10",
+    "roles": ["AD DS", "DNS", "DHCP"],
+    "online": True
+}
+server["ip"]                       # "192.168.100.10"
+server.get("port", 3389)           # 3389 (default if missing)
+server.keys()                      # dict_keys(["hostname", "ip", ...])
+server.items()                     # Key-value pairs for iteration
+
+# ── Booleans ────────────────────────────────────────────────
+is_online  = True
+is_patched = False
+if is_online and not is_patched:
+    print("Server online but needs patching")`
+const CODE_PYTHONBASICS_3 = `# ── if / elif / else ────────────────────────────────────────
+disk_pct = 87
+
+if disk_pct >= 95:
+    print("CRITICAL: Disk nearly full!")
+elif disk_pct >= 80:
+    print(f"WARNING: Disk at {disk_pct}%")
+else:
+    print(f"OK: Disk at {disk_pct}%")
+
+# ── for loops ───────────────────────────────────────────────
+servers = {"dc01": "192.168.100.10", "srv01": "192.168.100.20"}
+
+for name, ip in servers.items():
+    print(f"Checking {name} ({ip})...")
+
+# List comprehension — create new list concisely
+ips = [ip for name, ip in servers.items()]  # ["192.168.100.10", "192.168.100.20"]
+high_ports = [p for p in range(1, 1025) if p % 2 == 0]  # even ports
+
+# ── while loops ─────────────────────────────────────────────
+import time
+retries = 0
+max_retries = 3
+
+while retries < max_retries:
+    # try to connect...
+    success = True  # simulation
+    if success:
+        print("Connected!")
+        break
+    retries += 1
+    print(f"Retry {retries}/{max_retries}")
+    time.sleep(2)
+else:
+    print("All retries failed")`
+const CODE_PYTHONBASICS_4 = `import subprocess
+import socket
+
+# ── Functions ────────────────────────────────────────────────
+def ping(host: str, count: int = 1) -> bool:
+    """Returns True if host responds to ping."""
+    result = subprocess.run(
+        ["ping", "-c", str(count), "-W", "2", host],
+        capture_output=True
+    )
+    return result.returncode == 0
+
+def check_port(host: str, port: int, timeout: float = 2.0) -> bool:
+    """Returns True if TCP port is open."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return False
+
+# ── Error handling ───────────────────────────────────────────
+def read_config(path: str) -> dict:
+    """Read a simple key=value config file."""
+    config = {}
+    try:
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if '=' in line and not line.startswith('#'):
+                    key, value = line.split('=', 1)
+                    config[key.strip()] = value.strip()
+    except FileNotFoundError:
+        print(f"Config file not found: {path}")
+    except PermissionError:
+        print(f"Permission denied: {path}")
+    except Exception as e:
+        print(f"Unexpected error reading {path}: {e}")
+    return config
+
+# ── Using them together ──────────────────────────────────────
+if __name__ == "__main__":
+    hosts = ["192.168.100.10", "192.168.100.20"]
+
+    for host in hosts:
+        online = ping(host)
+        ssh_open = check_port(host, 22) if online else False
+        print(f"{host}: {'online' if online else 'OFFLINE'}, "
+              f"SSH: {'open' if ssh_open else 'closed'}")`
+const CODE_PYTHONBASICS_5 = `ssh user@192.168.100.20
+python3 --version
+mkdir -p ~/sysadmin-scripts && cd ~/sysadmin-scripts
+python3 -m venv venv && source venv/bin/activate
+pip install requests`
+const CODE_PYTHONBASICS_6 = `Python 3.10.12
+(venv) user@srv01:~/sysadmin-scripts$`
+const CODE_PYTHONBASICS_7 = `cat > network-scan.py << 'EOF'
+#!/usr/bin/env python3
+"""network-scan.py — Scan the lab network for live hosts and open ports."""
+import subprocess, socket, ipaddress
+
+LAB_NETWORK = "192.168.100.0/24"
+COMMON_PORTS = {22: "SSH", 80: "HTTP", 443: "HTTPS", 3389: "RDP",
+                445: "SMB", 389: "LDAP", 53: "DNS"}
+
+def is_alive(ip: str) -> bool:
+    result = subprocess.run(["ping","-c","1","-W","1",str(ip)],
+                            capture_output=True)
+    return result.returncode == 0
+
+def open_ports(ip: str) -> list:
+    open_ = []
+    for port in COMMON_PORTS:
+        try:
+            with socket.create_connection((ip, port), timeout=0.5):
+                open_.append(port)
+        except Exception:
+            pass
+    return open_
+
+print(f"Scanning {LAB_NETWORK}...")
+for ip in ipaddress.ip_network(LAB_NETWORK).hosts():
+    ip = str(ip)
+    if is_alive(ip):
+        ports = open_ports(ip)
+        services = [f"{p}/{COMMON_PORTS[p]}" for p in ports]
+        print(f"  ✔ {ip:18s}  {', '.join(services) or 'no common ports'}")
+EOF
+python3 network-scan.py`
+const CODE_PYTHONBASICS_8 = `Scanning 192.168.100.0/24...
+  ✔ 192.168.100.1       no common ports
+  ✔ 192.168.100.10      53/DNS, 389/LDAP, 445/SMB, 3389/RDP
+  ✔ 192.168.100.20      22/SSH`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -141,185 +344,25 @@ export default function PythonBasics() {
       {/* ── SETUP ── */}
       <section>
         <h2>Setting Up Your Environment</h2>
-        <CodeBlock title="Virtual environment setup (always do this first)" language="bash" code={[
-    "# Check Python version",
-    "python3 --version",
-    "",
-    "# Create a virtual environment",
-    "python3 -m venv ~/sysadmin-scripts/venv",
-    "",
-    "# Activate it",
-    "source ~/sysadmin-scripts/venv/bin/activate",
-    "# Windows: .\\venv\\Scripts\\Activate.ps1",
-    "",
-    "# Your prompt changes: (venv) user@host:~$",
-    "",
-    "# Install packages",
-    "pip install requests paramiko psutil python-dotenv",
-    "",
-    "# Save dependencies for reproducibility",
-    "pip freeze > requirements.txt",
-    "",
-    "# Recreate elsewhere",
-    "pip install -r requirements.txt",
-    "",
-    "# Deactivate when done",
-    "deactivate"
-  ].join('\n')} />
+        <CodeBlock title="Virtual environment setup (always do this first)" language="bash" code={CODE_PYTHONBASICS_1} />
       </section>
 
       {/* ── DATA TYPES ── */}
       <section>
         <h2>Key Data Types for SysAdmins</h2>
-        <CodeBlock title="Python data types — with sysadmin context" language="bash" code={[
-    "# ── Strings ─────────────────────────────────────────────────",
-    "hostname  = \"dc01.lab.local\"",
-    "ip        = \"192.168.100.10\"",
-    "log_entry = f\"[INFO] Connected to {hostname} at {ip}\"  # f-string",
-    "",
-    "# Useful string methods",
-    "hostname.upper()           # \"DC01.LAB.LOCAL\"",
-    "hostname.split(\".\")        # [\"dc01\", \"lab\", \"local\"]",
-    "ip.replace(\"192\", \"10\")    # \"10.168.100.10\"",
-    "\"error\" in log_entry       # False — case sensitive",
-    "log_entry.startswith(\"[INFO]\")  # True",
-    "",
-    "# ── Numbers ─────────────────────────────────────────────────",
-    "port    = 3389",
-    "ram_gb  = 4.5",
-    "disk_pct = 78",
-    "",
-    "free_pct = 100 - disk_pct          # 22",
-    "ram_mb   = int(ram_gb * 1024)      # 4608",
-    "is_full  = disk_pct > 90           # False",
-    "",
-    "# ── Lists (ordered, mutable) ─────────────────────────────────",
-    "servers = [\"dc01\", \"srv01\", \"web01\"]",
-    "servers.append(\"db01\")             # Add to end",
-    "servers.remove(\"web01\")            # Remove by value",
-    "servers[0]                         # \"dc01\"",
-    "servers[-1]                        # Last item",
-    "servers[1:3]                       # Slice: [\"srv01\", \"db01\"]",
-    "len(servers)                       # Count",
-    "sorted(servers)                    # Sorted copy",
-    "\"dc01\" in servers                  # True",
-    "",
-    "# ── Dictionaries (key-value, like JSON) ─────────────────────",
-    "server = {",
-    "    \"hostname\": \"dc01\",",
-    "    \"ip\": \"192.168.100.10\",",
-    "    \"roles\": [\"AD DS\", \"DNS\", \"DHCP\"],",
-    "    \"online\": True",
-    "}",
-    "server[\"ip\"]                       # \"192.168.100.10\"",
-    "server.get(\"port\", 3389)           # 3389 (default if missing)",
-    "server.keys()                      # dict_keys([\"hostname\", \"ip\", ...])",
-    "server.items()                     # Key-value pairs for iteration",
-    "",
-    "# ── Booleans ────────────────────────────────────────────────",
-    "is_online  = True",
-    "is_patched = False",
-    "if is_online and not is_patched:",
-    "    print(\"Server online but needs patching\")"
-  ].join('\n')} />
+        <CodeBlock title="Python data types — with sysadmin context" language="bash" code={CODE_PYTHONBASICS_2} />
       </section>
 
       {/* ── CONTROL FLOW ── */}
       <section>
         <h2>Control Flow — The Sysadmin Way</h2>
-        <CodeBlock language="bash" code={[
-    "# ── if / elif / else ────────────────────────────────────────",
-    "disk_pct = 87",
-    "",
-    "if disk_pct >= 95:",
-    "    print(\"CRITICAL: Disk nearly full!\")",
-    "elif disk_pct >= 80:",
-    "    print(f\"WARNING: Disk at {disk_pct}%\")",
-    "else:",
-    "    print(f\"OK: Disk at {disk_pct}%\")",
-    "",
-    "# ── for loops ───────────────────────────────────────────────",
-    "servers = {\"dc01\": \"192.168.100.10\", \"srv01\": \"192.168.100.20\"}",
-    "",
-    "for name, ip in servers.items():",
-    "    print(f\"Checking {name} ({ip})...\")",
-    "",
-    "# List comprehension — create new list concisely",
-    "ips = [ip for name, ip in servers.items()]  # [\"192.168.100.10\", \"192.168.100.20\"]",
-    "high_ports = [p for p in range(1, 1025) if p % 2 == 0]  # even ports",
-    "",
-    "# ── while loops ─────────────────────────────────────────────",
-    "import time",
-    "retries = 0",
-    "max_retries = 3",
-    "",
-    "while retries < max_retries:",
-    "    # try to connect...",
-    "    success = True  # simulation",
-    "    if success:",
-    "        print(\"Connected!\")",
-    "        break",
-    "    retries += 1",
-    "    print(f\"Retry {retries}/{max_retries}\")",
-    "    time.sleep(2)",
-    "else:",
-    "    print(\"All retries failed\")"
-  ].join('\n')} />
+        <CodeBlock language="bash" code={CODE_PYTHONBASICS_3} />
       </section>
 
       {/* ── FUNCTIONS + ERROR HANDLING ── */}
       <section>
         <h2>Functions & Error Handling</h2>
-        <CodeBlock language="bash" code={[
-    "import subprocess",
-    "import socket",
-    "",
-    "# ── Functions ────────────────────────────────────────────────",
-    "def ping(host: str, count: int = 1) -> bool:",
-    "    \"\"\"Returns True if host responds to ping.\"\"\"",
-    "    result = subprocess.run(",
-    "        [\"ping\", \"-c\", str(count), \"-W\", \"2\", host],",
-    "        capture_output=True",
-    "    )",
-    "    return result.returncode == 0",
-    "",
-    "def check_port(host: str, port: int, timeout: float = 2.0) -> bool:",
-    "    \"\"\"Returns True if TCP port is open.\"\"\"",
-    "    try:",
-    "        with socket.create_connection((host, port), timeout=timeout):",
-    "            return True",
-    "    except (socket.timeout, ConnectionRefusedError, OSError):",
-    "        return False",
-    "",
-    "# ── Error handling ───────────────────────────────────────────",
-    "def read_config(path: str) -> dict:",
-    "    \"\"\"Read a simple key=value config file.\"\"\"",
-    "    config = {}",
-    "    try:",
-    "        with open(path, 'r') as f:",
-    "            for line in f:",
-    "                line = line.strip()",
-    "                if '=' in line and not line.startswith('#'):",
-    "                    key, value = line.split('=', 1)",
-    "                    config[key.strip()] = value.strip()",
-    "    except FileNotFoundError:",
-    "        print(f\"Config file not found: {path}\")",
-    "    except PermissionError:",
-    "        print(f\"Permission denied: {path}\")",
-    "    except Exception as e:",
-    "        print(f\"Unexpected error reading {path}: {e}\")",
-    "    return config",
-    "",
-    "# ── Using them together ──────────────────────────────────────",
-    "if __name__ == \"__main__\":",
-    "    hosts = [\"192.168.100.10\", \"192.168.100.20\"]",
-    "",
-    "    for host in hosts:",
-    "        online = ping(host)",
-    "        ssh_open = check_port(host, 22) if online else False",
-    "        print(f\"{host}: {'online' if online else 'OFFLINE'}, \"",
-    "              f\"SSH: {'open' if ssh_open else 'closed'}\")"
-  ].join('\n')} />
+        <CodeBlock language="bash" code={CODE_PYTHONBASICS_4} />
       </section>
 
       {/* ── VMware LAB ── */}
@@ -334,62 +377,14 @@ export default function PythonBasics() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Set up your Python environment on the Ubuntu VM."
-              command={[
-    "ssh user@192.168.100.20",
-    "python3 --version",
-    "mkdir -p ~/sysadmin-scripts && cd ~/sysadmin-scripts",
-    "python3 -m venv venv && source venv/bin/activate",
-    "pip install requests"
-  ].join('\n')}
-              output={[
-    "Python 3.10.12",
-    "(venv) user@srv01:~/sysadmin-scripts$"
-  ].join('\n')}
+              command={CODE_PYTHONBASICS_5}
+              output={CODE_PYTHONBASICS_6}
             />
             <LabStep number={2}
               description="Create a network scanner script that checks lab hosts."
               language="bash"
-              command={[
-    "cat > network-scan.py << 'EOF'",
-    "#!/usr/bin/env python3",
-    "\"\"\"network-scan.py — Scan the lab network for live hosts and open ports.\"\"\"",
-    "import subprocess, socket, ipaddress",
-    "",
-    "LAB_NETWORK = \"192.168.100.0/24\"",
-    "COMMON_PORTS = {22: \"SSH\", 80: \"HTTP\", 443: \"HTTPS\", 3389: \"RDP\",",
-    "                445: \"SMB\", 389: \"LDAP\", 53: \"DNS\"}",
-    "",
-    "def is_alive(ip: str) -> bool:",
-    "    result = subprocess.run([\"ping\",\"-c\",\"1\",\"-W\",\"1\",str(ip)],",
-    "                            capture_output=True)",
-    "    return result.returncode == 0",
-    "",
-    "def open_ports(ip: str) -> list:",
-    "    open_ = []",
-    "    for port in COMMON_PORTS:",
-    "        try:",
-    "            with socket.create_connection((ip, port), timeout=0.5):",
-    "                open_.append(port)",
-    "        except Exception:",
-    "            pass",
-    "    return open_",
-    "",
-    "print(f\"Scanning {LAB_NETWORK}...\")",
-    "for ip in ipaddress.ip_network(LAB_NETWORK).hosts():",
-    "    ip = str(ip)",
-    "    if is_alive(ip):",
-    "        ports = open_ports(ip)",
-    "        services = [f\"{p}/{COMMON_PORTS[p]}\" for p in ports]",
-    "        print(f\"  ✔ {ip:18s}  {', '.join(services) or 'no common ports'}\")",
-    "EOF",
-    "python3 network-scan.py"
-  ].join('\n')}
-              output={[
-    "Scanning 192.168.100.0/24...",
-    "  ✔ 192.168.100.1       no common ports",
-    "  ✔ 192.168.100.10      53/DNS, 389/LDAP, 445/SMB, 3389/RDP",
-    "  ✔ 192.168.100.20      22/SSH"
-  ].join('\n')}
+              command={CODE_PYTHONBASICS_7}
+              output={CODE_PYTHONBASICS_8}
             />
           </div>
         </div>

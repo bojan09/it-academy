@@ -3,6 +3,70 @@ import LessonLayout from '../../components/LessonLayout.jsx'
 import CodeBlock from '../../components/CodeBlock.jsx'
 import Quiz from '../../components/Quiz.jsx'
 
+// ── Code snippet constants (extracted from JSX props) ──
+const CODE_THREATMODELLING_1 = `# On DC01 — enumerate all listening ports and services
+Get-NetTCPConnection -State Listen |
+  Select-Object LocalPort, @{N='Process'; E={
+    (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).Name
+  }} |
+  Sort-Object LocalPort |
+  Format-Table -AutoSize`
+const CODE_THREATMODELLING_2 = `LocalPort  Process
+---------  -------
+53         dns
+88         lsass        ← Kerberos
+135        svchost      ← RPC
+139        System       ← NetBIOS
+389        lsass        ← LDAP
+445        System       ← SMB
+464        lsass        ← Kpasswd
+636        lsass        ← LDAPS
+3268       lsass        ← Global Catalogue
+3389       svchost      ← RDP ← HIGH RISK if exposed externally
+5985       svchost      ← WinRM`
+const CODE_THREATMODELLING_3 = `# STRIDE analysis for RDP on a domain controller:
+# S — Spoofing:       Attacker uses stolen credentials to authenticate as a legitimate admin
+# T — Tampering:      Attacker redirects clipboard/drive contents through the RDP session
+# R — Repudiation:    No RDP session logging enabled — admin activity untracked
+# I — Information:    RDP transmits session data — interception if NLA is disabled
+# D — DoS:            Flooding RDP port causes CPU spike, legitimate admins locked out
+# E — Escalation:     Attacker authenticates as user, exploits local priv esc to get SYSTEM
+
+# Check if Network Level Authentication (NLA) is enforced — partial Spoofing mitigation
+Get-ItemProperty "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp" |
+  Select-Object UserAuthentication   # 1 = NLA required (good)`
+const CODE_THREATMODELLING_4 = `UserAuthentication
+------------------
+1                  ← NLA enforced ✔`
+const CODE_THREATMODELLING_5 = `# View current audit policy
+auditpol /get /category:*
+
+# Enable logon/logoff auditing (addresses Repudiation for authentication events)
+auditpol /set /subcategory:"Logon"        /success:enable /failure:enable
+auditpol /set /subcategory:"Account Logon" /success:enable /failure:enable
+auditpol /set /subcategory:"Account Management" /success:enable /failure:enable
+
+# Verify events are being captured
+Get-EventLog Security -Newest 5 | Select-Object EventID, Message | Format-List`
+const CODE_THREATMODELLING_6 = `# Document DREAD scores for: Brute-force RDP attack on DC01
+$threat = @{
+  Name           = "RDP Brute Force on Domain Controller"
+  Damage         = 10  # Full DC compromise = AD takeover
+  Reproducibility = 8  # Automated tools readily available
+  Exploitability  = 6  # Requires credential list + tool, moderate skill
+  AffectedUsers   = 10  # All domain users impacted if DC falls
+  Discoverability = 9   # Port 3389 shows up in any Shodan scan
+}
+$total = $threat.Damage + $threat.Reproducibility +
+         $threat.Exploitability + $threat.AffectedUsers +
+         $threat.Discoverability
+
+Write-Host "Threat: $($threat.Name)"
+Write-Host "DREAD Score: $total / 50 — $(if($total -gt 40){'CRITICAL'}elseif($total -gt 25){'HIGH'}else{'MEDIUM'})" -ForegroundColor $(if($total -gt 40){'Red'}elseif($total -gt 25){'Yellow'}else{'Green'})`
+const CODE_THREATMODELLING_7 = `Threat: RDP Brute Force on Domain Controller
+DREAD Score: 43 / 50 — CRITICAL`
+
+
 const QUIZ_QUESTIONS = [
   {
     id: 'q1',
@@ -373,92 +437,24 @@ export default function ThreatModelling() {
           <div className="lab-body space-y-8">
             <LabStep number={1}
               description="Map your lab's attack surface — identify all exposed services on DC01."
-              command={[
-    "# On DC01 — enumerate all listening ports and services",
-    "Get-NetTCPConnection -State Listen |",
-    "  Select-Object LocalPort, @{N='Process'; E={",
-    "    (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).Name",
-    "  }} |",
-    "  Sort-Object LocalPort |",
-    "  Format-Table -AutoSize"
-  ].join('\n')}
-              output={[
-    "LocalPort  Process",
-    "---------  -------",
-    "53         dns",
-    "88         lsass        ← Kerberos",
-    "135        svchost      ← RPC",
-    "139        System       ← NetBIOS",
-    "389        lsass        ← LDAP",
-    "445        System       ← SMB",
-    "464        lsass        ← Kpasswd",
-    "636        lsass        ← LDAPS",
-    "3268       lsass        ← Global Catalogue",
-    "3389       svchost      ← RDP ← HIGH RISK if exposed externally",
-    "5985       svchost      ← WinRM"
-  ].join('\n')}
+              command={CODE_THREATMODELLING_1}
+              output={CODE_THREATMODELLING_2}
             />
             <LabStep number={2}
               description="Apply STRIDE to RDP (port 3389) on DC01 — identify all applicable threats."
               language="powershell"
-              command={[
-    "# STRIDE analysis for RDP on a domain controller:",
-    "# S — Spoofing:       Attacker uses stolen credentials to authenticate as a legitimate admin",
-    "# T — Tampering:      Attacker redirects clipboard/drive contents through the RDP session",
-    "# R — Repudiation:    No RDP session logging enabled — admin activity untracked",
-    "# I — Information:    RDP transmits session data — interception if NLA is disabled",
-    "# D — DoS:            Flooding RDP port causes CPU spike, legitimate admins locked out",
-    "# E — Escalation:     Attacker authenticates as user, exploits local priv esc to get SYSTEM",
-    "",
-    "# Check if Network Level Authentication (NLA) is enforced — partial Spoofing mitigation",
-    "Get-ItemProperty \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" |",
-    "  Select-Object UserAuthentication   # 1 = NLA required (good)"
-  ].join('\n')}
-              output={[
-    "UserAuthentication",
-    "------------------",
-    "1                  ← NLA enforced ✔"
-  ].join('\n')}
+              command={CODE_THREATMODELLING_3}
+              output={CODE_THREATMODELLING_4}
             />
             <LabStep number={3}
               description="Check Windows Security Audit policy — addressing the Repudiation threat."
-              command={[
-    "# View current audit policy",
-    "auditpol /get /category:*",
-    "",
-    "# Enable logon/logoff auditing (addresses Repudiation for authentication events)",
-    "auditpol /set /subcategory:\"Logon\"        /success:enable /failure:enable",
-    "auditpol /set /subcategory:\"Account Logon\" /success:enable /failure:enable",
-    "auditpol /set /subcategory:\"Account Management\" /success:enable /failure:enable",
-    "",
-    "# Verify events are being captured",
-    "Get-EventLog Security -Newest 5 | Select-Object EventID, Message | Format-List"
-  ].join('\n')}
+              command={CODE_THREATMODELLING_5}
             />
             <LabStep number={4}
               description="Calculate a DREAD score for the RDP exposure threat on DC01."
               language="powershell"
-              command={[
-    "# Document DREAD scores for: Brute-force RDP attack on DC01",
-    "$threat = @{",
-    "  Name           = \"RDP Brute Force on Domain Controller\"",
-    "  Damage         = 10  # Full DC compromise = AD takeover",
-    "  Reproducibility = 8  # Automated tools readily available",
-    "  Exploitability  = 6  # Requires credential list + tool, moderate skill",
-    "  AffectedUsers   = 10  # All domain users impacted if DC falls",
-    "  Discoverability = 9   # Port 3389 shows up in any Shodan scan",
-    "}",
-    "$total = $threat.Damage + $threat.Reproducibility +",
-    "         $threat.Exploitability + $threat.AffectedUsers +",
-    "         $threat.Discoverability",
-    "",
-    "Write-Host \"Threat: $($threat.Name)\"",
-    "Write-Host \"DREAD Score: $total / 50 — $(if($total -gt 40){'CRITICAL'}elseif($total -gt 25){'HIGH'}else{'MEDIUM'})\" -ForegroundColor $(if($total -gt 40){'Red'}elseif($total -gt 25){'Yellow'}else{'Green'})"
-  ].join('\n')}
-              output={[
-    "Threat: RDP Brute Force on Domain Controller",
-    "DREAD Score: 43 / 50 — CRITICAL"
-  ].join('\n')}
+              command={CODE_THREATMODELLING_6}
+              output={CODE_THREATMODELLING_7}
             />
           </div>
         </div>
