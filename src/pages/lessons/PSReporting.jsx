@@ -61,7 +61,7 @@ $principal = New-ScheduledTaskPrincipal \`\`
 
 Register-ScheduledTask \`\`
   -TaskName 'Daily Health Report' \`\`
-  -TaskPath '\\SysAdmin\\' \`\`
+  -TaskPath '\\SysAdmin' \`\`
   -Action $action \`\`
   -Trigger $trigger \`\`
   -Settings $settings \`\`
@@ -70,7 +70,7 @@ Register-ScheduledTask \`\`
   -Force
 
 # Verify
-Get-ScheduledTask -TaskPath '\\SysAdmin\\' | Format-Table TaskName, State`
+Get-ScheduledTask -TaskPath '\\SysAdmin' | Format-Table TaskName, State`
 const CODE_PSREPORTING_3 = `function Send-HtmlReport {
     param(
         [string]$To,
